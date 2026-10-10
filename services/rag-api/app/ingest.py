@@ -1,10 +1,11 @@
 import os
+
 import requests
 from bs4 import BeautifulSoup
-from typing import List
 from sentence_transformers import SentenceTransformer
-from .models import DocumentChunk
+
 from .database import SessionLocal
+from .models import DocumentChunk
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
@@ -40,7 +41,7 @@ def fetch_html(url: str) -> str:
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         return soup.get_text(separator="\n", strip=True)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Error fetching HTML {url}: {e}")
         return ""
 
@@ -52,7 +53,7 @@ def fetch_pdf(url: str) -> str:
     return "PDF Content Placeholder"
 
 
-def chunk_document(text: str, chunk_size: int = 500) -> List[str]:
+def chunk_document(text: str, chunk_size: int = 500) -> list[str]:
     """Simulates splitting text into ~500 word chunks."""
     words = text.split()
     chunks = []
@@ -62,7 +63,7 @@ def chunk_document(text: str, chunk_size: int = 500) -> List[str]:
     return chunks
 
 
-def parse_sources(file_path: str) -> List[str]:
+def parse_sources(file_path: str) -> list[str]:
     """Parses the sources.txt file and returns a list of URLs."""
     urls = []
     try:

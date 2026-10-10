@@ -38,9 +38,13 @@ Before implementing a non-trivial feature, read the three context documents and 
 
 ## Local setup
 
-`core-api` and `agent-api` are scaffolded (Python 3.12, FastAPI, managed with [uv](https://docs.astral.sh/uv/)). `rag-api` and `web` are owned by their teams and join Compose when they land. Design decisions for the two services live in `docs/architecture/architecture-campuscue-backend-ai-2026-10-10/ARCHITECTURE-SPINE.md`.
+The intended integrated workflow uses Docker Compose. Each service also supports independent local execution and tests with mocks.
 
-**Run the stack** (PostgreSQL 18, a one-shot migration, Core on `:8000`, Agent on `127.0.0.1:8001`):
+`core-api` and `agent-api` are scaffolded (Python 3.12, FastAPI, managed with [uv](https://docs.astral.sh/uv/)). `rag-api` and `web` join Compose when running the integrated system. Design decisions for the backend services live in `docs/architecture/architecture-campuscue-backend-ai-2026-10-10/ARCHITECTURE-SPINE.md`.
+
+### Run the stack
+
+PostgreSQL 18, a one-shot migration, Core on `:8000`, Agent on `127.0.0.1:8001`:
 
 ```bash
 cp .env.example .env        # development-only placeholders; add GROQ_API_KEY only if you use AGENT_MODEL_PROVIDER=groq
@@ -50,15 +54,28 @@ curl localhost:8000/ready    # database reachable and migrations applied
 docker compose down -v       # also drops the database volume
 ```
 
-**Test one service** (no Docker, no network, no paid model; every dependency has a fake):
+### Test individual services
+
+No Docker, no network, no paid model required; every dependency has a fake/offline mock:
 
 ```bash
+# Agent API
 cd services/agent-api && make verify        # ruff, mypy, import-linter, pytest, contract drift
+
+# Core API
 cd services/core-api  && make verify-fast   # same checks, skipping the PostgreSQL tests
 cd services/core-api  && make verify        # also runs the PostgreSQL 18 tests (needs Docker)
+
+# RAG API
+cd services/rag-api
+pip install -e .
+pytest tests/ -v                            # 84 tests, 100% offline
+uvicorn app.main:app --port 8002 --reload   # local dev server
 ```
 
-**Contracts** are generated from code, so they cannot drift from it. After changing a route or schema:
+### Contracts
+
+Contracts are generated from code, so they cannot drift from it. After changing a route or schema:
 
 ```bash
 cd services/core-api  && uv run python -m scripts.export_contracts
