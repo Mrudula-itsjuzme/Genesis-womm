@@ -23,7 +23,7 @@ export default function Sidebar() {
   return (
     <div className="w-64 bg-gray-900 text-white flex flex-col h-full h-screen overflow-y-auto">
       <div className="p-6">
-        <h2 className="text-xl font-bold tracking-wider">CampusCue</h2>
+        <h2 className="text-xl font-bold tracking-wider text-rose-500">CampusCue</h2>
       </div>
       <nav className="flex-1 px-4 space-y-2">
         {navItems.map((item) => {
@@ -32,7 +32,7 @@ export default function Sidebar() {
             <Link
               key={item.label}
               href={item.href}
-              className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-rose-900/50 hover:text-rose-100 transition-colors"
             >
               <Icon className="w-5 h-5 text-gray-400" />
               <span className="font-medium text-sm">{item.label}</span>
@@ -42,11 +42,11 @@ export default function Sidebar() {
       </nav>
       <div className="p-4 border-t border-gray-800">
         <div className="flex items-center space-x-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-sm font-bold">
+          <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-rose-950 text-sm font-bold shadow-sm">
             A
           </div>
           <div>
-            <p className="text-sm font-medium">Arjun</p>
+            <p className="text-sm font-medium">Arjun Admin</p>
             <p className="text-xs text-gray-400">Club Admin</p>
           </div>
         </div>

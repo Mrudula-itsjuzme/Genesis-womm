@@ -15,7 +15,7 @@ export default function TopNav() {
             type="search"
             name="search"
             id="search"
-            className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-rose-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-800 transition-colors"
             placeholder="Search events, venues, or policies"
           />
         </div>
@@ -27,7 +27,7 @@ export default function TopNav() {
         {/* New Event Button */}
         <button
           type="button"
-          className="inline-flex items-center gap-x-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="inline-flex items-center gap-x-2 rounded-lg bg-rose-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-800 transition-colors"
         >
           New Event
           <Plus className="-mr-0.5 h-4 w-4" aria-hidden="true" />
@@ -37,12 +37,12 @@ export default function TopNav() {
         <button type="button" className="relative p-1 text-gray-500 hover:text-gray-700">
           <span className="sr-only">View notifications</span>
           <Bell className="h-6 w-6" aria-hidden="true" />
-          <span className="absolute top-1 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+          <span className="absolute top-1 right-1.5 block h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" />
         </button>
 
         {/* User Profile */}
         <button className="flex items-center gap-x-3 hover:bg-gray-50 p-1.5 rounded-lg transition-colors">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 text-gray-500">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-800">
             <User className="h-5 w-5" />
           </div>
           <div className="hidden md:flex md:items-center md:gap-x-1">
