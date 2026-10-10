@@ -12,9 +12,10 @@ from app.domain.authz import Actor
 from app.domain.enums import AvailabilityState, EventStatus, FreshnessState, ResourceKind
 from app.main import create_app
 from app.schemas.common import ErrorEnvelope
+from app.services.chat import AgentReply, ChatService
 from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService, EventView
-from app.services.ports import EventRecord, ResourceRecord, UserIdentity
+from app.services.ports import ChatTurn, EventRecord, ResourceRecord, UserIdentity
 from app.services.readiness import ReadinessService
 from app.services.resource_reads import ResourceReadService
 from app.services.schedule_write import WriteResult
@@ -147,10 +148,13 @@ class FakeResourceReadService:
         return self.resource
 
 
+class FakeChatService:
+    def chat(self, _: Any, __: ChatTurn) -> AgentReply:
+        return AgentReply(body={"message": "A proposed plan."}, proposed_actions=())
+
+
 # (method, path, json body or None)
-STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
-    ("POST", "/api/v1/agent/chat", VALID_CHAT),
-]
+STUBS: list[tuple[str, str, dict[str, Any] | None]] = []
 
 
 @pytest.fixture(scope="module")
@@ -175,6 +179,7 @@ def client() -> TestClient:
         event_reads=cast(EventReadService, FakeEventReadService()),
         resource_reads=cast(ResourceReadService, FakeResourceReadService()),
         delegation=cast(DelegationService, FakeDelegationService()),
+        chat=cast(ChatService, FakeChatService()),
         internal_api_key=INTERNAL_KEY,
     )
     return TestClient(create_app(make_settings(), container), raise_server_exceptions=False)
@@ -279,6 +284,7 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
             or (method, path)
             in {
                 ("POST", "/api/v1/auth/demo-login"),
+                ("POST", "/api/v1/agent/chat"),
                 ("POST", "/api/v1/events"),
                 ("GET", "/api/v1/events"),
                 ("GET", "/api/v1/events/{event_id}"),
@@ -309,6 +315,7 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
         and (method, path)
         not in {
             ("POST", "/api/v1/auth/demo-login"),
+            ("POST", "/api/v1/agent/chat"),
             ("POST", "/api/v1/events"),
             ("GET", "/api/v1/events"),
             ("GET", "/api/v1/events/{event_id}"),

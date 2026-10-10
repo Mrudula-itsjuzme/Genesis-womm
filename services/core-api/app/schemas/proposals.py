@@ -25,7 +25,7 @@ class ProposalStatusPatch(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     action: Literal["approve", "reject", "request_revision"]
-    review_note: str | None = None
+    review_note: str | None = Field(default=None, max_length=2000)
 
 
 class ProposalDownloadUrlOut(BaseModel):

@@ -45,6 +45,8 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.state.conflict_checks = container.conflict_checks
     app.state.delegation = container.delegation
     app.state.agent_actions = container.agent_actions
+    app.state.chat = container.chat
+    app.state.proposals = container.proposals
     if container.internal_api_key is not None:
         # Absent means the facade fails closed (api/deps.py), never open.
         app.state.internal_api_key = container.internal_api_key

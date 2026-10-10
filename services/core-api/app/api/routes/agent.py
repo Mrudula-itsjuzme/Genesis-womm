@@ -3,8 +3,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 
-from app.api.deps import get_agent_action_service, require_session_actor
-from app.api.errors import STUB_OPENAPI, error_responses, not_implemented, stub_errors
+from app.api.deps import get_agent_action_service, get_chat_service, require_session_actor
+from app.api.errors import error_responses
 from app.api.presenters import agent_action_out
 from app.domain.authz import Actor
 from app.domain.enums import AgentActionStatus, ErrorCode
@@ -16,6 +16,8 @@ from app.schemas.agent import (
     ChatResponse,
 )
 from app.services.agent_actions import AgentActionService
+from app.services.chat import ChatService
+from app.services.ports import ChatTurn
 from app.services.schedule_write import RequestContext
 
 router = APIRouter(prefix="/api/v1", tags=["agent"], dependencies=[Depends(require_session_actor)])
@@ -35,11 +37,36 @@ IdempotencyKey = Annotated[
         "Core mints a short-lived delegation token for the caller and relays one turn to the "
         "Agent. The reply describes proposals as proposed, never as done."
     ),
-    responses=stub_errors(ErrorCode.DEPENDENCY_UNAVAILABLE, ErrorCode.AGENT_OUTPUT_INVALID),
-    openapi_extra=STUB_OPENAPI,
+    responses=error_responses(
+        ErrorCode.UNAUTHENTICATED,
+        ErrorCode.FORBIDDEN,
+        ErrorCode.VALIDATION_ERROR,
+        ErrorCode.DEPENDENCY_UNAVAILABLE,
+        ErrorCode.AGENT_OUTPUT_INVALID,
+    ),
 )
-def chat(payload: ChatRequest) -> ChatResponse:
-    not_implemented("Agent chat")
+def chat(
+    payload: ChatRequest,
+    actor: SessionActor,
+    service: Annotated[ChatService, Depends(get_chat_service)],
+    request: Request,
+) -> ChatResponse:
+    ctx = RequestContext(actor=actor, request_id=str(request.state.request_id))
+    reply = service.chat(
+        ctx,
+        ChatTurn(
+            messages=tuple((message.role, message.content) for message in payload.messages),
+            event_id=payload.event_id,
+        ),
+    )
+    return ChatResponse(
+        message=str(reply.body.get("message", "")),
+        clarifying_question=reply.body.get("clarifying_question"),
+        citations=reply.body.get("citations", []),
+        proposed_actions=[agent_action_out(action) for action in reply.proposed_actions],
+        trace=reply.body.get("trace", []),
+        request_id=ctx.request_id,
+    )
 
 
 @router.get(

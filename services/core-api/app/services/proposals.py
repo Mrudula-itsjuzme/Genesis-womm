@@ -36,7 +36,7 @@ from app.services.schedule_write import RequestContext, refusal_code
 
 log = structlog.get_logger(__name__)
 
-MAX_PROPOSAL_BYTES = 10 * 1024 * 1024
+MAX_PROPOSAL_BYTES = 15 * 1024 * 1024
 TITLE_MAX = 255
 _PDF_MAGIC = b"%PDF-"
 
