@@ -18,7 +18,7 @@ class GroqProvider(LlmPort):
         tools: list[dict[str, Any]],
         system_prompt: str,
     ) -> LlmResponse:
-        api_messages = [{"role": "system", "content": system_prompt}]
+        api_messages: list[Any] = [{"role": "system", "content": system_prompt}]
         for msg in messages:
             api_messages.append({"role": msg.role, "content": msg.content})
 
@@ -39,11 +39,11 @@ class GroqProvider(LlmPort):
             raise RuntimeError(f"Groq API error: {e}") from e
 
         choice = response.choices[0]
-        msg = choice.message
+        response_msg = choice.message
 
         tool_calls = []
-        if msg.tool_calls:
-            for tc in msg.tool_calls:
+        if response_msg.tool_calls:
+            for tc in response_msg.tool_calls:
                 # Groq returns json arguments as a string.
                 # Standard OpenAI-like tool calls return arguments as a string representing JSON.
                 # Our interface might want dicts or just strings.
@@ -57,4 +57,4 @@ class GroqProvider(LlmPort):
                     )
                 )
 
-        return LlmResponse(text=msg.content, tool_calls=tool_calls)
+        return LlmResponse(text=response_msg.content, tool_calls=tool_calls)
