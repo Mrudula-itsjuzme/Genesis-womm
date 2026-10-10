@@ -41,7 +41,9 @@ def answer_query(
         "grounded" if raw_status == "grounded" else "insufficient_evidence"
     )
     citations = (
-        CitationBuilder.build(fused_candidates) if status == "grounded" else []
+        CitationBuilder.build(fused_candidates, cited_text=answer_text)
+        if status == "grounded"
+        else []
     )
     req_id = getattr(req.state, "request_id", None)
 

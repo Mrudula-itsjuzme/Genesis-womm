@@ -1,8 +1,8 @@
 import io
 from unittest.mock import MagicMock
-from pypdf import PdfWriter
 
-from app.parsing.pdf import PDFParser, ParsedPage
+from app.parsing.pdf import PDFParser
+from pypdf import PdfWriter
 
 
 def _create_mock_pdf_bytes(num_pages: int = 1) -> bytes:
@@ -16,14 +16,18 @@ def _create_mock_pdf_bytes(num_pages: int = 1) -> bytes:
 
 
 def test_pdf_parser_page_preservation():
-    # Test with synthetic multi-page content using ParsedPage models
-    pages = [
-        ParsedPage(page_number=1, text="Chapter 1: Overview\nWelcome to Amrita Coimbatore."),
-        ParsedPage(page_number=2, text="Chapter 2: Club Guidelines\nClubs must register annually."),
-    ]
+    # Build genuine two-page PDF stream
+    writer = PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    writer.add_blank_page(width=72, height=72)
+    stream = io.BytesIO()
+    writer.write(stream)
+    stream.seek(0)
+
+    parser = PDFParser()
+    pages = parser.parse_bytes(stream.getvalue())
     assert len(pages) == 2
     assert pages[0].page_number == 1
-    assert "Overview" in pages[0].text
     assert pages[1].page_number == 2
 
 
