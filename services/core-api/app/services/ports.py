@@ -107,8 +107,16 @@ class IdSource(Protocol):
 class EventReader(Protocol):
     def get(self, event_id: UUID) -> EventRecord | None: ...
 
-    def list_scheduling_candidates(self) -> list[EventRecord]:
-        """Every event that can still hold a time slot: not rejected, cancelled or completed."""
+    def list_scheduling_candidates(
+        self, *, starts_before: datetime, ends_after: datetime
+    ) -> list[EventRecord]:
+        """Events that could conflict with a window: those that start before ``starts_before``
+        and end after ``ends_after``, excluding rejected, cancelled and completed ones.
+
+        The caller passes its interval widened by the campus gap on both sides. An event outside
+        that window overlaps nothing and is at least the gap away, so it cannot produce a
+        conflict, and leaving it out never changes the engine's answer.
+        """
         ...
 
 

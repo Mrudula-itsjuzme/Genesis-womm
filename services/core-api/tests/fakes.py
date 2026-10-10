@@ -125,9 +125,15 @@ class _Events:
         self._db.log.append("read:event")
         return self._work.events.get(event_id)
 
-    def list_scheduling_candidates(self) -> list[EventRecord]:
+    def list_scheduling_candidates(
+        self, *, starts_before: datetime, ends_after: datetime
+    ) -> list[EventRecord]:
         self._db.log.append("read:candidates")
-        return [e for e in self._work.events.values() if e.status not in INACTIVE]
+        return [
+            e
+            for e in self._work.events.values()
+            if e.status not in INACTIVE and e.start_at < starts_before and e.end_at > ends_after
+        ]
 
     def insert(self, record: EventRecord) -> None:
         self._db.fail_if("events.insert")

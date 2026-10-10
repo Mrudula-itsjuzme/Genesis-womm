@@ -279,7 +279,11 @@ class ScheduleWriteService:
         The caller has already taken the campus lock. Raises ``ConflictDetectedError`` if a
         blocking conflict exists, in which case nothing has been written.
         """
-        others = [record.to_scheduled() for record in uow.events.list_scheduling_candidates()]
+        gap = self._policy.campus_gap
+        nearby = uow.events.list_scheduling_candidates(
+            starts_before=after.end_at + gap, ends_after=after.start_at - gap
+        )
+        others = [record.to_scheduled() for record in nearby]
         overrides = [record.to_domain() for record in uow.overrides.for_event(after.id)]
         conflicts = evaluate(after.to_scheduled(), others, overrides, self._policy, availability)
         if any(conflict.severity is Severity.BLOCKING for conflict in conflicts):
