@@ -1,3 +1,4 @@
+import hashlib
 import threading
 
 import numpy as np
@@ -27,14 +28,14 @@ class DenseRetriever:
 
     def _encode(self, texts: list[str]) -> np.ndarray:
         if self.use_mock_embeddings:
-            # Deterministic word-overlap vector for testing without downloading model
+            # Deterministic, collision-resistant word-overlap vector for testing without downloading model
             dim = 64
             vectors = []
             for t in texts:
                 vec = np.zeros(dim, dtype=np.float32)
                 for word in t.lower().split():
-                    idx = abs(hash(word)) % dim
-                    vec[idx] += 1.0
+                    bucket = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16) % dim
+                    vec[bucket] += 1.0
                 norm = np.linalg.norm(vec)
                 vectors.append(vec / norm if norm > 0 else vec)
             return np.vstack(vectors)
@@ -56,11 +57,12 @@ class DenseRetriever:
             self.embeddings = encoded_vectors
 
     def search(self, query: str, top_k: int = 5) -> list[EvidenceChunk]:
+        # Compute query vector outside the lock to avoid serializing concurrent searches
+        q_vec = self._encode([query])[0]
         with self._lock:
             if not self.chunks or self.embeddings is None:
                 return []
 
-            q_vec = self._encode([query])[0]
             # Dot product of normalized vectors = cosine similarity
             scores = np.dot(self.embeddings, q_vec)
             top_indices = [

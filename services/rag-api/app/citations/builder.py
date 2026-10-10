@@ -15,13 +15,12 @@ class CitationBuilder:
         if not chunks:
             return []
 
-        # If cited_text contains bracketed evidence IDs (e.g. [osa-p12-c01]), filter to referenced chunks
+        # If cited_text contains bracketed evidence IDs (e.g. [osa-p12-c01]), filter strictly to referenced chunks
         active_chunks = chunks
         if cited_text:
             cited_ids = set(re.findall(r"\[([a-zA-Z0-9_\-]+)\]", cited_text))
-            matched = [c for c in chunks if c.evidence_id in cited_ids]
-            if matched:
-                active_chunks = matched
+            if cited_ids:
+                active_chunks = [c for c in chunks if c.evidence_id in cited_ids]
 
         seen_keys = set()
         citations: list[Citation] = []

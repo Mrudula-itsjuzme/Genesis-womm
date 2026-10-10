@@ -41,3 +41,12 @@ include = ["app*"]
 python_version = "3.11"
 explicit_package_bases = true
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "sqlalchemy.*",
+    "pgvector.*",
+    "requests.*",
+    "bs4.*",
+]
+ignore_missing_imports = true
