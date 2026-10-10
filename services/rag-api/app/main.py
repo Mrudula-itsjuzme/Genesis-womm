@@ -1,8 +1,17 @@
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.api.middleware import RequestTracingMiddleware
 from app.api.routes.retrieval import router as retrieval_router
 from app.api.routes.knowledge import router as knowledge_router
+
+logging.basicConfig(
+    level=settings.log_level,
+    format="%(asctime)s [%(levelname)s] %(name)s (%(filename)s:%(lineno)d): %(message)s",
+)
 
 app = FastAPI(
     title="CampusCue RAG API",
@@ -10,6 +19,7 @@ app = FastAPI(
     description="Authorized campus policy retrieval and grounded knowledge synthesis service",
 )
 
+app.add_middleware(RequestTracingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,8 +28,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    req_id = getattr(request.state, "request_id", None)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": "VALIDATION_ERROR",
+            "message": "Invalid request parameters",
+            "details": exc.errors(),
+            "request_id": req_id,
+        },
+        headers={"X-Request-ID": req_id} if req_id else {},
+    )
+
+
 app.include_router(retrieval_router)
 app.include_router(knowledge_router)
+
 
 
 @app.get("/health")
