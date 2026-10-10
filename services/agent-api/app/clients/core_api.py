@@ -22,6 +22,11 @@ from app.schemas.core import (
 )
 from app.schemas.enums import ErrorCode
 
+# The facade operations in contracts/core-api.openapi.yaml; a contract test pins these.
+CHECK_CONFLICTS_PATH = "/internal/v1/agent-tools/check_event_conflicts"
+EVENT_PATH = "/internal/v1/agent-tools/events/{event_id}"
+ACTIONS_PATH = "/internal/v1/agent-actions"
+
 
 class HttpCoreClient(CoreToolsPort):
     def __init__(self, client: httpx.AsyncClient) -> None:
@@ -40,7 +45,7 @@ class HttpCoreClient(CoreToolsPort):
         if response.is_success:
             return
 
-        if response.status_code == 403:
+        if response.status_code in (401, 403):
             raise DeniedError("Operation denied")
         if response.status_code == 404:
             raise NotFoundError("Resource not found")
@@ -67,8 +72,8 @@ class HttpCoreClient(CoreToolsPort):
     ) -> ConflictCheckOut:
         try:
             response = await self._client.post(
-                "/internal/v1/agent/check-conflicts",
-                json=request.model_dump(mode="json", exclude_none=True),
+                CHECK_CONFLICTS_PATH,
+                json=request.model_dump(mode="json", exclude_unset=True),
                 headers=self._headers(ctx),
             )
         except httpx.RequestError as e:
@@ -84,7 +89,7 @@ class HttpCoreClient(CoreToolsPort):
     async def get_event_details(self, event_id: UUID, ctx: CallContext) -> EventOut:
         try:
             response = await self._client.get(
-                f"/internal/v1/events/{event_id}",
+                EVENT_PATH.format(event_id=event_id),
                 headers=self._headers(ctx),
             )
         except httpx.RequestError as e:
@@ -102,8 +107,8 @@ class HttpCoreClient(CoreToolsPort):
     ) -> AgentAction:
         try:
             response = await self._client.post(
-                "/internal/v1/agent/actions",
-                json=action.model_dump(mode="json", exclude_none=True),
+                ACTIONS_PATH,
+                json=action.model_dump(mode="json", exclude_unset=True),
                 headers=self._headers(ctx, idempotency_key=idempotency_key),
             )
         except httpx.RequestError as e:
