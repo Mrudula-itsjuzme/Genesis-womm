@@ -120,6 +120,30 @@ def list_events(
     )
 
 
+@router.post(
+    "/conflict-check",
+    response_model=ConflictCheckOut,
+    summary="Preview an unsaved event without creating a draft",
+    responses=stub_errors(ErrorCode.NOT_FOUND),
+)
+def preview_candidate(
+    payload: EventCreate,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    service: Annotated[ConflictCheckService, Depends(get_conflict_check_service)],
+    as_status: EventStatus = EventStatus.DRAFT,
+) -> ConflictCheckOut:
+    return conflict_check_out(
+        service.check_candidate(
+            actor,
+            club_id=payload.club_id,
+            start_at=payload.start_at,
+            end_at=payload.end_at,
+            resource_id=payload.resource_id,
+            as_status=as_status,
+        )
+    )
+
+
 @router.get(
     "/{event_id}",
     response_model=EventOut,
