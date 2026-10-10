@@ -1,5 +1,27 @@
 # Full Frontend & Backend Integration Plan
 
+## Execution record — 2026-10-11
+
+Status: In progress on `feat/frontend-backend-integration`.
+
+Baseline: `npm run lint` exits 0 with four existing warnings; `npx tsc --noEmit` exits 0. The live Core schemas and routes take precedence over the illustrative code below.
+
+Implementation adjustments:
+- Split Tasks 1 and 10 into at most three files per commit; use the allowed `frontend` scope.
+- Generate frontend wire types from committed Core OpenAPI and check drift. Session memberships belong to `user`; conflicts use `type`, `constraint`, and `info` severity; creation returns `event` plus conflicts.
+- Proxy browser requests through Next.js `/api/v1` to Core (server-only `CORE_API_URL`), avoiding a CORS dependency and keeping internal credentials out of the browser.
+- Add a session-authorized unsaved-candidate conflict route using the existing deterministic service; never submit a dummy event ID or save on preview.
+- Preserve actual lifecycle edges and require evidence for campus-admin confirmation. Render roles from the session, never from email text.
+- Accept PDF proposals only, up to the server's 15 MiB limit. Keep upload success separate from download-link failures and renew links on demand.
+- Keep citations and review actions attached to each assistant turn; show explicit unavailable states, ignore stale requests, and clear data on identity changes.
+- Reports contain recorded facts and missing-field placeholders only; save editable drafts locally with an explicit label. The backend has no report or dependency-impact endpoint, so the changes view is an advisory schedule preview.
+- Use meaningful production-helper and HTTP contract tests rather than the self-contained sample tests. Verify browser workflows with Playwright where available.
+- Do not run the implementation-only superpowers subskills: they are absent from the installed skill catalog. Execute the documented slices directly.
+
+Checkpoints: gateway/tests; generated contracts/endpoints; auth/navigation; toast/layout/errors; unsaved preview contract; calendar/details; proposal documents; planning; policy/actions; changes; venues; reports; offline home; browser regression and documentation.
+
+Completion evidence and commit ledger will be recorded here and in HANDOFF.md.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Fully integrate the Next.js frontend (`apps/web`) with the authoritative backend services via the Core API Gateway (`http://localhost:8000/api/v1`), replacing all client-side mocks with live authenticated workflows, real-time conflict evaluation, PDF proposal storage, and interactive AI agent chat.
