@@ -801,6 +801,9 @@ paths:
       tags:
       - 'internal: agent facade'
       summary: Run the conflict engine for a saved event or an unsaved candidate
+      description: 'Name either `event_id` (a saved event) or `club_id` with `start_at` and `end_at` (a
+        candidate). For a candidate `event_id` is null in the result and the nil UUID stands for it in
+        each conflict''s `event_ids`. Advisory: writes re-check inside the transaction.'
       operationId: check_event_conflicts_internal_v1_agent_tools_check_event_conflicts_post
       requestBody:
         content:
@@ -827,28 +830,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: NOT_FOUND
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
       security:
-      - delegationBearer: []
       - internalKey: []
-      x-implementation-status: stub
+      - delegationBearer: []
   /internal/v1/agent-tools/events/{event_id}:
     get:
       tags:
@@ -856,8 +852,8 @@ paths:
       summary: Read one event as the delegated user
       operationId: get_event_details_internal_v1_agent_tools_events__event_id__get
       security:
-      - delegationBearer: []
       - internalKey: []
+      - delegationBearer: []
       parameters:
       - name: event_id
         in: path
@@ -885,25 +881,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: NOT_FOUND
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /internal/v1/agent-actions:
     post:
       tags:
@@ -913,8 +902,8 @@ paths:
         an override or send a message.
       operationId: file_agent_action_internal_v1_agent_actions_post
       security:
-      - delegationBearer: []
       - internalKey: []
+      - delegationBearer: []
       parameters:
       - name: Idempotency-Key
         in: header
@@ -2188,12 +2177,12 @@ components:
       type: http
       description: Core-issued session JWT for a signed-in user (demo-login outside production).
       scheme: bearer
-    delegationBearer:
-      type: http
-      description: Short-lived delegation JWT that Core mints for one Agent turn. Only /internal/v1.
-      scheme: bearer
     internalKey:
       type: apiKey
       description: Shared service-to-service key. Required outside APP_ENV=local.
       in: header
       name: X-Internal-Key
+    delegationBearer:
+      type: http
+      description: Short-lived delegation JWT that Core mints for one Agent turn. Only /internal/v1.
+      scheme: bearer

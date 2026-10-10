@@ -8,9 +8,11 @@ from fastapi.testclient import TestClient
 
 from app.api.middleware import REQUEST_ID_HEADER
 from app.container import Container
+from app.domain.authz import Actor
 from app.domain.enums import AvailabilityState, EventStatus, FreshnessState, ResourceKind
 from app.main import create_app
 from app.schemas.common import ErrorEnvelope
+from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService, EventView
 from app.services.ports import EventRecord, ResourceRecord, UserIdentity
 from app.services.readiness import ReadinessService
@@ -35,6 +37,21 @@ VALID_ACTION: dict[str, Any] = {
     "type": "CREATE_FOLLOWUP_DRAFT",
     "summary": "Ask ICTS to revalidate",
 }
+
+
+INTERNAL_KEY = "i" * 40
+AGENT_HEADERS = {"X-Internal-Key": INTERNAL_KEY, "Authorization": "Bearer agent-token"}
+SESSION_HEADERS = {"Authorization": "Bearer demo-token"}
+
+
+def headers_for(path: str) -> dict[str, str]:
+    """The credentials the route family needs: the facade takes a key plus a delegation."""
+    return AGENT_HEADERS if path.startswith("/internal/v1") else SESSION_HEADERS
+
+
+class FakeDelegationService:
+    def resolve(self, token: str) -> Actor | None:
+        return Actor(user_id=uuid4(), via_agent=True) if token == "agent-token" else None
 
 
 class FakeSessionService:
@@ -141,8 +158,6 @@ STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
     ("GET", "/api/v1/agent-actions", None),
     ("POST", f"/api/v1/agent-actions/{ACTION}/confirm", None),
     ("POST", f"/api/v1/agent-actions/{ACTION}/reject", None),
-    ("POST", "/internal/v1/agent-tools/check_event_conflicts", {"event_id": EVENT}),
-    ("GET", f"/internal/v1/agent-tools/events/{EVENT}", None),
     ("POST", "/internal/v1/agent-actions", VALID_ACTION),
 ]
 
@@ -168,6 +183,8 @@ def client() -> TestClient:
         schedule_write=cast(Any, FakeScheduleWriteService()),
         event_reads=cast(EventReadService, FakeEventReadService()),
         resource_reads=cast(ResourceReadService, FakeResourceReadService()),
+        delegation=cast(DelegationService, FakeDelegationService()),
+        internal_api_key=INTERNAL_KEY,
     )
     return TestClient(create_app(make_settings(), container), raise_server_exceptions=False)
 
@@ -186,7 +203,7 @@ def test_stub_returns_the_501_envelope(
         method,
         path,
         json=body,
-        headers={REQUEST_ID_HEADER: "stub-1", "Authorization": "Bearer demo-token"},
+        headers={REQUEST_ID_HEADER: "stub-1", **headers_for(path)},
     )
     assert response.status_code == 501, response.text
     envelope = ErrorEnvelope.model_validate(response.json())
@@ -208,9 +225,7 @@ def test_stub_returns_the_501_envelope(
 def test_validation_runs_before_the_stub(
     client: TestClient, method: str, path: str, body: dict[str, Any] | None
 ) -> None:
-    response = client.request(
-        method, path, json=body, headers={"Authorization": "Bearer demo-token"}
-    )
+    response = client.request(method, path, json=body, headers=headers_for(path))
     assert response.status_code == 422, response.text
     assert response.json()["code"] == "VALIDATION_ERROR"
 
@@ -276,6 +291,8 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
             ("POST", "/api/v1/events/{event_id}/conflict-check"),
             ("POST", "/api/v1/events/{event_id}/transitions"),
             ("POST", "/api/v1/overrides"),
+            ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
+            ("GET", "/internal/v1/agent-tools/events/{event_id}"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }:
@@ -299,6 +316,8 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("POST", "/api/v1/events/{event_id}/conflict-check"),
             ("POST", "/api/v1/events/{event_id}/transitions"),
             ("POST", "/api/v1/overrides"),
+            ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
+            ("GET", "/internal/v1/agent-tools/events/{event_id}"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }
