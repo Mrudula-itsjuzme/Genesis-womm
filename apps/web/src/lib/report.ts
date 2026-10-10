@@ -1,0 +1,5 @@
+import type { EventOut } from '../types/core-api.ts';
+import { campusFormat } from './campus-time.ts';
+export function buildReport(event: EventOut, venue?: string) {
+  return `${event.title} — Editable report draft\n${event.synthetic ? 'SYNTHETIC DEMO DATA\n' : ''}\nRecorded event facts (revision ${event.revision}):\nStatus: ${event.status}\nStart: ${campusFormat(event.start_at)} (Asia/Kolkata)\nEnd: ${campusFormat(event.end_at)} (Asia/Kolkata)\nVenue: ${venue ?? (event.resource_id ? 'Resource ' + event.resource_id : 'Not recorded')}\nVenue availability: ${event.venue_availability}\nExpected attendance: ${event.expected_attendance ?? 'Not recorded'} (a planning estimate, not actual attendance)\nDescription: ${event.description ?? 'Not recorded'}\n\nOrganizer additions — verify before submission:\nActual attendance: [not recorded]\nSpeakers: [not recorded]\nPhotos and consent: [not recorded]\nExpenses and reimbursements: [not recorded]\nApproval/evidence references: [not included in event response]\nOutcomes: [add verified details]\n\nThis is a local editable draft. It is not an official submitted report.`;
+}
