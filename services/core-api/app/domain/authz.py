@@ -37,6 +37,9 @@ class Action(StrEnum):
     FILE_AGENT_ACTION = "FILE_AGENT_ACTION"
     CONFIRM_AGENT_ACTION = "CONFIRM_AGENT_ACTION"
     ISSUE_DELEGATION = "ISSUE_DELEGATION"
+    SUBMIT_PROPOSAL = "SUBMIT_PROPOSAL"
+    VIEW_PROPOSAL = "VIEW_PROPOSAL"
+    REVIEW_PROPOSAL = "REVIEW_PROPOSAL"
 
 
 class Visibility(StrEnum):
@@ -83,6 +86,10 @@ _SCOPE: dict[Action, _Scope] = {
     Action.FILE_AGENT_ACTION: _Scope.OWN_CLUB_ORGANIZER,
     Action.CONFIRM_AGENT_ACTION: _Scope.ACTION_OWNER,
     Action.ISSUE_DELEGATION: _Scope.ANY_ORGANIZER,
+    # An event's proposal document: the club submits and reads it; only the campus reviews it.
+    Action.SUBMIT_PROPOSAL: _Scope.OWN_CLUB_ORGANIZER,
+    Action.VIEW_PROPOSAL: _Scope.OWN_CLUB_ORGANIZER,
+    Action.REVIEW_PROPOSAL: _Scope.CAMPUS_ADMIN,
 }
 
 # A delegated (agent) principal can read, check conflicts and file proposals. It can never

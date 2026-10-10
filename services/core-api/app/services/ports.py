@@ -5,6 +5,7 @@ Anything that changes an event's interval, venue or status is deliberately absen
 live in ``schedule_store``, which only ``ScheduleWriteService`` may import (spine AD-4).
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime
 from types import TracebackType
@@ -19,6 +20,7 @@ from app.domain.enums import (
     EventStatus,
     FreshnessState,
     OverrideScope,
+    ProposalStatus,
     ResourceKind,
     Role,
 )
@@ -130,6 +132,33 @@ class AgentActionRecord:
         return replace(self, **changes)
 
 
+@dataclass
+class ProposalRecord:
+    """An event's proposal document and where it stands in review (Implementation Plan 07).
+
+    Mutable on purpose: it is the working copy that ``ProposalLifecycleManager`` advances and the
+    store then saves. The file itself lives in object storage; this row points at it.
+    """
+
+    id: UUID
+    event_id: UUID
+    club_id: UUID
+    submitted_by: UUID
+    title: str
+    minio_bucket: str
+    minio_key: str
+    submitted_at: datetime
+    revision: int = 1
+    status: ProposalStatus = ProposalStatus.SUBMITTED
+    file_size_bytes: int | None = None
+    sha256_hash: str | None = None
+    reviewed_by: UUID | None = None
+    reviewed_at: datetime | None = None
+    review_note: str | None = None
+    rag_ingested_at: datetime | None = None
+    rag_deleted_at: datetime | None = None
+
+
 @dataclass(frozen=True)
 class AuditRecord:
     id: UUID
@@ -224,6 +253,8 @@ class ResourceReader(Protocol):
         """
         ...
 
+    def availability_of_many(self, resource_ids: set[UUID]) -> dict[UUID, AvailabilityState]: ...
+
     def get(self, resource_id: UUID) -> ResourceRecord | None: ...
 
     def list_resources(
@@ -303,6 +334,56 @@ class AgentActionStore(Protocol):
         This is a compare-and-set in one statement, so two people (or two retries) deciding
         the same proposal at once cannot both win.
         """
+        ...
+
+
+class ProposalStore(Protocol):
+    def get(self, proposal_id: UUID) -> ProposalRecord | None: ...
+
+    def add(self, record: ProposalRecord) -> None: ...
+
+    def next_revision(self, event_id: UUID) -> int:
+        """The revision number a new upload for this event should take (1 for the first)."""
+        ...
+
+    def save(self, record: ProposalRecord, *, expected_status: ProposalStatus) -> bool:
+        """Persist the review and RAG lifecycle fields, but only if the proposal is still in
+        ``expected_status``. False when someone else moved it first, so two reviewers cannot
+        both win."""
+        ...
+
+
+class ProposalStorage(Protocol):
+    """Object storage for the proposal files themselves."""
+
+    def upload_proposal(
+        self,
+        club_id: UUID,
+        event_id: UUID,
+        proposal_id: UUID,
+        revision: int,
+        file_bytes: bytes,
+        content_type: str = "application/pdf",
+    ) -> tuple[str, str, int, str]:
+        """Store the bytes; return (bucket, key, size in bytes, sha256 hex digest)."""
+        ...
+
+    def generate_presigned_download_url(
+        self, bucket: str, object_key: str, expires_in_seconds: int = 900
+    ) -> str: ...
+
+    def archive_proposal(self, source_bucket: str, source_key: str) -> str: ...
+
+
+class RagIngest(Protocol):
+    """Tell the RAG service about an approved proposal, and to forget it when the event is over."""
+
+    def ingest(self, payload: Mapping[str, Any]) -> bool:
+        """True when RAG accepted the proposal. False for any failure, never an exception."""
+        ...
+
+    def delete(self, proposal_id: UUID, event_id: UUID) -> bool:
+        """True when RAG no longer holds the proposal (including when it never did)."""
         ...
 
 
@@ -408,3 +489,27 @@ class AgentGateway(Protocol):
         and ``AgentOutputInvalidError`` when it answers with something that is not a reply.
         """
         ...
+
+
+class ProposalUnitOfWork(Protocol):
+    """One transaction for submitting, reading and reviewing proposals."""
+
+    @property
+    def proposals(self) -> ProposalStore: ...
+
+    @property
+    def events(self) -> EventReader: ...
+
+    @property
+    def audit(self) -> AuditWriter: ...
+
+    def __enter__(self) -> Self: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None: ...
+
+    def commit(self) -> None: ...

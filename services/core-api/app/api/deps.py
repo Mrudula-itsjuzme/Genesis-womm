@@ -5,7 +5,6 @@ sessions for `/api/v1`, and for the Agent facade the internal key plus a delegat
 """
 
 import hmac
-from datetime import UTC, datetime
 from typing import Annotated, cast
 
 from fastapi import Depends, Request
@@ -14,41 +13,16 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from app.api.errors import ApiError
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
-from app.domain.time import Clock
 from app.services.agent_actions import AgentActionService
+from app.services.chat import ChatService
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
-from app.services.minio_client import MinIOProposalStorage
+from app.services.proposals import ProposalService
 from app.services.readiness import ReadinessService
 from app.services.resource_reads import ResourceReadService
 from app.services.schedule_write import ScheduleWriteService
 from app.services.sessions import SessionService
-from app.settings import Settings
-
-
-class SystemClock:
-    """Live clock producing aware UTC timestamps."""
-
-    def now(self) -> datetime:
-        return datetime.now(UTC)
-
-
-def get_clock() -> Clock:
-    return SystemClock()
-
-
-def get_minio_storage(request: Request) -> MinIOProposalStorage:
-    settings: Settings = request.app.state.settings
-    return MinIOProposalStorage(
-        endpoint=settings.minio_endpoint,
-        access_key=settings.minio_access_key.get_secret_value(),
-        secret_key=settings.minio_secret_key.get_secret_value(),
-        proposal_bucket=settings.minio_proposal_bucket,
-        archive_bucket=settings.minio_archive_bucket,
-        use_ssl=settings.minio_use_ssl,
-    )
-
 
 session_bearer = HTTPBearer(
     auto_error=False,
@@ -114,11 +88,25 @@ def get_agent_action_service(request: Request) -> AgentActionService:
     return cast(AgentActionService, service)
 
 
+def get_chat_service(request: Request) -> ChatService:
+    service = getattr(request.app.state, "chat", None)
+    if service is None:
+        raise RuntimeError("chat service is not configured")
+    return cast(ChatService, service)
+
+
 def get_resource_read_service(request: Request) -> ResourceReadService:
     service = getattr(request.app.state, "resource_reads", None)
     if service is None:
         raise RuntimeError("resource read service is not configured")
     return cast(ResourceReadService, service)
+
+
+def get_proposal_service(request: Request) -> ProposalService:
+    service = getattr(request.app.state, "proposals", None)
+    if service is None:
+        raise RuntimeError("proposal service is not configured")
+    return cast(ProposalService, service)
 
 
 def require_session_actor(

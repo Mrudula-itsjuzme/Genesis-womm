@@ -28,6 +28,7 @@ from app.services.errors import (
     InvalidRequestError,
     NotFoundError,
     StaleRevisionError,
+    StorageUnavailableError,
 )
 
 log = structlog.get_logger("errors")
@@ -56,10 +57,17 @@ _ASSISTANT_MESSAGES: dict[ErrorCode, str] = {
 }
 
 _CODE_BY_HTTP_STATUS: dict[int, ErrorCode] = {
+    400: ErrorCode.VALIDATION_ERROR,
     401: ErrorCode.UNAUTHENTICATED,
     403: ErrorCode.FORBIDDEN,
     404: ErrorCode.NOT_FOUND,
     405: ErrorCode.METHOD_NOT_ALLOWED,
+    409: ErrorCode.CONFLICT_DETECTED,
+    422: ErrorCode.VALIDATION_ERROR,
+    500: ErrorCode.INTERNAL_ERROR,
+    501: ErrorCode.NOT_IMPLEMENTED,
+    502: ErrorCode.AGENT_OUTPUT_INVALID,
+    503: ErrorCode.DEPENDENCY_UNAVAILABLE,
 }
 
 
@@ -150,6 +158,7 @@ async def _handle_domain_refusal(request: Request, exc: Exception) -> JSONRespon
         InvalidRequestError: ErrorCode.VALIDATION_ERROR,
         AgentUnavailableError: ErrorCode.DEPENDENCY_UNAVAILABLE,
         AgentOutputInvalidError: ErrorCode.AGENT_OUTPUT_INVALID,
+        StorageUnavailableError: ErrorCode.DEPENDENCY_UNAVAILABLE,
         StaleRevisionError: ErrorCode.STALE_REVISION,
         NotFoundError: ErrorCode.NOT_FOUND,
         NotAuthorizedError: ErrorCode.FORBIDDEN,
@@ -161,6 +170,9 @@ async def _handle_domain_refusal(request: Request, exc: Exception) -> JSONRespon
         if isinstance(exc, ConflictDetectedError)
         else []
     )
+    if isinstance(exc, StorageUnavailableError):
+        log.warning("storage_failure", request_id=_request_id(request), detail=str(exc))
+        return error_response(request, code, "Document storage is unavailable right now.")
     if isinstance(exc, AgentUnavailableError | AgentOutputInvalidError):
         # The detail can name hosts or quote the reply: keep it in the log, not the response.
         log.warning("assistant_failure", request_id=_request_id(request), detail=str(exc))
@@ -181,12 +193,14 @@ async def _handle_validation_error(request: Request, exc: Exception) -> JSONResp
 
 async def _handle_http_exception(request: Request, exc: Exception) -> JSONResponse:
     http_exc = cast(StarletteHTTPException, exc)
-    code = _CODE_BY_HTTP_STATUS.get(http_exc.status_code, ErrorCode.VALIDATION_ERROR)
+    code = _CODE_BY_HTTP_STATUS.get(
+        http_exc.status_code,
+        ErrorCode.INTERNAL_ERROR if http_exc.status_code >= 500 else ErrorCode.VALIDATION_ERROR,
+    )
     headers = {k: v for k, v in (http_exc.headers or {}).items() if k.lower() == "allow"}
     message = str(http_exc.detail) if http_exc.detail else code.value
     response = error_response(request, code, message, headers=headers)
-    if code is ErrorCode.VALIDATION_ERROR:
-        response.status_code = http_exc.status_code
+    response.status_code = http_exc.status_code
     return response
 
 
@@ -204,6 +218,7 @@ def install_error_handlers(app: FastAPI) -> None:
         InvalidRequestError,
         AgentUnavailableError,
         AgentOutputInvalidError,
+        StorageUnavailableError,
         StaleRevisionError,
         NotFoundError,
         NotAuthorizedError,

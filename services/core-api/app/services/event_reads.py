@@ -57,12 +57,15 @@ class EventReadService:
                 limit=limit,
                 offset=offset,
             )
+            availability = uow.resources.availability_of_many(
+                {event.resource_id for event in events if event.resource_id is not None}
+            )
             views = [
                 self._view(
                     actor,
                     event,
-                    uow.resources.availability_of(event.resource_id)
-                    if event.resource_id
+                    availability.get(event.resource_id, AvailabilityState.UNKNOWN)
+                    if event.resource_id is not None
                     else AvailabilityState.UNKNOWN,
                 )
                 for event in events

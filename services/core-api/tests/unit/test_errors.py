@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
@@ -27,6 +27,7 @@ from app.services.errors import (
     IdempotencyMismatchError,
     InvalidRequestError,
     NotFoundError,
+    StorageUnavailableError,
 )
 
 
@@ -97,6 +98,10 @@ def make_app() -> FastAPI:
     def agent_garbled() -> None:
         raise AgentOutputInvalidError("reply was {'secret': 'internals'}")
 
+    @app.get("/storage-down")
+    def storage_down() -> None:
+        raise StorageUnavailableError("S3 endpoint http://minio-internal:9000 access key AKIA123")
+
     @app.get("/invalid")
     def invalid() -> None:
         raise InvalidRequestError("end_at must be after start_at")
@@ -104,6 +109,10 @@ def make_app() -> FastAPI:
     @app.get("/retry-mismatch")
     def retry_mismatch() -> None:
         raise IdempotencyMismatchError("key reused")
+
+    @app.get("/throttled")
+    def throttled() -> None:
+        raise HTTPException(status_code=429, detail="Too many requests")
 
     return app
 
@@ -175,6 +184,14 @@ def test_wrong_method_is_405_and_keeps_the_allow_header(client: TestClient) -> N
     assert response.status_code == 405
     assert response.json()["code"] == "METHOD_NOT_ALLOWED"
     assert "GET" in response.headers["allow"]
+
+
+def test_http_exception_keeps_its_status_and_uses_the_standard_envelope(client: TestClient) -> None:
+    response = client.get("/throttled")
+
+    assert response.status_code == 429
+    envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
+    assert envelope.code is ErrorCode.VALIDATION_ERROR
 
 
 def test_unhandled_exception_hides_internals(client: TestClient) -> None:
@@ -253,3 +270,14 @@ def test_an_unusable_assistant_reply_is_a_502_that_hides_what_it_said(client: Te
     envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
     assert envelope.code is ErrorCode.AGENT_OUTPUT_INVALID
     assert "internals" not in response.text
+
+
+def test_unavailable_storage_is_a_503_that_hides_the_endpoint_and_keys(client: TestClient) -> None:
+    response = client.get("/storage-down")
+
+    assert response.status_code == 503
+    envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
+    assert envelope.code is ErrorCode.DEPENDENCY_UNAVAILABLE
+    assert "minio-internal" not in response.text
+    assert "AKIA123" not in response.text
+    assert "storage" in envelope.message.lower()
