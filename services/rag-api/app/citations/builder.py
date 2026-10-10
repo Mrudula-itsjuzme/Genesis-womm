@@ -1,15 +1,37 @@
-from typing import List
-from app.schemas.retrieval import EvidenceChunk
+import re
+
 from app.schemas.knowledge import Citation
+from app.schemas.retrieval import EvidenceChunk
 
 
 class CitationBuilder:
-    """Constructs verifiable Citation objects strictly from retrieved database chunk metadata."""
+    """Builds metadata-grounded citations strictly from indexed evidence chunks."""
 
     @staticmethod
-    def build(chunks: List[EvidenceChunk]) -> List[Citation]:
-        citations: List[Citation] = []
-        for chunk in chunks:
+    def build(
+        chunks: list[EvidenceChunk],
+        cited_text: str | None = None,
+    ) -> list[Citation]:
+        if not chunks:
+            return []
+
+        # If cited_text contains bracketed evidence IDs (e.g. [osa-p12-c01]), filter to referenced chunks
+        active_chunks = chunks
+        if cited_text:
+            cited_ids = set(re.findall(r"\[([a-zA-Z0-9_\-]+)\]", cited_text))
+            matched = [c for c in chunks if c.evidence_id in cited_ids]
+            if matched:
+                active_chunks = matched
+
+        seen_keys = set()
+        citations: list[Citation] = []
+
+        for chunk in active_chunks:
+            dedup_key = (chunk.document_id, chunk.page_start, chunk.page_end)
+            if dedup_key in seen_keys:
+                continue
+            seen_keys.add(dedup_key)
+
             citations.append(
                 Citation(
                     evidence_id=chunk.evidence_id,
@@ -22,4 +44,5 @@ class CitationBuilder:
                     document_version=chunk.document_version,
                 )
             )
+
         return citations
