@@ -23,7 +23,6 @@ from tests.fakes import FakeReadinessProbe, make_settings
 
 EVENT = str(uuid4())
 RESOURCE = str(uuid4())
-ACTION = str(uuid4())
 CLUB = str(uuid4())
 
 VALID_EVENT: dict[str, Any] = {
@@ -151,9 +150,6 @@ class FakeResourceReadService:
 # (method, path, json body or None)
 STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
     ("POST", "/api/v1/agent/chat", VALID_CHAT),
-    ("GET", "/api/v1/agent-actions", None),
-    ("POST", f"/api/v1/agent-actions/{ACTION}/confirm", None),
-    ("POST", f"/api/v1/agent-actions/{ACTION}/reject", None),
 ]
 
 
@@ -288,6 +284,9 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
             ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
             ("GET", "/internal/v1/agent-tools/events/{event_id}"),
             ("POST", "/internal/v1/agent-actions"),
+            ("GET", "/api/v1/agent-actions"),
+            ("POST", "/api/v1/agent-actions/{action_id}/confirm"),
+            ("POST", "/api/v1/agent-actions/{action_id}/reject"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }:
@@ -314,6 +313,9 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
             ("GET", "/internal/v1/agent-tools/events/{event_id}"),
             ("POST", "/internal/v1/agent-actions"),
+            ("GET", "/api/v1/agent-actions"),
+            ("POST", "/api/v1/agent-actions/{action_id}/confirm"),
+            ("POST", "/api/v1/agent-actions/{action_id}/reject"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }
