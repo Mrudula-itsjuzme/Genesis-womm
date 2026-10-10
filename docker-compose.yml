@@ -1,6 +1,7 @@
-# Backend and AI services. The RAG API and Web join this file when their owners add them.
+# CampusCue services. Web joins this file when its owner adds it.
 #
-#   docker compose up --build        # postgres, migrate (one-shot), core-api, agent-api
+#   docker compose up --build        # postgres, migrate (one-shot), core-api, agent-api, rag-api
+#   docker compose up core-api agent-api   # backend and AI only; skips the heavy RAG image
 #   docker compose down -v           # also drop the database volume
 #
 # Variables come from .env (copy .env.example). The defaults below are development-only
@@ -16,7 +17,8 @@ x-core-env: &core-env
 
 services:
   postgres:
-    image: postgres:18
+    # PostgreSQL 18 with the pgvector extension, which the RAG API's embeddings need.
+    image: pgvector/pgvector:0.8.1-pg18
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-campuscue}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campuscue}
@@ -32,7 +34,7 @@ services:
     # Not published to the host: another local Postgres often owns 5432. Use
     # `docker compose exec postgres psql -U campuscue` instead.
 
-  # One-shot: applies migrations, then exits. The API never migrates at start-up.
+  # One-shot: applies Core's migrations, then exits. The API never migrates at start-up.
   migrate:
     build: ./services/core-api
     command: ["alembic", "upgrade", "head"]
@@ -69,10 +71,22 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
       CORE_API_URL: http://core-api:8000
-      RAG_API_URL: ${RAG_API_URL:-http://rag-api:8002}
+      RAG_API_URL: http://rag-api:8002
     ports:
       # Local development only. The demo environment keeps the Agent on the private network.
       - "127.0.0.1:${AGENT_API_PORT:-8001}:8001"
+
+  # Owned by the RAG workstream. Its migrations are not run by Compose yet.
+  rag-api:
+    build: ./services/rag-api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-campuscue}:${POSTGRES_PASSWORD:-campuscue}@postgres:5432/${POSTGRES_DB:-campuscue}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      # Local development only.
+      - "127.0.0.1:${RAG_API_PORT:-8002}:8002"
 
 volumes:
   pgdata:
