@@ -48,7 +48,7 @@ class EventReadService:
         offset: int,
     ) -> tuple[list[EventView], int]:
         with self._uow_factory() as uow:
-            events, total = uow.events.list_events(
+            events, _ = uow.events.list_events(
                 club_id=club_id,
                 status=status,
                 resource_id=resource_id,
@@ -68,7 +68,7 @@ class EventReadService:
                 for event in events
                 if self._visible(actor, event)
             ]
-        return views, total
+        return views, len(views)
 
     @staticmethod
     def _visible(actor: Actor, event: EventRecord) -> bool:

@@ -47,6 +47,6 @@ def test_other_club_drafts_are_hidden_but_published_events_are_summarized() -> N
         offset=0,
     )
 
-    assert total == 2
+    assert total == 1
     assert [view.event.id for view in views] == [own.id]
     assert views[0].availability is AvailabilityState.UNKNOWN
