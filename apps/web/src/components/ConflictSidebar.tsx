@@ -48,7 +48,7 @@ const ConflictSidebar = () => {
         </div>
 
         <div className="flex items-center justify-center -my-1 relative z-10">
-          <span className="text-rose-400 text-[10px] font-bold uppercase tracking-widest bg-[#FDF8F5] px-3 py-1 border border-rose-100 rounded-full shadow-sm">VS</span>
+          <span className="text-rose-400 text-[10px] font-bold uppercase tracking-widest bg-[#F5EEE9] px-3 py-1 border border-rose-100 rounded-full shadow-sm">VS</span>
         </div>
 
         <div className="border border-stone-100 rounded-2xl p-5 bg-white shadow-[0_4px_20px_rgb(0,0,0,0.02)]">

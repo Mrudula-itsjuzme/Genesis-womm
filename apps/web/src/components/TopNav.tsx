@@ -16,7 +16,7 @@ export default function TopNav() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 h-16 bg-[#FDF8F5]/95 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 border-b border-[#F5E6DF]">
+    <nav className="fixed top-0 left-0 right-0 h-16 bg-[#F5EEE9]/95 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 border-b border-[#F5E6DF]">
       {/* Logo Area */}
       <div className="flex items-center gap-3 w-64">
         <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm p-1 border border-rose-100">
@@ -54,7 +54,7 @@ export default function TopNav() {
         </button>
         <button className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-white rounded-full transition-colors relative border border-transparent hover:border-[#F5E6DF]">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#FDF8F5]"></span>
+          <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#F5EEE9]"></span>
         </button>
         <div className="h-6 w-px bg-[#F5E6DF] mx-1"></div>
         <div className="flex items-center gap-2 cursor-pointer group hover:bg-white px-2 py-1.5 rounded-full transition-colors border border-transparent hover:border-[#F5E6DF]">

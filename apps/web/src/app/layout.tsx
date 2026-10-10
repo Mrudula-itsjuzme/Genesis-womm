@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-screen flex flex-col bg-[#FDF8F5] text-gray-900 font-sans">
+      <body className="min-h-screen flex flex-col bg-[#F5EEE9] text-gray-900 font-sans">
         <TopNav />
         <main className="flex-1">
           {children}

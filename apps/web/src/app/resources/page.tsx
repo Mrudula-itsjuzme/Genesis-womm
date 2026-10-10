@@ -59,7 +59,7 @@ export default function ResourcesPage() {
     : MOCK_RESOURCES.filter(r => r.type === activeTab);
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-[#FDF8F5]">
+    <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-[#F5EEE9]">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <div className="p-8 lg:p-12 max-w-7xl mx-auto w-full">

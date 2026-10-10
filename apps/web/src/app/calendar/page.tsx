@@ -4,7 +4,7 @@ import ConflictSidebar from '@/components/ConflictSidebar';
 
 export default function CalendarPage() {
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-[#FDF8F5] overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] bg-[#F5EEE9] overflow-hidden">
       {/* Main Calendar Area */}
       <CalendarGrid />
       
