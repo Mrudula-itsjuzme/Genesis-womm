@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import UpcomingEvents from "@/components/UpcomingEvents";
 import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Phone, HeartPulse, Send, Book, Sparkles, Clock } from 'lucide-react';
 
 export default function Dashboard() {
@@ -173,96 +174,8 @@ export default function Dashboard() {
                 </button>
               </div>
               
-              <div className="space-y-4">
-                {/* Item 1 */}
-                <div className="flex items-center justify-between p-4 bg-white border border-stone-100 shadow-sm rounded-xl hover:shadow-md transition-shadow group">
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-center justify-center bg-rose-50 text-rose-900 rounded-xl w-14 h-14 border border-rose-100/50">
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Oct</span>
-                      <span className="text-xl font-bold leading-none">18</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-[15px]">WOMM Orientation</h4>
-                      <p className="text-xs text-gray-500 flex items-center mt-1">
-                        <MapPin className="w-3 h-3 mr-1" /> Amphitheatre
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-8">
-                    <p className="text-sm font-medium text-gray-600 flex items-center">
-                      <Clock className="w-4 h-4 mr-2 text-gray-400" /> 10:00 AM – 1:00 PM
-                    </p>
-                    <div className="w-24 text-right">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-                        Confirmed
-                      </span>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-rose-900 transition-colors" />
-                  </div>
-                </div>
-
-                {/* Item 2 */}
-                <div className="flex items-center justify-between p-4 bg-white border border-stone-100 shadow-sm rounded-xl hover:shadow-md transition-shadow group">
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-center justify-center bg-rose-50 text-rose-900 rounded-xl w-14 h-14 border border-rose-100/50">
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Oct</span>
-                      <span className="text-xl font-bold leading-none">25</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-[15px]">Design Workshop</h4>
-                      <p className="text-xs text-gray-500 flex items-center mt-1">
-                        <MapPin className="w-3 h-3 mr-1" /> ICTS Lab 2
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-8">
-                    <p className="text-sm font-medium text-gray-600 flex items-center">
-                      <Clock className="w-4 h-4 mr-2 text-gray-400" /> 2:00 PM – 5:00 PM
-                    </p>
-                    <div className="w-24 text-right">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
-                        Tentative
-                      </span>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-rose-900 transition-colors" />
-                  </div>
-                </div>
-
-                {/* Item 3 */}
-                <div className="flex items-center justify-between p-4 bg-white border border-stone-100 shadow-sm rounded-xl hover:shadow-md transition-shadow group">
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-center justify-center bg-rose-50 text-rose-900 rounded-xl w-14 h-14 border border-rose-100/50">
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Nov</span>
-                      <span className="text-xl font-bold leading-none">02</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-[15px]">Speaker Session</h4>
-                      <p className="text-xs text-gray-500 flex items-center mt-1">
-                        <MapPin className="w-3 h-3 mr-1" /> Mini Auditorium
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-8">
-                    <p className="text-sm font-medium text-gray-600 flex items-center">
-                      <Clock className="w-4 h-4 mr-2 text-gray-400" /> 11:00 AM – 1:00 PM
-                    </p>
-                    <div className="w-24 text-right">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
-                        Planning
-                      </span>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-rose-900 transition-colors" />            </div>
-          </div>
-
-        </div>
-      </div>
-
-          {/* Right Column */}
-          <div className="flex flex-col gap-6">
-            
+              <UpcomingEvents />
+            </div>
             {/* Campus Calendar */}
             <div className="bg-[#FAF9F8] rounded-2xl shadow-sm border border-stone-200/50 p-6">
               <div className="flex items-center justify-between mb-6">
