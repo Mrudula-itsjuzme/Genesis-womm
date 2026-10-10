@@ -3,7 +3,8 @@
 from app.domain.enums import AvailabilityState
 from app.domain.scheduling import Conflict as DomainConflict
 from app.schemas.events import Conflict, EventOut
-from app.services.ports import EventRecord
+from app.schemas.resources import ResourceOut
+from app.services.ports import EventRecord, ResourceRecord
 
 
 def event_out(record: EventRecord, availability: AvailabilityState) -> EventOut:
@@ -36,4 +37,22 @@ def conflict_out(conflict: DomainConflict) -> Conflict:
         end_at=conflict.window.end,
         message=conflict.message,
         override_required=conflict.override_required,
+    )
+
+
+def resource_out(record: ResourceRecord) -> ResourceOut:
+    return ResourceOut(
+        id=record.id,
+        kind=record.kind,
+        name=record.name,
+        description=record.description,
+        location=record.location,
+        capacity=record.capacity,
+        availability_state=record.availability_state,
+        freshness_state=record.freshness_state,
+        source_id=record.source_id,
+        source_url=record.source_url,
+        collected_at=record.collected_at,
+        last_checked_at=record.last_checked_at,
+        synthetic=record.is_synthetic,
     )

@@ -1,19 +1,20 @@
 import json
 from datetime import UTC, datetime
 from typing import Any, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.api.middleware import REQUEST_ID_HEADER
 from app.container import Container
-from app.domain.enums import AvailabilityState, EventStatus
+from app.domain.enums import AvailabilityState, EventStatus, FreshnessState, ResourceKind
 from app.main import create_app
 from app.schemas.common import ErrorEnvelope
 from app.services.event_reads import EventReadService, EventView
-from app.services.ports import EventRecord, UserIdentity
+from app.services.ports import EventRecord, ResourceRecord, UserIdentity
 from app.services.readiness import ReadinessService
+from app.services.resource_reads import ResourceReadService
 from app.services.schedule_write import WriteResult
 from app.services.sessions import IssuedSession, SessionService
 from tests.fakes import FakeReadinessProbe, make_settings
@@ -109,11 +110,34 @@ class FakeEventReadService:
         )
 
 
+class FakeResourceReadService:
+    def __init__(self) -> None:
+        self.resource = ResourceRecord(
+            id=UUID(RESOURCE),
+            kind=ResourceKind.VENUE,
+            name="Synthetic Auditorium",
+            description="Synthetic demo venue",
+            location="Demo Block",
+            capacity=120,
+            availability_state=AvailabilityState.UNKNOWN,
+            freshness_state=FreshnessState.CURRENT,
+            source_id="synthetic-resource-1",
+            source_url=None,
+            collected_at=None,
+            last_checked_at=None,
+            is_synthetic=True,
+        )
+
+    def list(self, **_: Any) -> tuple[list[ResourceRecord], int]:
+        return [self.resource], 1
+
+    def get(self, _: Any) -> ResourceRecord:
+        return self.resource
+
+
 # (method, path, json body or None)
 STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
     ("POST", f"/api/v1/events/{EVENT}/conflict-check", {}),
-    ("GET", "/api/v1/resources", None),
-    ("GET", f"/api/v1/resources/{RESOURCE}", None),
     ("POST", "/api/v1/agent/chat", VALID_CHAT),
     ("GET", "/api/v1/agent-actions", None),
     ("POST", f"/api/v1/agent-actions/{ACTION}/confirm", None),
@@ -144,6 +168,7 @@ def client() -> TestClient:
         ),
         schedule_write=cast(Any, FakeScheduleWriteService()),
         event_reads=cast(EventReadService, FakeEventReadService()),
+        resource_reads=cast(ResourceReadService, FakeResourceReadService()),
     )
     return TestClient(create_app(make_settings(), container), raise_server_exceptions=False)
 
@@ -203,6 +228,19 @@ def test_demo_login_returns_a_bearer_token_and_server_side_profile(client: TestC
     )
 
 
+def test_resource_routes_return_sourced_catalogue_records(client: TestClient) -> None:
+    headers = {"Authorization": "Bearer demo-token"}
+
+    listed = client.get("/api/v1/resources?kind=VENUE&q=auditorium", headers=headers)
+    fetched = client.get(f"/api/v1/resources/{RESOURCE}", headers=headers)
+
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["name"] == "Synthetic Auditorium"
+    assert fetched.status_code == 200, fetched.text
+    assert fetched.json()["synthetic"] is True
+
+
 def test_demo_login_hides_whether_an_unknown_user_exists(client: TestClient) -> None:
     response = client.post("/api/v1/auth/demo-login", json={"email": "unknown@example.invalid"})
 
@@ -236,6 +274,8 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
             ("POST", "/api/v1/events"),
             ("GET", "/api/v1/events"),
             ("GET", "/api/v1/events/{event_id}"),
+            ("GET", "/api/v1/resources"),
+            ("GET", "/api/v1/resources/{resource_id}"),
         }:
             assert "x-implementation-status" not in op
         else:
@@ -254,6 +294,8 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("POST", "/api/v1/events"),
             ("GET", "/api/v1/events"),
             ("GET", "/api/v1/events/{event_id}"),
+            ("GET", "/api/v1/resources"),
+            ("GET", "/api/v1/resources/{resource_id}"),
         }
     }
     assert len(documented) == len(STUBS)

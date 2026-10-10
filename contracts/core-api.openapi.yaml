@@ -405,25 +405,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '403':
-          description: FORBIDDEN
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '422':
           description: VALIDATION_ERROR
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/resources/{resource_id}:
     get:
       tags:
@@ -453,8 +440,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '403':
-          description: FORBIDDEN
+        '404':
+          description: NOT_FOUND
           content:
             application/json:
               schema:
@@ -465,19 +452,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '404':
-          description: NOT_FOUND
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/agent/chat:
     post:
       tags:
