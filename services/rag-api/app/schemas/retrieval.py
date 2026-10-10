@@ -19,6 +19,8 @@ class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1, description="Natural language search query")
     top_k: int = Field(default=5, ge=1, le=50, description="Maximum evidence chunks to return")
     access_level: str = Field(default="CAMPUS_PUBLIC", description="Access filter class")
+    collection: str = Field(default="campus_policy_corpus", description="Target collection name ('campus_policy_corpus' or 'proposals')")
+    event_id: str | None = Field(default=None, description="Optional event scoping filter when querying proposals collection")
 
 
 class SearchResponse(BaseModel):
