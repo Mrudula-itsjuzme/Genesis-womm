@@ -3,11 +3,15 @@
 import json
 from datetime import datetime, timedelta
 from typing import Any
+from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import BaseModel
 
+from app.domain.enums import AvailabilityState, EventStatus
+from app.domain.scheduling import Policy, ScheduledEvent, evaluate
 from app.schemas import agent, common, events
 from scripts import export_contracts as export
 
@@ -106,7 +110,7 @@ def test_venue_overlap_is_blocking_and_needs_an_override() -> None:
     assert conflict["override_required"] is True
 
 
-def test_campus_gap_buffer_is_the_gap_after_the_event_that_starts_first() -> None:
+def test_campus_gap_buffer_is_the_gap_after_the_event_that_ends_first() -> None:
     conflict = load("conflict.campus-gap-violation.json")
     assert (conflict["type"], conflict["severity"]) == ("CAMPUS_GAP_VIOLATION", "blocking")
     assert conflict["constraint"] == "CAMPUS_GAP"
@@ -185,3 +189,99 @@ def test_examples_are_labelled_synthetic_and_use_no_real_domains() -> None:
     text = "".join((EXAMPLES_DIR / name).read_text() for name in EXAMPLES)
     assert "amrita.edu" not in text
     assert "https://" not in text.replace("https://example.invalid", "")
+
+
+# ---- the examples must say what the engine says -------------------------------------------
+
+IST = ZoneInfo("Asia/Kolkata")
+POLICY = Policy(campus_gap=timedelta(minutes=120))
+CLUB_ROBOTICS = "7b1c4c1e-5d0a-4f4e-9a52-3f2a1c9d0001"
+CLUB_CULTURAL = "7b1c4c1e-5d0a-4f4e-9a52-3f2a1c9d0002"
+EV_CANDIDATE = "3d6f0b9a-8c1e-4b7a-a1d2-0000000000a1"
+EV_OTHER = "3d6f0b9a-8c1e-4b7a-a1d2-0000000000b1"
+EV_PROPOSED = "3d6f0b9a-8c1e-4b7a-a1d2-0000000000b2"
+HALL = "5e0a1c33-2f7d-4d1b-8e64-0000000000c1"
+LAB = "5e0a1c33-2f7d-4d1b-8e64-0000000000c2"
+
+
+def _event(
+    ident: str,
+    club: str,
+    status: EventStatus,
+    start: tuple[int, int],
+    end: tuple[int, int],
+    venue: str,
+) -> ScheduledEvent:
+    def when(hour: int, minute: int) -> datetime:
+        return datetime(2026, 10, 20, hour, minute, tzinfo=IST)
+
+    return ScheduledEvent(
+        id=UUID(ident),
+        club_id=UUID(club),
+        status=status,
+        start_at=when(*start),
+        end_at=when(*end),
+        resource_id=UUID(venue),
+    )
+
+
+def _wire(conflict: Any) -> dict[str, Any]:
+    """The engine's conflict in wire form, without `with_event` (added by the projection)."""
+    return {
+        "type": conflict.type.value,
+        "severity": conflict.severity.value,
+        "constraint": conflict.constraint.value if conflict.constraint else None,
+        "event_ids": [str(i) for i in conflict.event_ids],
+        "start_at": conflict.window.start.astimezone(IST).isoformat(),
+        "end_at": conflict.window.end.astimezone(IST).isoformat(),
+        "message": conflict.message,
+        "override_required": conflict.override_required,
+    }
+
+
+def _without_summary(example: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in example.items() if key != "with_event"}
+
+
+def test_overlapping_confirmed_events_examples_match_the_engine() -> None:
+    candidate = _event(EV_CANDIDATE, CLUB_ROBOTICS, EventStatus.CONFIRMED, (10, 0), (12, 0), HALL)
+    other = _event(EV_OTHER, CLUB_CULTURAL, EventStatus.CONFIRMED, (9, 0), (11, 0), HALL)
+    produced = [
+        _wire(c) for c in evaluate(candidate, [other], [], POLICY, AvailabilityState.CONFIRMED)
+    ]
+    check = load("conflict-check.response.json")
+    assert [_without_summary(c) for c in check["conflicts"]] == produced
+    assert [
+        _without_summary(c) for c in load("error-envelope.conflict-detected.json")["details"]
+    ] == produced
+    assert _without_summary(load("conflict.venue-overlap.json")) == produced[0]
+    assert check["evaluated_as"] == "CONFIRMED"
+
+
+def test_gap_violation_without_overlap_example_matches_the_engine() -> None:
+    candidate = _event(EV_CANDIDATE, CLUB_ROBOTICS, EventStatus.CONFIRMED, (12, 0), (13, 0), LAB)
+    other = _event(EV_OTHER, CLUB_CULTURAL, EventStatus.CONFIRMED, (9, 0), (11, 0), HALL)
+    produced = [
+        _wire(c) for c in evaluate(candidate, [other], [], POLICY, AvailabilityState.CONFIRMED)
+    ]
+    assert [_without_summary(load("conflict.campus-gap-violation.json"))] == produced
+
+
+def test_tentative_overlap_example_matches_the_engine() -> None:
+    candidate = _event(EV_CANDIDATE, CLUB_ROBOTICS, EventStatus.PROPOSED, (10, 0), (12, 0), HALL)
+    other = _event(EV_PROPOSED, CLUB_CULTURAL, EventStatus.PROPOSED, (9, 0), (11, 0), HALL)
+    produced = evaluate(candidate, [other], [], POLICY, AvailabilityState.CONFIRMED)
+    assert _without_summary(load("conflict.tentative-overlap.json")) == _wire(produced[0])
+
+
+def test_unknown_availability_examples_match_the_engine() -> None:
+    draft = _event(EV_CANDIDATE, CLUB_ROBOTICS, EventStatus.DRAFT, (10, 0), (12, 0), HALL)
+    (produced,) = evaluate(draft, [], [], POLICY, AvailabilityState.UNKNOWN)
+    expected = _wire(produced)
+    assert _without_summary(load("conflict.unknown-availability.json")) == expected
+    assert [_without_summary(c) for c in load("event-created.response.json")["conflicts"]] == [
+        expected
+    ]
+    assert [_without_summary(c) for c in load("agent-action.proposed.json")["conflicts"]] == [
+        expected
+    ]

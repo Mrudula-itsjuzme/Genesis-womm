@@ -22,6 +22,6 @@
   },
   "start_at": "2026-10-20T10:00:00+05:30",
   "end_at": "2026-10-20T11:00:00+05:30",
-  "message": "Seminar Hall A is already confirmed for another event from 10:00 to 11:00.",
+  "message": "Both events are confirmed for the same venue and their times overlap.",
   "override_required": true
 }

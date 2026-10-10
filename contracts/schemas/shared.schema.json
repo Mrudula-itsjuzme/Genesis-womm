@@ -197,13 +197,13 @@
           "type": "string",
           "format": "date-time",
           "title": "Start At",
-          "description": "Overlaps: start of the shared interval. Campus-gap violations: start of the required buffer, which is the end_at of whichever event starts first."
+          "description": "Start of the window the conflict covers. Overlapping events: the interval both cover. A campus-gap violation without overlap: the required buffer, which starts at the end_at of the event that ends first. UNKNOWN_AVAILABILITY: the event's own start."
         },
         "end_at": {
           "type": "string",
           "format": "date-time",
           "title": "End At",
-          "description": "Overlaps: end of the shared interval. Campus-gap violations: end of the required buffer (that end_at plus the gap)."
+          "description": "End of that window. For a buffer, its start plus the campus gap. UNKNOWN_AVAILABILITY: the event's own end."
         },
         "message": {
           "type": "string",

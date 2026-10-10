@@ -22,6 +22,6 @@
   },
   "start_at": "2026-10-20T11:00:00+05:30",
   "end_at": "2026-10-20T13:00:00+05:30",
-  "message": "The events are less than 120 minutes apart. The 120-minute gap is a CampusCue planning rule, not verified university policy.",
+  "message": "The events are less than 120 minutes apart. The 120-minute campus gap is a CampusCue planning rule, not verified university policy.",
   "override_required": true
 }

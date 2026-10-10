@@ -1074,6 +1074,11 @@ components:
             format: uuid
           - type: 'null'
           title: Resource Id
+        as_status:
+          anyOf:
+          - $ref: '#/components/schemas/EventStatus'
+          - type: 'null'
+          description: Evaluate as this status. Defaults to the stored status, or DRAFT if unsaved.
       additionalProperties: false
       type: object
       title: AgentConflictCheckRequest
@@ -1228,14 +1233,15 @@ components:
           type: string
           format: date-time
           title: Start At
-          description: 'Overlaps: start of the shared interval. Campus-gap violations: start of the required
-            buffer, which is the end_at of whichever event starts first.'
+          description: 'Start of the window the conflict covers. Overlapping events: the interval both
+            cover. A campus-gap violation without overlap: the required buffer, which starts at the end_at
+            of the event that ends first. UNKNOWN_AVAILABILITY: the event''s own start.'
         end_at:
           type: string
           format: date-time
           title: End At
-          description: 'Overlaps: end of the shared interval. Campus-gap violations: end of the required
-            buffer (that end_at plus the gap).'
+          description: 'End of that window. For a buffer, its start plus the campus gap. UNKNOWN_AVAILABILITY:
+            the event''s own end.'
         message:
           type: string
           title: Message
@@ -1262,6 +1268,10 @@ components:
           - type: 'null'
           title: Event Id
           description: Null when a not-yet-saved candidate was checked.
+        evaluated_as:
+          $ref: '#/components/schemas/EventStatus'
+          description: The status the event was evaluated as. Only a CONFIRMED event against another CONFIRMED
+            event blocks.
         advisory:
           type: boolean
           title: Advisory
@@ -1283,6 +1293,7 @@ components:
       type: object
       required:
       - event_id
+      - evaluated_as
       - has_blocking
       - conflicts
       - checked_at
@@ -1308,6 +1319,12 @@ components:
           - type: 'null'
           title: Resource Id
           description: Omit to keep the stored venue. An explicit null checks with no venue.
+        as_status:
+          anyOf:
+          - $ref: '#/components/schemas/EventStatus'
+          - type: 'null'
+          description: Evaluate as if the event had this status, for example CONFIRMED to preview what
+            confirming would hit. Defaults to the stored status. Never changes the event.
       additionalProperties: false
       type: object
       title: ConflictCheckRequest

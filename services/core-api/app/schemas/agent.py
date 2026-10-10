@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.domain.enums import AgentActionStatus, AgentActionType, ToolOutcome
+from app.domain.enums import AgentActionStatus, AgentActionType, EventStatus, ToolOutcome
 from app.schemas.common import CampusDatetime
 from app.schemas.events import Conflict
 
@@ -119,3 +119,7 @@ class AgentConflictCheckRequest(BaseModel):
     start_at: CampusDatetime | None = None
     end_at: CampusDatetime | None = None
     resource_id: UUID | None = None
+    as_status: EventStatus | None = Field(
+        default=None,
+        description="Evaluate as this status. Defaults to the stored status, or DRAFT if unsaved.",
+    )

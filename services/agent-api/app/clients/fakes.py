@@ -21,7 +21,7 @@ from app.schemas.core import (
     ConflictCheckOut,
     EventOut,
 )
-from app.schemas.enums import AgentActionStatus, Severity
+from app.schemas.enums import AgentActionStatus, EventStatus, Severity
 from app.schemas.rag import (
     AnswerRequest,
     AnswerResponse,
@@ -71,8 +71,10 @@ class FakeCoreClient:
         self, request: AgentConflictCheckRequest, ctx: CallContext
     ) -> ConflictCheckOut:
         self._enter("check_event_conflicts", ctx, request)
+        stored = self._events.get(request.event_id) if request.event_id else None
         return ConflictCheckOut(
             event_id=request.event_id,
+            evaluated_as=request.as_status or (stored.status if stored else EventStatus.DRAFT),
             advisory=True,
             has_blocking=any(c.severity is Severity.BLOCKING for c in self._conflicts),
             conflicts=list(self._conflicts),

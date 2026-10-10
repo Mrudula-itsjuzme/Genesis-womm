@@ -97,14 +97,16 @@ class Conflict(BaseModel):
     with_event: ConflictEventSummary | None = None
     start_at: CampusDatetime = Field(
         description=(
-            "Overlaps: start of the shared interval. Campus-gap violations: start of the "
-            "required buffer, which is the end_at of whichever event starts first."
+            "Start of the window the conflict covers. Overlapping events: the interval both "
+            "cover. A campus-gap violation without overlap: the required buffer, which starts "
+            "at the end_at of the event that ends first. UNKNOWN_AVAILABILITY: the event's own "
+            "start."
         )
     )
     end_at: CampusDatetime = Field(
         description=(
-            "Overlaps: end of the shared interval. Campus-gap violations: end of the required "
-            "buffer (that end_at plus the gap)."
+            "End of that window. For a buffer, its start plus the campus gap. "
+            "UNKNOWN_AVAILABILITY: the event's own end."
         )
     )
     message: str
@@ -136,10 +138,23 @@ class ConflictCheckRequest(BaseModel):
         default=None,
         description="Omit to keep the stored venue. An explicit null checks with no venue.",
     )
+    as_status: EventStatus | None = Field(
+        default=None,
+        description=(
+            "Evaluate as if the event had this status, for example CONFIRMED to preview what "
+            "confirming would hit. Defaults to the stored status. Never changes the event."
+        ),
+    )
 
 
 class ConflictCheckOut(BaseModel):
     event_id: UUID | None = Field(description="Null when a not-yet-saved candidate was checked.")
+    evaluated_as: EventStatus = Field(
+        description=(
+            "The status the event was evaluated as. "
+            "Only a CONFIRMED event against another CONFIRMED event blocks."
+        )
+    )
     advisory: bool = Field(
         default=True,
         description="Always true: writes re-check inside the transaction, so this can go stale.",

@@ -22,6 +22,6 @@
   },
   "start_at": "2026-10-20T10:00:00+05:30",
   "end_at": "2026-10-20T11:00:00+05:30",
-  "message": "Another club has proposed Seminar Hall A for an overlapping time. Neither event is confirmed.",
+  "message": "Another event is proposed for the same venue at an overlapping time. At least one of the two is not confirmed.",
   "override_required": false
 }

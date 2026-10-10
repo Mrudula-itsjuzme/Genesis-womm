@@ -194,3 +194,39 @@ def test_agent_action_always_requires_human_review() -> None:
 def test_confirmed_is_a_status_value_not_a_default() -> None:
     assert EventStatus.CONFIRMED.value == "CONFIRMED"
     assert EventCreate.model_fields.keys().isdisjoint({"status"})
+
+
+def test_conflict_check_can_preview_a_confirmation_without_changing_anything() -> None:
+    assert ConflictCheckRequest.model_validate({}).as_status is None
+    preview = ConflictCheckRequest.model_validate({"as_status": "CONFIRMED"})
+    assert preview.as_status is EventStatus.CONFIRMED
+    with pytest.raises(ValidationError):
+        ConflictCheckRequest.model_validate({"as_status": "BOOKED"})
+
+
+def test_the_facade_conflict_check_accepts_the_same_preview() -> None:
+    from app.schemas.agent import AgentConflictCheckRequest
+
+    request = AgentConflictCheckRequest.model_validate(
+        {"club_id": str(CLUB), "as_status": "CONFIRMED"}
+    )
+    assert request.as_status is EventStatus.CONFIRMED
+    with pytest.raises(ValidationError):
+        AgentConflictCheckRequest.model_validate({"as_status": "APPROVED"})
+
+
+def test_a_conflict_check_result_says_what_it_was_evaluated_as() -> None:
+    from app.schemas.events import ConflictCheckOut
+
+    body: dict[str, Any] = {
+        "event_id": None,
+        "has_blocking": False,
+        "conflicts": [],
+        "checked_at": "2026-10-10T00:00:00Z",
+    }
+    with pytest.raises(ValidationError):
+        ConflictCheckOut.model_validate(body)
+    assert (
+        ConflictCheckOut.model_validate({**body, "evaluated_as": "DRAFT"}).evaluated_as
+        is EventStatus.DRAFT
+    )

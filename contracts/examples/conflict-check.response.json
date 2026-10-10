@@ -1,5 +1,6 @@
 {
   "event_id": "3d6f0b9a-8c1e-4b7a-a1d2-0000000000a1",
+  "evaluated_as": "CONFIRMED",
   "advisory": true,
   "has_blocking": true,
   "conflicts": [
@@ -27,7 +28,7 @@
       },
       "start_at": "2026-10-20T10:00:00+05:30",
       "end_at": "2026-10-20T11:00:00+05:30",
-      "message": "Seminar Hall A is already confirmed for another event from 10:00 to 11:00.",
+      "message": "Both events are confirmed for the same venue and their times overlap.",
       "override_required": true
     },
     {
@@ -52,9 +53,9 @@
           "first-year"
         ]
       },
-      "start_at": "2026-10-20T11:00:00+05:30",
-      "end_at": "2026-10-20T13:00:00+05:30",
-      "message": "The events are less than 120 minutes apart. The 120-minute gap is a CampusCue planning rule, not verified university policy.",
+      "start_at": "2026-10-20T10:00:00+05:30",
+      "end_at": "2026-10-20T11:00:00+05:30",
+      "message": "The events overlap in time, and CampusCue plans for at least 120 minutes between campus events (the 120-minute campus gap is a CampusCue planning rule, not verified university policy).",
       "override_required": true
     }
   ],

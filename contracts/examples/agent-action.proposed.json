@@ -29,7 +29,7 @@
       "with_event": null,
       "start_at": "2026-10-20T10:00:00+05:30",
       "end_at": "2026-10-20T12:00:00+05:30",
-      "message": "No authoritative source shows Seminar Hall A as available. An empty calendar does not mean it is available.",
+      "message": "No authoritative source confirms this venue is available. An empty calendar does not mean it is available.",
       "override_required": false
     }
   ],
