@@ -5,6 +5,7 @@ import numpy as np
 from app.config import settings
 from app.generation.groq_client import GroundedGenerator
 from app.ingest import load_persisted_corpus
+from app.retrieval.chroma import ChromaStore
 from app.retrieval.dense import DenseRetriever
 from app.retrieval.sparse import SparseRetriever
 from app.schemas.retrieval import EvidenceChunk
@@ -67,3 +68,11 @@ def get_sparse_retriever() -> SparseRetriever:
 @lru_cache
 def get_grounded_generator() -> GroundedGenerator:
     return GroundedGenerator()
+
+
+@lru_cache
+def get_chroma_store() -> ChromaStore:
+    use_mock = settings.rag_embedding_provider != "local"
+    persist_dir = settings.data_dir / "chroma_db"
+    return ChromaStore(persist_directory=persist_dir, use_mock=use_mock)
+
