@@ -11,6 +11,7 @@ from app.container import Container
 from app.domain.enums import AvailabilityState, EventStatus
 from app.main import create_app
 from app.schemas.common import ErrorEnvelope
+from app.services.event_reads import EventReadService, EventView
 from app.services.ports import EventRecord, UserIdentity
 from app.services.readiness import ReadinessService
 from app.services.schedule_write import WriteResult
@@ -77,10 +78,39 @@ class FakeScheduleWriteService:
         )
 
 
+class FakeEventReadService:
+    def list(self, *_: Any, **__: Any) -> tuple[list[EventView], int]:
+        return [], 0
+
+    def get(self, _: Any, event_id: Any) -> EventView:
+        now = datetime.now(UTC)
+        return EventView(
+            EventRecord(
+                id=event_id,
+                club_id=uuid4(),
+                title="Visible event",
+                description=None,
+                start_at=now,
+                end_at=now.replace(hour=(now.hour + 1) % 24),
+                resource_id=None,
+                expected_attendance=None,
+                audience_tags=(),
+                status=EventStatus.DRAFT,
+                revision=1,
+                created_by=uuid4(),
+                verified_by=None,
+                verified_at=None,
+                evidence_id=None,
+                is_synthetic=True,
+                created_at=now,
+                updated_at=now,
+            ),
+            AvailabilityState.UNKNOWN,
+        )
+
+
 # (method, path, json body or None)
 STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
-    ("GET", "/api/v1/events", None),
-    ("GET", f"/api/v1/events/{EVENT}", None),
     ("POST", f"/api/v1/events/{EVENT}/conflict-check", {}),
     ("GET", "/api/v1/resources", None),
     ("GET", f"/api/v1/resources/{RESOURCE}", None),
@@ -113,6 +143,7 @@ def client() -> TestClient:
             ),
         ),
         schedule_write=cast(Any, FakeScheduleWriteService()),
+        event_reads=cast(EventReadService, FakeEventReadService()),
     )
     return TestClient(create_app(make_settings(), container), raise_server_exceptions=False)
 
@@ -203,6 +234,8 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
         if path in {"/health", "/ready"} or (method, path) in {
             ("POST", "/api/v1/auth/demo-login"),
             ("POST", "/api/v1/events"),
+                ("GET", "/api/v1/events"),
+                ("GET", "/api/v1/events/{event_id}"),
         }:
             assert "x-implementation-status" not in op
         else:
@@ -219,6 +252,8 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("GET", "/ready"),
             ("POST", "/api/v1/auth/demo-login"),
             ("POST", "/api/v1/events"),
+                ("GET", "/api/v1/events"),
+                ("GET", "/api/v1/events/{event_id}"),
         }
     }
     assert len(documented) == len(STUBS)

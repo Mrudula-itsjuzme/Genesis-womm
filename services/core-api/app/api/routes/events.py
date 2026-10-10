@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 
-from app.api.deps import get_schedule_write_service, require_session_actor
+from app.api.deps import get_event_read_service, get_schedule_write_service, require_session_actor
 from app.api.errors import STUB_OPENAPI, not_implemented, stub_errors
 from app.api.presenters import conflict_out, event_out
 from app.domain.authz import Actor
@@ -17,6 +17,7 @@ from app.schemas.events import (
     EventList,
     EventOut,
 )
+from app.services.event_reads import EventReadService
 from app.services.schedule_write import NewEvent, RequestContext, ScheduleWriteService
 
 router = APIRouter(
@@ -77,9 +78,10 @@ def create_event(
     response_model=EventList,
     summary="List events visible to the caller",
     responses=stub_errors(),
-    openapi_extra=STUB_OPENAPI,
 )
 def list_events(
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    service: Annotated[EventReadService, Depends(get_event_read_service)],
     club_id: UUID | None = None,
     status: EventStatus | None = None,
     resource_id: UUID | None = None,
@@ -88,7 +90,22 @@ def list_events(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> EventList:
-    not_implemented("Event listing")
+    views, total = service.list(
+        actor,
+        club_id=club_id,
+        status=status,
+        resource_id=resource_id,
+        starts_after=starts_after,
+        starts_before=starts_before,
+        limit=limit,
+        offset=offset,
+    )
+    return EventList(
+        items=[event_out(view.event, view.availability) for view in views],
+        limit=limit,
+        offset=offset,
+        total=total,
+    )
 
 
 @router.get(
@@ -96,10 +113,14 @@ def list_events(
     response_model=EventOut,
     summary="Get one event",
     responses=stub_errors(ErrorCode.NOT_FOUND),
-    openapi_extra=STUB_OPENAPI,
 )
-def get_event(event_id: UUID) -> EventOut:
-    not_implemented("Event lookup")
+def get_event(
+    event_id: UUID,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    service: Annotated[EventReadService, Depends(get_event_read_service)],
+) -> EventOut:
+    view = service.get(actor, event_id)
+    return event_out(view.event, view.availability)
 
 
 @router.post(

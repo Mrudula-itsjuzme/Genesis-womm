@@ -231,7 +231,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/events/{event_id}:
     get:
       tags:
@@ -285,7 +284,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/events/{event_id}/conflict-check:
     post:
       tags:
