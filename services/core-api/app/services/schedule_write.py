@@ -131,7 +131,7 @@ def _evidence_payload(evidence: EvidenceInput | None) -> dict[str, Any] | None:
     }
 
 
-def _refusal_code(error: Exception) -> str:
+def refusal_code(error: Exception) -> str:
     if isinstance(error, ConflictDetectedError):
         return "CONFLICT_DETECTED"
     if isinstance(error, StaleRevisionError):
@@ -369,7 +369,7 @@ class ScheduleWriteService:
         try:
             now = self._clock.now()
             with self._uow_factory() as uow:
-                code = _refusal_code(error)
+                code = refusal_code(error)
                 uow.audit.add(
                     self._audit(ctx, action, entity_type, entity_id, "REFUSED", code, now)
                 )
