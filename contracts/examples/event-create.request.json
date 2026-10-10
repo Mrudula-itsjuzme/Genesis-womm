@@ -1,0 +1,12 @@
+{
+  "club_id": "7b1c4c1e-5d0a-4f4e-9a52-3f2a1c9d0001",
+  "title": "Robotics Demo Day",
+  "description": "Student teams demo this semester's projects.",
+  "start_at": "2026-10-20T10:00:00+05:30",
+  "end_at": "2026-10-20T12:00:00+05:30",
+  "resource_id": "5e0a1c33-2f7d-4d1b-8e64-0000000000c1",
+  "expected_attendance": 80,
+  "audience_tags": [
+    "all-years"
+  ]
+}

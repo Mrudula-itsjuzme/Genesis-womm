@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>CampusCue Architecture Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column under a sticky section bar. A system map first, then role panel, demo stepper, decision list, open questions, doc fixes. Four parties get four fixed hues; amber-red is reserved for "confirm this". */
+:root {
+  --bg: #F2F4F7;
+  --surface: #FFFFFF;
+  --ink: #141C28;
+  --muted: #566275;
+  --line: #D8DEE7;
+  --line-strong: #B7C0CD;
+  --core: #2547A8;
+  --core-tint: #E4EAF8;
+  --agent: #0B7A70;
+  --agent-tint: #DDF1EE;
+  --rag: #94570C;
+  --rag-tint: #F6EAD6;
+  --web: #586377;
+  --web-tint: #E7EAF0;
+  --flag: #B93A12;
+  --flag-tint: #FBE6DD;
+  --ok: #2F6B3A;
+  --ok-tint: #E1F0E3;
+  --focus: #2547A8;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F141C; --surface: #161D28; --ink: #E6EBF3; --muted: #9AA6B8; --line: #2A3443; --line-strong: #3E4B5F;
+    --core: #8FA9F0; --core-tint: #1B2644; --agent: #4FC9BA; --agent-tint: #10302D; --rag: #E3A55A; --rag-tint: #34260F;
+    --web: #A5B0C3; --web-tint: #222B38; --flag: #FF9A74; --flag-tint: #3B1D12; --ok: #7DCB8A; --ok-tint: #16301B; --focus: #8FA9F0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F141C; --surface: #161D28; --ink: #E6EBF3; --muted: #9AA6B8; --line: #2A3443; --line-strong: #3E4B5F;
+  --core: #8FA9F0; --core-tint: #1B2644; --agent: #4FC9BA; --agent-tint: #10302D; --rag: #E3A55A; --rag-tint: #34260F;
+  --web: #A5B0C3; --web-tint: #222B38; --flag: #FF9A74; --flag-tint: #3B1D12; --ok: #7DCB8A; --ok-tint: #16301B; --focus: #8FA9F0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+a { color: var(--core); }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+code { background: var(--web-tint); padding: 0.08em 0.35em; border-radius: 3px; overflow-wrap: anywhere; }
+h1, h2, h3 { font-weight: 600; letter-spacing: -0.012em; line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.7rem, 4.5vw, 2.35rem); }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.02rem; }
+p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.bar-in { max-width: 62rem; margin: 0 auto; padding: 0.55rem 1rem; display: flex; gap: 0.25rem 1.1rem; flex-wrap: wrap; align-items: center; }
+.bar a { text-decoration: none; color: var(--muted); font-size: 0.86rem; font-weight: 500; padding: 0.15rem 0; border-bottom: 2px solid transparent; }
+.bar a:hover { color: var(--ink); border-bottom-color: var(--line-strong); }
+.bar .brand { color: var(--ink); font-weight: 600; margin-right: auto; }
+
+.wrap { max-width: 62rem; margin: 0 auto; padding-inline: 1rem; padding-block: 1.5rem 4rem; display: flex; flex-direction: column; gap: 3rem; }
+section { display: flex; flex-direction: column; gap: 1rem; min-width: 0; scroll-margin-top: 4rem; }
+.lede { color: var(--muted); max-width: 44rem; }
+.head { display: flex; flex-direction: column; gap: 0.5rem; }
+.eyebrow { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+.hero { display: flex; flex-direction: column; gap: 0.9rem; }
+.stats { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; }
+.stack { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); overflow-wrap: anywhere; }
+
+.chip { display: inline-flex; align-items: center; font-size: 0.74rem; font-weight: 500; line-height: 1; padding: 0.32rem 0.55rem; border-radius: 3px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); white-space: nowrap; }
+.chip.core { background: var(--core-tint); border-color: var(--core); color: var(--core); }
+.chip.agent { background: var(--agent-tint); border-color: var(--agent); color: var(--agent); }
+.chip.rag { background: var(--rag-tint); border-color: var(--rag); color: var(--rag); }
+.chip.web { background: var(--web-tint); border-color: var(--web); color: var(--web); }
+.chip.flag { background: var(--flag-tint); border-color: var(--flag); color: var(--flag); }
+.chip.ok { background: var(--ok-tint); border-color: var(--ok); color: var(--ok); }
+.chip.plain { color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1rem; min-width: 0; }
+.scroll { overflow-x: auto; }
+.map { min-width: 41rem; display: block; width: 100%; height: auto; }
+.map text { font-family: var(--sans); fill: var(--ink); }
+.map .t1 { font-size: 14px; font-weight: 600; }
+.map .t2 { font-size: 11.5px; fill: var(--muted); }
+.map .lbl { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+.map .edge { stroke: var(--muted); stroke-width: 1.5; fill: none; marker-end: url(#arr); }
+.map .arrowhead { fill: var(--muted); }
+.map .n-core { fill: var(--core-tint); stroke: var(--core); stroke-width: 2; }
+.map .n-agent { fill: var(--agent-tint); stroke: var(--agent); stroke-width: 2; }
+.map .n-rag { fill: var(--rag-tint); stroke: var(--rag); stroke-width: 1.5; }
+.map .n-web { fill: var(--web-tint); stroke: var(--web); stroke-width: 1.5; }
+.map .n-store { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; }
+.map .frame { fill: none; stroke: var(--core); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.map .frame-lbl { font-family: var(--mono); font-size: 11px; fill: var(--core); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.tab { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0.5rem 0.8rem; font-weight: 500; font-size: 0.9rem; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; }
+.cols > * { min-width: 0; }
+.cols h3 { margin-bottom: 0.5rem; }
+ul.tight, ol.tight { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.45rem; }
+.adrefs { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.75rem; }
+
+.steps { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.step-btn { width: 2.4rem; height: 2.4rem; border-radius: 4px; border: 1px solid var(--line-strong); background: var(--surface); font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+.step-btn[aria-current="step"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.lanes { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.lane { opacity: 0.35; }
+.lane.on { opacity: 1; }
+.stepper-body { display: flex; flex-direction: column; gap: 0.8rem; }
+.persist { font-size: 0.86rem; color: var(--muted); }
+.nav-row { display: flex; gap: 0.5rem; }
+.btn { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0.45rem 0.85rem; font-weight: 500; font-size: 0.9rem; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.filters .sep { width: 1px; align-self: stretch; background: var(--line); margin-inline: 0.25rem; }
+.fbtn { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0.4rem 0.7rem; font-size: 0.84rem; font-weight: 500; }
+.fbtn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.ads { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.ad { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: 0.2rem 0.9rem; padding: 0.85rem 1rem; border-top: 1px solid var(--line); }
+.ad:first-child { border-top: 0; }
+.ad .id { font-family: var(--mono); font-weight: 500; font-size: 0.86rem; padding-top: 0.1rem; }
+.ad .main { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.ad .top { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; align-items: center; }
+.ad .name { font-weight: 600; }
+.ad .plain { color: var(--muted); font-size: 0.92rem; }
+.ad .touch { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.empty { padding: 1rem; color: var(--muted); }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1rem; display: flex; flex-direction: column; gap: 0.55rem; min-width: 0; }
+.card .q { font-weight: 600; }
+.card dl { margin: 0; display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 0.25rem 0.7rem; font-size: 0.9rem; }
+.card dt { color: var(--muted); }
+.card dd { margin: 0; }
+
+.deltas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.deltas li { padding: 0.8rem 1rem; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.3rem; }
+.deltas li:first-child { border-top: 0; }
+.deltas .where { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); overflow-wrap: anywhere; }
+.foot { color: var(--muted); font-size: 0.88rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.foot code { overflow-wrap: anywhere; }
+
+@media (max-width: 34rem) {
+  .ad { grid-template-columns: minmax(0, 1fr); }
+  .card dl { grid-template-columns: minmax(0, 1fr); }
+  .card dt { margin-top: 0.3rem; }
+  .filters .sep { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lane { transition: opacity 0.15s ease; }
+}
+</style>
+
+<nav class="bar" aria-label="Sections">
+  <div class="bar-in">
+    <span class="brand">CampusCue architecture</span>
+    <a href="#map">System map</a>
+    <a href="#roles">By role</a>
+    <a href="#flow">Demo trace</a>
+    <a href="#decisions">Decisions</a>
+    <a href="#confirm">To confirm</a>
+    <a href="#docs">Doc fixes</a>
+  </div>
+</nav>
+
+<main class="wrap">
+  <header class="hero">
+    <span class="eyebrow">Draft for team review · 10 Oct 2026 · branch backend-ai</span>
+    <h1>How Core and Agent fit with RAG and the UI</h1>
+    <p class="lede">This is the architecture for the backend and AI side of CampusCue: the Core API and the Agent API. RAG and the web app are treated as neighbours we talk to through contracts. Pick your role below to see what you can rely on and what we need from you.</p>
+    <div class="stats" id="stats"></div>
+    <p class="stack">Python 3.12 · FastAPI 0.143 · SQLAlchemy 2.1 · Alembic 1.20 · PostgreSQL 18 · Groq llama-3.3-70b-versatile. Versions checked on 10 Oct 2026.</p>
+  </header>
+
+  <section id="map" aria-labelledby="h-map">
+    <div class="head">
+      <h2 id="h-map">System map</h2>
+      <p class="lede">The dashed frame is what this spine governs. Core is the only service that writes operational data. The Agent can only propose, and a person confirms.</p>
+    </div>
+    <div class="panel scroll">
+      <svg class="map" viewBox="0 0 760 350" role="img" aria-label="Web calls Core. Core and Agent call each other. Agent calls RAG and Groq. Core uses PostgreSQL and fetches public Amrita sources.">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0 0L10 5L0 10z"/></marker>
+        </defs>
+        <rect class="frame" x="236" y="74" width="514" height="122" rx="8"/>
+        <text class="frame-lbl" x="246" y="68">this spine</text>
+
+        <rect class="n-web" x="20" y="96" width="140" height="78" rx="6"/>
+        <text class="t1" x="34" y="126">Web :3000</text>
+        <text class="t2" x="34" y="146">UI owner</text>
+
+        <rect class="n-core" x="250" y="86" width="180" height="98" rx="6"/>
+        <text class="t1" x="264" y="116">Core API :8000</text>
+        <text class="t2" x="264" y="136">state, authz, scheduling</text>
+        <text class="t2" x="264" y="154">audit, change impact</text>
+
+        <rect class="n-agent" x="540" y="86" width="200" height="98" rx="6"/>
+        <text class="t1" x="554" y="116">Agent API :8001</text>
+        <text class="t2" x="554" y="136">bounded tools</text>
+        <text class="t2" x="554" y="154">proposes, never executes</text>
+
+        <rect class="n-store" x="540" y="8" width="200" height="38" rx="6"/>
+        <text class="t1" x="554" y="32">Groq (LLM egress)</text>
+
+        <rect class="n-rag" x="540" y="262" width="200" height="72" rx="6"/>
+        <text class="t1" x="554" y="290">RAG API :8002</text>
+        <text class="t2" x="554" y="310">RAG owner · storage open</text>
+
+        <rect class="n-store" x="250" y="262" width="180" height="72" rx="6"/>
+        <text class="t1" x="264" y="290">PostgreSQL 18</text>
+        <text class="t2" x="264" y="310">core · student_private</text>
+
+        <rect class="n-store" x="20" y="262" width="170" height="72" rx="6"/>
+        <text class="t1" x="34" y="290">Amrita public pages</text>
+        <text class="t2" x="34" y="310">allowlisted fetch only</text>
+
+        <path class="edge" d="M160 135 H250"/>
+        <text class="lbl" x="170" y="126">/api/v1</text>
+
+        <path class="edge" d="M430 112 H540"/>
+        <text class="lbl" x="440" y="104">chat + token</text>
+        <path class="edge" d="M540 160 H430"/>
+        <text class="lbl" x="438" y="178">agent-tools</text>
+
+        <path class="edge" d="M640 184 V262"/>
+        <text class="lbl" x="650" y="226">search, answer</text>
+
+        <path class="edge" d="M640 86 V46"/>
+        <text class="lbl" x="650" y="70">tool calling</text>
+
+        <path class="edge" d="M340 184 V262"/>
+        <text class="lbl" x="350" y="226">SQL, Core only</text>
+
+        <path class="edge" d="M268 184 L150 262"/>
+      </svg>
+    </div>
+  </section>
+
+  <section id="roles" aria-labelledby="h-roles">
+    <div class="head">
+      <h2 id="h-roles">What each role can rely on</h2>
+      <p class="lede">Each tab lists what the architecture promises you and what we need back, with the decisions behind it.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Role">
+      <button class="tab" role="tab" id="tab-rag" aria-controls="panel-rag" aria-selected="true" data-role="rag">RAG owner</button>
+      <button class="tab" role="tab" id="tab-ui" aria-controls="panel-ui" aria-selected="false" data-role="ui">UI owner</button>
+      <button class="tab" role="tab" id="tab-be" aria-controls="panel-be" aria-selected="false" data-role="be">Backend and AI</button>
+    </div>
+    <div id="role-panels"></div>
+  </section>
+
+  <section id="flow" aria-labelledby="h-flow">
+    <div class="head">
+      <h2 id="h-flow">The demo, traced through the architecture</h2>
+      <p class="lede">The primary demo from the project plan, in order. Each step shows who acts, what gets stored, and which decision applies.</p>
+    </div>
+    <div class="panel">
+      <ol class="steps" id="steps" aria-label="Demo steps"></ol>
+      <div class="stepper-body" id="step-body" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section id="decisions" aria-labelledby="h-dec">
+    <div class="head">
+      <h2 id="h-dec">All 23 decisions</h2>
+      <p class="lede">Full wording, with what each decision binds and prevents, is in the spine file. Filter by who it touches, or show only what needs confirming.</p>
+    </div>
+    <div class="filters" id="filters" role="group" aria-label="Filter decisions"></div>
+    <ul class="ads" id="ad-list"></ul>
+  </section>
+
+  <section id="confirm" aria-labelledby="h-conf">
+    <div class="head">
+      <h2 id="h-conf">Needs a team decision</h2>
+      <p class="lede">These were filled in with a proposed default so the spine could be written. Each needs a yes or a different answer.</p>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section id="docs" aria-labelledby="h-docs">
+    <div class="head">
+      <h2 id="h-docs">Existing docs that no longer match</h2>
+      <p class="lede">Found while reading the repo. Each should be corrected in the same change that builds the affected slice.</p>
+    </div>
+    <ul class="deltas" id="deltas"></ul>
+  </section>
+
+  <footer class="foot">
+    <p>Source of truth: <code>Genesis-womm/docs/architecture/architecture-campuscue-backend-ai-2026-10-10/ARCHITECTURE-SPINE.md</code>. Decision history is in <code>.memlog.md</code> next to it.</p>
+    <p>Decisions marked Confirm are assumptions written without a group discussion. Overrides, confirmations and cross-club sharing in particular depend on what the Events Department and OSA actually allow.</p>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var el = function (tag, cls, html) { var n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+  var PARTY = { core: "Core", agent: "Agent", rag: "RAG owner", ui: "UI owner" };
+  var PCLASS = { core: "core", agent: "agent", rag: "rag", ui: "web" };
+
+  var ADS = [
+    { id: "AD-1", t: "Core is the only writer of operational state", tag: "docs", touch: ["core", "agent", "rag", "ui"], p: "Only Core connects to the operational tables. Everyone else calls Core over HTTP, and Core checks permissions every time." },
+    { id: "AD-2", t: "Layered code with fakes behind every outside dependency", tag: "new", touch: ["core", "agent"], p: "Pure domain code sits under services, which sit under routes. Import and call rules are checked by import-linter and ruff, so each service runs and tests alone." },
+    { id: "AD-3", t: "Core is synchronous, Agent is asynchronous", tag: "confirm", touch: ["core", "agent"], p: "One style per service avoids mixed session bugs. Core blocks on its calls to Agent with a timeout longer than the Agent turn limit." },
+    { id: "AD-4", t: "One schedule write path under a campus lock", tag: "new", touch: ["core"], p: "Every change to an event's time, venue or status goes through one service. It takes a database lock, re-checks conflicts, and writes in the same transaction." },
+    { id: "AD-5", t: "Conflicts checked per constraint, severity by stage", tag: "confirm", touch: ["core", "agent", "ui"], p: "Venue overlap and the 120-minute gap are checked separately. Only confirmed against confirmed blocks. Anything involving a tentative event is a warning. Clients show type and severity as given." },
+    { id: "AD-6", t: "Overrides are admin-only and scoped to a pair", tag: "confirm", touch: ["core"], p: "An override waives one constraint for one pair of events. The approver comes from the session, never the request body." },
+    { id: "AD-7", t: "Statuses move by transition table, confirmation needs evidence", tag: "docs", note: "Demotion of a confirmed event on change is an assumption.", touch: ["core", "ui"], p: "No request can set a status directly. Acknowledged never means confirmed. Organizer claims show as reported until someone verifies them." },
+    { id: "AD-8", t: "Every change is audited, revision-checked and idempotent", tag: "docs", touch: ["core", "ui"], p: "Each mutation writes its history in one transaction. Edits carry expected_revision, and retries carry an Idempotency-Key." },
+    { id: "AD-9", t: "The Agent proposes, a person executes", tag: "new", touch: ["core", "agent", "ui"], p: "The Agent can only file proposed actions. The organizer confirms in the web app, and Core runs the action as that person." },
+    { id: "AD-10", t: "The Agent acts as the asking user through a narrow door", tag: "new", touch: ["core", "agent"], p: "Core hands the Agent a short-lived token for that user. The Agent reaches Core only through a small set of read tools and the proposal endpoint." },
+    { id: "AD-11", t: "Agent turns are bounded and code-owned", tag: "new", touch: ["agent"], p: "Capped tool calls, time, and output size. Missing dates or venues get a question, not a guess. The Agent keeps no conversation state between turns." },
+    { id: "AD-12", t: "Untrusted text in, code-assembled citations out", tag: "new", touch: ["agent", "rag"], p: "Retrieved text and user text cannot change the tools. Citations are copied from RAG's response by code. With no evidence, the reply says so." },
+    { id: "AD-13", t: "Student-private data stays on the student's own path", tag: "docs", touch: ["core", "agent", "ui"], p: "Timetable, attendance, calendar and warnings live in their own schema, are read only for the logged-in student, and never reach organizers, the Agent, reports or logs." },
+    { id: "AD-14", t: "Change impact is computed, and applied in two steps", tag: "docs", touch: ["core", "agent", "ui"], p: "Dependencies are stored data. A change is staged first, then applied after review. The Agent explains impact and never decides it." },
+    { id: "AD-15", t: "Reports start from verified facts", tag: "new", touch: ["core", "agent", "ui"], p: "Core marks each field verified, reported or missing. The Agent writes prose from those facts. Missing stays missing." },
+    { id: "AD-16", t: "Availability is unknown until evidence says otherwise", tag: "docs", touch: ["core", "ui"], p: "Resources default to UNKNOWN. Scrapers and seeds cannot set anything else. Every catalog row records its source and freshness." },
+    { id: "AD-17", t: "Time is UTC, half-open, and clock-injected", tag: "docs", touch: ["core", "agent", "ui"], p: "Offset-aware timestamps only. Intervals include the start and exclude the end. Asia/Kolkata appears only at the API edge." },
+    { id: "AD-18", t: "Contracts are generated and checked, not hand-synced", tag: "new", touch: ["core", "agent", "rag", "ui"], p: "OpenAPI is exported from code and drift fails verification. Shared shapes have JSON Schemas. Changes to enums only add values." },
+    { id: "AD-19", t: "Request ids, error envelope and health work the same everywhere", tag: "new", touch: ["core", "agent", "rag"], p: "X-Request-ID travels end to end. Every error is code, message, details, request_id. Core stays ready even when the LLM is down." },
+    { id: "AD-20", t: "One Postgres, owned schemas, linear migrations", tag: "new", touch: ["core", "rag"], p: "Core owns core and student_private. RAG owns rag. Each service has its own database role. Alembic runs as a one-shot before the API starts." },
+    { id: "AD-21", t: "One place decides who may do what", tag: "confirm", touch: ["core", "ui"], p: "Roles are read from the database on every request. Until stakeholders decide, only a campus admin confirms bookings or records overrides." },
+    { id: "AD-22", t: "Config, secrets and what leaves the system", tag: "new", touch: ["core", "agent", "rag"], p: "Typed settings from the environment. Only the Agent and RAG hold a Groq key. Seeds are labelled synthetic and refuse to run outside local, test or demo." },
+    { id: "AD-23", t: "Other clubs' events are shown through one projection", tag: "confirm", touch: ["core", "agent", "ui"], p: "Another club's draft is never compared. Its tentative events show only name, club, window, venue and status." }
+  ];
+
+  var TAGS = { docs: { label: "From repo docs", cls: "ok" }, "new": { label: "New", cls: "plain" }, confirm: { label: "Confirm", cls: "flag" } };
+
+  var ROLES = {
+    rag: {
+      title: "RAG owner",
+      rely: [
+        "The Agent calls only <code>POST /v1/retrieval/search</code> and <code>POST /v1/knowledge/answer</code>.",
+        "Your <code>Citation</code> objects are copied into replies by code. The model never writes citation fields.",
+        "<code>status</code> stays <code>grounded</code> or <code>insufficient_evidence</code>. If you return the second, or are unreachable, the Agent says so and does not answer from memory.",
+        "The Agent sets <code>access_level</code> from the asking user's role. The model cannot choose it."
+      ],
+      need: [
+        "Read <code>X-Request-ID</code>, echo it, and keep putting <code>request_id</code> in the body if you like.",
+        "Return the shared error envelope on every non-2xx: <code>code</code>, <code>message</code>, <code>details</code>, <code>request_id</code>. Your plan has no envelope today.",
+        "Accept <code>X-Internal-Key</code> outside local runs.",
+        "Tell us where your index lives: in memory, or a <code>rag</code> schema in the shared Postgres with your own database role.",
+        "Tell us if the graph work on your side needs anything from Core or the Agent."
+      ],
+      ads: ["AD-12", "AD-18", "AD-19", "AD-20", "AD-22"]
+    },
+    ui: {
+      title: "UI owner",
+      rely: [
+        "Everything goes through Core at <code>/api/v1</code>, using a session token from demo login (local, test and demo only).",
+        "Conflicts arrive with <code>type</code> and <code>severity</code> already decided. Render them as given.",
+        "You never send <code>status</code>. Edits send <code>expected_revision</code>, and retry-prone actions send <code>Idempotency-Key</code>.",
+        "Agent suggestions arrive as proposed actions. A Confirm button calls <code>POST /api/v1/agent-actions/{action_id}/confirm</code>.",
+        "Student screens receive a dedicated student view with no planning records in it. Seeded data carries <code>synthetic: true</code>."
+      ],
+      need: [
+        "Show <code>UNKNOWN</code> for availability. Never show Available.",
+        "Style a tentative overlap as a warning. Only a confirmed-against-confirmed conflict is blocking.",
+        "On <code>409 STALE_REVISION</code>, refetch and let the person retry.",
+        "On <code>503 DEPENDENCY_UNAVAILABLE</code>, disable the assistant panel and keep the rest working.",
+        "Never show a student's warnings, timetable or attendance in any organizer view."
+      ],
+      ads: ["AD-5", "AD-7", "AD-8", "AD-9", "AD-13", "AD-16", "AD-23"]
+    },
+    be: {
+      title: "Backend and AI",
+      rely: [
+        "A single write path for schedule changes, with a database lock and a two-session concurrency test before we claim it works.",
+        "Pure domain code that needs no database to test, with property tests for the 120-minute edge.",
+        "The Agent runs against a deterministic fake model and mocked Core and RAG, so tests need no network or paid key.",
+        "Contracts are exported from code, so Web and RAG see the same shapes we test."
+      ],
+      need: [],
+      order: [
+        "Contracts, service skeletons and fakes (Plan 00)",
+        "Domain: intervals and the conflict engine, with property tests",
+        "Unit of work: revisions, audit rows, idempotency",
+        "Schedule write service, campus lock and the concurrency test",
+        "Lifecycles, commitments and evidence",
+        "Demo login, the authorization function, delegation token, tool door and proposed actions",
+        "Agent loop on the fake model, with injection and timeout tests, then the Groq provider",
+        "Change proposals and the impact report",
+        "Student-private slice (Plan 05)",
+        "Report assembly"
+      ],
+      ads: ["AD-2", "AD-3", "AD-4", "AD-6", "AD-10", "AD-11", "AD-14"]
+    }
+  };
+
+  var FLOW = [
+    { t: "Organizer proposes the AI Hackathon", lanes: ["web", "core"], ads: ["AD-4", "AD-5", "AD-8"], store: "event, event revision, audit row",
+      b: "The web app posts the tentative event to Core. Core takes the campus lock, re-checks conflicts against saved events, and stores the event with a revision and an audit row. Another club's tentative event on the same day comes back as a warning. It does not block." },
+    { t: "The overlap is shown, without private detail", lanes: ["core", "web"], ads: ["AD-5", "AD-16", "AD-23"], store: "nothing new",
+      b: "Core returns the conflict through one projection: the other club's name, window, venue and status, and nothing about its commitments or contacts. Venue availability shows as UNKNOWN because no authoritative source exists." },
+    { t: "Organizer asks a handbook question", lanes: ["web", "core", "agent", "rag"], ads: ["AD-10", "AD-11", "AD-12"], store: "nothing",
+      b: "Core issues a short-lived token for this user and passes the turn to the Agent. The Agent calls its policy search tool, which calls RAG. Citations in the reply are copied from RAG's response by code. If RAG has no evidence, the reply says that." },
+    { t: "ICTS acknowledgment is recorded", lanes: ["agent", "core", "web"], ads: ["AD-9", "AD-7"], store: "proposed action, commitment (ACKNOWLEDGED), audit row",
+      b: "The Agent files a proposed action. Core validates it and shows it to the organizer, who confirms it. Core records the commitment as ACKNOWLEDGED with the organizer as the reporter. It stays separate from the venue request, and it does not become CONFIRMED." },
+    { t: "Venue changes and Core stages it", lanes: ["web", "core"], ads: ["AD-14", "AD-8"], store: "change proposal",
+      b: "The web app proposes the change with the event's current revision. Core stores a change proposal and works out the impact from stored dependencies. The ICTS commitment depends on the venue, so it is flagged. The event itself has not changed yet." },
+    { t: "The Agent explains and drafts follow-ups", lanes: ["core", "agent", "web"], ads: ["AD-14", "AD-9", "AD-12"], store: "proposed actions",
+      b: "The Agent reads the impact report and writes the explanation and draft follow-ups. Drafts are filed as proposed actions. The Agent never decides what is affected, and it sends nothing." },
+    { t: "Organizer applies the change", lanes: ["web", "core"], ads: ["AD-4", "AD-7", "AD-14"], store: "event revision, commitment status, audit row",
+      b: "Applying runs under the organizer's own session. Core takes the campus lock, re-checks the revision and conflicts, writes the new revision, and moves the ICTS commitment to NEEDS_REVALIDATION. Earlier evidence stays on record." },
+    { t: "Report draft with gaps shown", lanes: ["core", "agent", "web"], ads: ["AD-15"], store: "report draft (DRAFT)",
+      b: "Core assembles verified facts and lists what is missing, such as attendance and photos. The Agent writes prose from those facts only. Missing facts stay missing, and the draft is editable." },
+    { t: "A student registers", lanes: ["web", "core"], ads: ["AD-13"], store: "registration record",
+      b: "The student feed returns published events through a student-only view. The risk check reads that student's private timetable and mock attendance and returns advice only they see. An external registration records a redirect, not a completed form." }
+  ];
+
+  var CONFIRM = [
+    { q: "Which conflicts block?", d: "Only when confirming an event against another confirmed event. Anything involving a tentative event stays a warning.", who: "Team, with OSA input", ad: "AD-5" },
+    { q: "Who can confirm a booking or record an override?", d: "Campus admin only.", who: "Team, with OSA input", ad: "AD-6, AD-21" },
+    { q: "What happens to a confirmed event when its time or venue changes?", d: "It returns to SUBMITTED and its commitments need revalidation. Evidence is kept.", who: "Team", ad: "AD-7" },
+    { q: "What do other clubs see of a tentative event?", d: "Drafts stay private. From PROPOSED on, they see name, club, window, venue and status.", who: "Team, with OSA input", ad: "AD-23" },
+    { q: "Will RAG adopt the request id header and error envelope?", d: "Yes, and it states its storage choice and keeps the current status values.", who: "RAG owner", ad: "AD-19, AD-20" },
+    { q: "Does the RAG side include a graph component that Core or the Agent must feed or call?", d: "No. The Agent only calls the two existing endpoints.", who: "RAG owner", ad: "AD-12" },
+    { q: "Add a field naming the violated constraint to the conflict object?", d: "Yes, as an additive change. The contract lands before any code that uses it.", who: "Team, UI owner affected", ad: "AD-5, AD-18" },
+    { q: "How do students sign in, and what does registration ask for?", d: "Seeded demo personas for now. Real sign-in later.", who: "Team", ad: "AD-21" },
+    { q: "Where does the demo run?", d: "Docker Compose on one machine. Public ports are Web and Core only.", who: "Team", ad: "AD-19, AD-22" }
+  ];
+
+  var DELTAS = [
+    { w: "AGENTS.md lines 143 and 590", t: "Say BM25 or full-text for sparse retrieval. PLAN, CONTEXT_ARCHITECTURE and Plan 02 say SPLADE. AGENTS.md ranks highest, so an agent following it would build the wrong thing.", o: "rag" },
+    { w: "Implementation_Plans/05, batch 1", t: "Names <code>migrations/0002_student_registration.sql</code>. The spine uses Alembic files named <code>NNNN_slug.py</code>.", o: "core" },
+    { w: "contracts/CONTRACTS.md", t: "Add the conflict <code>constraint</code> and <code>advisory</code> fields, the proposed-action types and confirm call, the conflict projection, the student event view, and the list of error codes.", o: "core" },
+    { w: "PLAN.md section 8, Core routes", t: "Add the agent-action confirm route, change-proposal apply, and the internal tool routes under <code>/internal/v1</code>.", o: "core" },
+    { w: "docs/superpowers/plans/2026-10-10-rag-service.md", t: "Lives outside <code>Implementation_Plans/</code>, which AGENTS.md names as the plan location. It also has no shared error envelope.", o: "rag" },
+    { w: "prompts/feature-implementation-prompt.md", t: "Says not to commit unless told to. AGENTS.md requires small commits after each verified slice.", o: "ui" },
+    { w: "Genesis-womm root", t: "There is no <code>.gitignore</code>. The local <code>.env</code> holds a real Groq key and is untracked but not ignored.", o: "core" }
+  ];
+
+  /* stats */
+  (function () {
+    var c = { docs: 0, "new": 0, confirm: 0 };
+    ADS.forEach(function (a) { c[a.tag]++; });
+    var s = $("#stats");
+    s.appendChild(el("span", "chip plain", ADS.length + " decisions"));
+    s.appendChild(el("span", "chip ok", c.docs + " from repo docs"));
+    s.appendChild(el("span", "chip plain", c["new"] + " new"));
+    s.appendChild(el("span", "chip flag", c.confirm + " to confirm"));
+  })();
+
+  /* roles */
+  (function () {
+    var host = $("#role-panels");
+    Object.keys(ROLES).forEach(function (k, i) {
+      var r = ROLES[k];
+      var p = el("div", "panel");
+      p.id = "panel-" + k;
+      p.setAttribute("role", "tabpanel");
+      p.setAttribute("aria-labelledby", "tab-" + k);
+      if (i !== 0) p.hidden = true;
+      var cols = el("div", "cols");
+      var a = el("div");
+      a.appendChild(el("h3", null, "What you can rely on"));
+      var ul = el("ul", "tight");
+      r.rely.forEach(function (x) { ul.appendChild(el("li", null, x)); });
+      a.appendChild(ul);
+      cols.appendChild(a);
+      var b = el("div");
+      if (r.need && r.need.length) {
+        b.appendChild(el("h3", null, "What we need from you"));
+        var ul2 = el("ul", "tight");
+        r.need.forEach(function (x) { ul2.appendChild(el("li", null, x)); });
+        b.appendChild(ul2);
+      } else {
+        b.appendChild(el("h3", null, "Suggested build order"));
+        var ol = el("ol", "tight");
+        r.order.forEach(function (x) { ol.appendChild(el("li", null, x)); });
+        b.appendChild(ol);
+      }
+      cols.appendChild(b);
+      p.appendChild(cols);
+      var refs = el("div", "adrefs");
+      refs.appendChild(el("span", "eyebrow", "Decisions"));
+      r.ads.forEach(function (id) { refs.appendChild(el("a", "chip plain", id)).href = "#decisions"; });
+      p.appendChild(refs);
+      host.appendChild(p);
+    });
+    var tabs = document.querySelectorAll(".tab");
+    tabs.forEach(function (t) {
+      t.addEventListener("click", function () {
+        tabs.forEach(function (o) {
+          var on = o === t;
+          o.setAttribute("aria-selected", on ? "true" : "false");
+          $("#" + o.getAttribute("aria-controls")).hidden = !on;
+        });
+      });
+    });
+  })();
+
+  /* flow */
+  (function () {
+    var LANE = { web: ["UI owner", "web"], core: ["Core", "core"], agent: ["Agent", "agent"], rag: ["RAG owner", "rag"] };
+    var steps = $("#steps"), body = $("#step-body");
+    var cur = 0;
+    FLOW.forEach(function (s, i) {
+      var li = el("li");
+      var b = el("button", "step-btn", String(i + 1));
+      b.type = "button";
+      b.setAttribute("aria-label", "Step " + (i + 1) + ": " + s.t);
+      b.addEventListener("click", function () { show(i); });
+      li.appendChild(b);
+      steps.appendChild(li);
+    });
+    function show(i) {
+      cur = i;
+      var s = FLOW[i];
+      steps.querySelectorAll(".step-btn").forEach(function (b, j) {
+        if (j === i) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      });
+      body.innerHTML = "";
+      body.appendChild(el("span", "eyebrow", "Step " + (i + 1) + " of " + FLOW.length));
+      body.appendChild(el("h3", null, s.t));
+      var lanes = el("div", "lanes");
+      Object.keys(LANE).forEach(function (k) {
+        var c = el("span", "chip " + LANE[k][1] + " lane" + (s.lanes.indexOf(k) >= 0 ? " on" : ""), LANE[k][0]);
+        lanes.appendChild(c);
+      });
+      body.appendChild(lanes);
+      body.appendChild(el("p", null, s.b));
+      body.appendChild(el("p", "persist", "<strong>Stored:</strong> " + s.store));
+      var refs = el("div", "adrefs");
+      refs.style.marginTop = "0";
+      s.ads.forEach(function (id) { refs.appendChild(el("a", "chip plain", id)).href = "#decisions"; });
+      body.appendChild(refs);
+      var nav = el("div", "nav-row");
+      var prev = el("button", "btn", "Previous"); prev.type = "button"; prev.disabled = i === 0;
+      var next = el("button", "btn", "Next"); next.type = "button"; next.disabled = i === FLOW.length - 1;
+      prev.addEventListener("click", function () { show(cur - 1); });
+      next.addEventListener("click", function () { show(cur + 1); });
+      nav.appendChild(prev); nav.appendChild(next);
+      body.appendChild(nav);
+    }
+    show(0);
+  })();
+
+  /* decisions */
+  (function () {
+    var state = { party: "all", confirmOnly: false };
+    var f = $("#filters"), list = $("#ad-list");
+    function btn(label, on, fn) {
+      var b = el("button", "fbtn", label); b.type = "button";
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.addEventListener("click", fn);
+      return b;
+    }
+    function drawFilters() {
+      f.innerHTML = "";
+      [["all", "All"], ["core", "Core"], ["agent", "Agent"], ["rag", "RAG owner"], ["ui", "UI owner"]].forEach(function (p) {
+        f.appendChild(btn(p[1], state.party === p[0], function () { state.party = p[0]; drawFilters(); drawList(); }));
+      });
+      f.appendChild(el("span", "sep"));
+      f.appendChild(btn("Only to confirm", state.confirmOnly, function () { state.confirmOnly = !state.confirmOnly; drawFilters(); drawList(); }));
+    }
+    function drawList() {
+      list.innerHTML = "";
+      var n = 0;
+      ADS.forEach(function (a) {
+        if (state.party !== "all" && a.touch.indexOf(state.party) < 0) return;
+        if (state.confirmOnly && a.tag !== "confirm") return;
+        n++;
+        var li = el("li", "ad");
+        li.appendChild(el("span", "id", a.id));
+        var main = el("div", "main");
+        var top = el("div", "top");
+        top.appendChild(el("span", "name", a.t));
+        top.appendChild(el("span", "chip " + TAGS[a.tag].cls, TAGS[a.tag].label));
+        main.appendChild(top);
+        main.appendChild(el("p", "plain", a.p + (a.note ? " " + a.note : "")));
+        var t = el("div", "touch");
+        a.touch.forEach(function (k) { t.appendChild(el("span", "chip " + PCLASS[k], PARTY[k])); });
+        main.appendChild(t);
+        li.appendChild(main);
+        list.appendChild(li);
+      });
+      if (!n) list.appendChild(el("li", "empty", "No decisions match this filter."));
+    }
+    drawFilters(); drawList();
+  })();
+
+  /* confirm cards */
+  (function () {
+    var host = $("#cards");
+    CONFIRM.forEach(function (c) {
+      var d = el("div", "card");
+      d.appendChild(el("p", "q", c.q));
+      var dl = el("dl");
+      dl.appendChild(el("dt", null, "Proposed")); dl.appendChild(el("dd", null, c.d));
+      dl.appendChild(el("dt", null, "Decides")); dl.appendChild(el("dd", null, c.who));
+      dl.appendChild(el("dt", null, "Spine")); dl.appendChild(el("dd", "mono", c.ad));
+      d.appendChild(dl);
+      host.appendChild(d);
+    });
+  })();
+
+  /* doc deltas */
+  (function () {
+    var host = $("#deltas");
+    DELTAS.forEach(function (x) {
+      var li = el("li");
+      li.appendChild(el("span", "where", x.w));
+      li.appendChild(el("p", null, x.t));
+      host.appendChild(li);
+    });
+  })();
+})();
+</script>
+</body>
+</html>

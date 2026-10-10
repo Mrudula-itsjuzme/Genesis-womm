@@ -1,0 +1,11 @@
+extend = "../../ruff.toml"
+
+# Domain code is pure: no ambient time, environment or randomness (spine AD-2, AD-17).
+[lint.flake8-tidy-imports.banned-api]
+"datetime.datetime.now".msg = "Inject a Clock; domain and services never read ambient time."
+"datetime.datetime.utcnow".msg = "Inject a Clock; domain and services never read ambient time."
+"datetime.date.today".msg = "Inject a Clock; domain and services never read ambient time."
+"time.time".msg = "Inject a Clock; domain and services never read ambient time."
+"os.environ".msg = "Read configuration in app.settings and pass values in."
+"os.getenv".msg = "Read configuration in app.settings and pass values in."
+"uuid.uuid4".msg = "Take ids from the injected id source port."
