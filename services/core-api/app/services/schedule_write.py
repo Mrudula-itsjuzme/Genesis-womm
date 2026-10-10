@@ -110,6 +110,7 @@ class EvidenceInput:
 class WriteResult:
     event: EventRecord
     conflicts: tuple[Conflict, ...]
+    venue_availability: AvailabilityState
     replayed: bool = False
 
 
@@ -465,7 +466,9 @@ class ScheduleWriteService:
             reason="created",
             now=now,
         )
-        return WriteResult(event=record, conflicts=tuple(conflicts))
+        return WriteResult(
+            event=record, conflicts=tuple(conflicts), venue_availability=availability
+        )
 
     def _transition(
         self,
@@ -515,16 +518,17 @@ class ScheduleWriteService:
                 evidence_id=step.verification.evidence_id,
             )
         after = before.but(**changes)
+        availability = self._availability(uow, after.resource_id)
         conflicts = self.commit(
             uow,
             ctx,
             before=before,
             after=after,
-            availability=self._availability(uow, after.resource_id),
+            availability=availability,
             reason=f"{before.status.value} -> {target.value}",
             now=now,
         )
-        return WriteResult(event=after, conflicts=tuple(conflicts))
+        return WriteResult(event=after, conflicts=tuple(conflicts), venue_availability=availability)
 
     def _override(
         self,
@@ -582,6 +586,7 @@ class ScheduleWriteService:
         return {
             "event": event_snapshot(result.event),
             "conflicts": [conflict_to_json(c) for c in result.conflicts],
+            "venue_availability": result.venue_availability.value,
         }
 
     @staticmethod
@@ -589,5 +594,6 @@ class ScheduleWriteService:
         return WriteResult(
             event=event_from_json(data["event"]),
             conflicts=tuple(conflict_from_json(c) for c in data["conflicts"]),
+            venue_availability=AvailabilityState(data["venue_availability"]),
             replayed=True,
         )
