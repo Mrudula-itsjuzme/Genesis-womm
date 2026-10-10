@@ -1,16 +1,16 @@
-from typing import Dict, List
+
 from app.schemas.retrieval import EvidenceChunk
 
 
 def reciprocal_rank_fusion(
-    dense_results: List[EvidenceChunk],
-    sparse_results: List[EvidenceChunk],
+    dense_results: list[EvidenceChunk],
+    sparse_results: list[EvidenceChunk],
     k: int = 60,
     top_k: int = 5,
-) -> List[EvidenceChunk]:
+) -> list[EvidenceChunk]:
     """Combines dense and sparse ranked lists using Reciprocal Rank Fusion: RRF_score = sum(1 / (k + rank))."""
-    scores: Dict[str, float] = {}
-    chunk_map: Dict[str, EvidenceChunk] = {}
+    scores: dict[str, float] = {}
+    chunk_map: dict[str, EvidenceChunk] = {}
 
     for rank, chunk in enumerate(dense_results, start=1):
         chunk_map[chunk.evidence_id] = chunk
@@ -30,7 +30,7 @@ def reciprocal_rank_fusion(
         scores.keys(), key=lambda cid: (-scores[cid], cid)
     )
 
-    fused_candidates: List[EvidenceChunk] = []
+    fused_candidates: list[EvidenceChunk] = []
     for cid in sorted_ids[:top_k]:
         chunk = chunk_map[cid].model_copy()
         chunk.score = round(scores[cid], 6)
