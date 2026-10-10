@@ -4,8 +4,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 
-from app.api.deps import get_event_read_service, get_schedule_write_service, require_session_actor
-from app.api.errors import STUB_OPENAPI, not_implemented, stub_errors
+from app.api.deps import (
+    get_conflict_check_service,
+    get_event_read_service,
+    get_schedule_write_service,
+    require_session_actor,
+)
+from app.api.errors import stub_errors
 from app.api.presenters import conflict_out, event_out
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode, EventStatus
@@ -16,9 +21,16 @@ from app.schemas.events import (
     EventCreatedOut,
     EventList,
     EventOut,
+    TransitionRequest,
 )
+from app.services.conflict_checks import ConflictCheckService
 from app.services.event_reads import EventReadService
-from app.services.schedule_write import NewEvent, RequestContext, ScheduleWriteService
+from app.services.schedule_write import (
+    EvidenceInput,
+    NewEvent,
+    RequestContext,
+    ScheduleWriteService,
+)
 
 router = APIRouter(
     prefix="/api/v1/events",
@@ -132,9 +144,71 @@ def get_event(
         "can go stale. Writes re-check inside the transaction."
     ),
     responses=stub_errors(ErrorCode.NOT_FOUND),
-    openapi_extra=STUB_OPENAPI,
 )
 def check_event_conflicts(
-    event_id: UUID, payload: ConflictCheckRequest | None = None
+    event_id: UUID,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    service: Annotated[ConflictCheckService, Depends(get_conflict_check_service)],
+    payload: ConflictCheckRequest | None = None,
 ) -> ConflictCheckOut:
-    not_implemented("Conflict check")
+    if payload is None:
+        result = service.check(actor, event_id)
+    else:
+        fields = payload.model_fields_set
+        provided = fields is not None and "resource_id" in fields
+        result = service.check(
+            actor,
+            event_id,
+            start_at=payload.start_at,
+            end_at=payload.end_at,
+            resource_id=payload.resource_id,
+            resource_id_was_provided=provided,
+            as_status=payload.as_status,
+        )
+    return ConflictCheckOut(
+        event_id=result.event.id,
+        evaluated_as=result.event.status,
+        advisory=True,
+        has_blocking=any(c.severity == "blocking" for c in result.conflicts),
+        conflicts=[conflict_out(c) for c in result.conflicts],
+        checked_at=result.checked_at,
+    )
+
+
+@router.post(
+    "/{event_id}/transitions",
+    response_model=EventOut,
+    summary="Move an event along its lifecycle",
+    description="Only a confirmation can be blocked by a conflict.",
+    responses=stub_errors(ErrorCode.NOT_FOUND, ErrorCode.CONFLICT_DETECTED),
+)
+def transition_event_route(
+    event_id: UUID,
+    payload: TransitionRequest,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    service: Annotated[ScheduleWriteService, Depends(get_schedule_write_service)],
+    request: Request,
+    idempotency_key: IdempotencyKey = None,
+) -> EventOut:
+    ctx = RequestContext(
+        actor=actor,
+        request_id=str(request.state.request_id),
+        idempotency_key=idempotency_key,
+    )
+    evidence_input = None
+    if payload.evidence:
+        evidence_input = EvidenceInput(
+            kind=payload.evidence.kind,
+            reference=payload.evidence.reference,
+            captured_at=payload.evidence.captured_at,
+            issuer=payload.evidence.issuer,
+        )
+
+    result = service.transition_event(
+        ctx,
+        event_id,
+        target=payload.target_status,
+        expected_revision=payload.expected_revision,
+        evidence=evidence_input,
+    )
+    return event_out(result.event, result.venue_availability)
