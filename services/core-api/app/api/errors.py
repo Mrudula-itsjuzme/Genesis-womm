@@ -16,7 +16,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.middleware import REQUEST_ID_HEADER
 from app.domain.enums import ErrorCode
+from app.domain.lifecycle import EvidenceRequiredError, InvalidTransitionError, NotAuthorizedError
 from app.schemas.common import ErrorEnvelope
+from app.services.errors import (
+    ConflictDetectedError,
+    DuplicateOverrideError,
+    IdempotencyMismatchError,
+    NotFoundError,
+    StaleRevisionError,
+)
 
 log = structlog.get_logger("errors")
 
@@ -125,6 +133,20 @@ async def _handle_api_error(request: Request, exc: Exception) -> JSONResponse:
     return error_response(request, error.code, error.message, error.details)
 
 
+async def _handle_domain_refusal(request: Request, exc: Exception) -> JSONResponse:
+    code = {
+        ConflictDetectedError: ErrorCode.CONFLICT_DETECTED,
+        DuplicateOverrideError: ErrorCode.DUPLICATE_OVERRIDE,
+        IdempotencyMismatchError: ErrorCode.IDEMPOTENCY_MISMATCH,
+        StaleRevisionError: ErrorCode.STALE_REVISION,
+        NotFoundError: ErrorCode.NOT_FOUND,
+        NotAuthorizedError: ErrorCode.FORBIDDEN,
+        InvalidTransitionError: ErrorCode.INVALID_TRANSITION,
+        EvidenceRequiredError: ErrorCode.EVIDENCE_REQUIRED,
+    }[type(exc)]
+    return error_response(request, code, str(exc))
+
+
 async def _handle_validation_error(request: Request, exc: Exception) -> JSONResponse:
     errors = cast(RequestValidationError, exc).errors()
     # Keep only where/what/kind. `input` and `ctx` can echo user data back.
@@ -154,6 +176,17 @@ async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
 
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ApiError, _handle_api_error)
+    for refusal in (
+        ConflictDetectedError,
+        DuplicateOverrideError,
+        IdempotencyMismatchError,
+        StaleRevisionError,
+        NotFoundError,
+        NotAuthorizedError,
+        InvalidTransitionError,
+        EvidenceRequiredError,
+    ):
+        app.add_exception_handler(refusal, _handle_domain_refusal)
     app.add_exception_handler(RequestValidationError, _handle_validation_error)
     app.add_exception_handler(StarletteHTTPException, _handle_http_exception)
     app.add_exception_handler(Exception, _handle_unexpected)
