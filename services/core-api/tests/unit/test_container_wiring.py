@@ -63,3 +63,11 @@ def test_a_container_without_a_key_publishes_none_so_the_facade_fails_closed() -
     app = create_app(settings_with_keys(), bare)
 
     assert not hasattr(app.state, "internal_api_key")
+
+
+def test_the_app_publishes_the_agent_action_service(container: Container) -> None:
+    assert container.agent_actions is not None
+
+    app = create_app(settings_with_keys(), container)
+
+    assert app.state.agent_actions is container.agent_actions

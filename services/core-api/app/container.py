@@ -16,6 +16,7 @@ from app.domain.scheduling import Policy
 from app.domain.time import SystemClock
 from app.repositories.health import SqlReadinessProbe
 from app.repositories.unit_of_work import SqlUnitOfWork
+from app.services.agent_actions import AgentActionService
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
@@ -43,6 +44,7 @@ class Container:
     resource_reads: ResourceReadService | None = None
     conflict_checks: ConflictCheckService | None = None
     delegation: DelegationService | None = None
+    agent_actions: AgentActionService | None = None
     internal_api_key: str | None = None
 
     def dispose(self) -> None:
@@ -89,6 +91,13 @@ def build_container(settings: Settings) -> Container:
         lambda: SqlUnitOfWork(database_sessions),
         PyJwtDelegationService(settings.delegation_signing_key.get_secret_value()),
     )
+    agent_actions = AgentActionService(
+        lambda: SqlUnitOfWork(database_sessions),
+        checks=conflict_checks,
+        writes=schedule_write,
+        clock=SystemClock(),
+        ids=UuidSource(),
+    )
     return Container(
         readiness=readiness,
         engine=engine,
@@ -98,5 +107,6 @@ def build_container(settings: Settings) -> Container:
         resource_reads=resource_reads,
         conflict_checks=conflict_checks,
         delegation=delegation,
+        agent_actions=agent_actions,
         internal_api_key=settings.internal_api_key.get_secret_value(),
     )
