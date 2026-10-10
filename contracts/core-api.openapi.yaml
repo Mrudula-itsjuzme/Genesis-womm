@@ -39,6 +39,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/auth/demo-login:
+    post:
+      tags:
+      - authentication
+      summary: Create a session for a seeded demo user
+      description: Demo-only seeded-directory login. Production SSO replaces this endpoint's identity
+        verification without changing authorization rules.
+      operationId: demo_login_api_v1_auth_demo_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoLoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/events:
     post:
       tags:
@@ -98,7 +131,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
     get:
       tags:
       - events
@@ -199,7 +231,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/events/{event_id}:
     get:
       tags:
@@ -253,7 +284,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/events/{event_id}/conflict-check:
     post:
       tags:
@@ -375,25 +405,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '403':
-          description: FORBIDDEN
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '422':
           description: VALIDATION_ERROR
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/resources/{resource_id}:
     get:
       tags:
@@ -423,8 +440,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '403':
-          description: FORBIDDEN
+        '404':
+          description: NOT_FOUND
           content:
             application/json:
               schema:
@@ -435,19 +452,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '404':
-          description: NOT_FOUND
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/agent/chat:
     post:
       tags:
@@ -1402,6 +1406,18 @@ components:
       - DEPENDENCY_CONFLICT
       - UNKNOWN_AVAILABILITY
       title: ConflictType
+    DemoLoginRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: Email
+      additionalProperties: false
+      type: object
+      required:
+      - email
+      title: DemoLoginRequest
     ErrorCode:
       type: string
       enum:
@@ -1414,6 +1430,8 @@ components:
       - STALE_REVISION
       - IDEMPOTENCY_MISMATCH
       - INVALID_TRANSITION
+      - DUPLICATE_OVERRIDE
+      - EVIDENCE_REQUIRED
       - DEPENDENCY_UNAVAILABLE
       - AGENT_OUTPUT_INVALID
       - NOT_IMPLEMENTED
@@ -1661,6 +1679,23 @@ components:
       - version
       title: HealthOut
       description: Process liveness. Says nothing about dependencies.
+    MembershipOut:
+      properties:
+        club_id:
+          type: string
+          format: uuid
+          title: Club Id
+        club_name:
+          type: string
+          title: Club Name
+        role:
+          $ref: '#/components/schemas/Role'
+      type: object
+      required:
+      - club_id
+      - club_name
+      - role
+      title: MembershipOut
     ReadyOut:
       properties:
         status:
@@ -1795,6 +1830,37 @@ components:
       - synthetic
       title: ResourceOut
       description: A sourced campus resource. Provenance travels with it; availability is never inferred.
+    Role:
+      type: string
+      enum:
+      - ORGANIZER
+      - CLUB_ADMIN
+      - CAMPUS_ADMIN
+      - STUDENT
+      title: Role
+    SessionOut:
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+          title: Access Token
+        token_type:
+          type: string
+          const: bearer
+          title: Token Type
+          default: bearer
+        expires_at:
+          type: string
+          format: date-time
+          title: Expires At
+        user:
+          $ref: '#/components/schemas/UserOut'
+      type: object
+      required:
+      - access_token
+      - expires_at
+      - user
+      title: SessionOut
     Severity:
       type: string
       enum:
@@ -1839,6 +1905,39 @@ components:
       - latency_ms
       - request_id
       title: ToolTraceEntry
+    UserOut:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        email:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: Email
+        display_name:
+          type: string
+          title: Display Name
+        campus_admin:
+          type: boolean
+          title: Campus Admin
+        memberships:
+          items:
+            $ref: '#/components/schemas/MembershipOut'
+          type: array
+          title: Memberships
+        synthetic:
+          type: boolean
+          title: Synthetic
+      type: object
+      required:
+      - id
+      - email
+      - display_name
+      - campus_admin
+      - synthetic
+      title: UserOut
   securitySchemes:
     sessionBearer:
       type: http

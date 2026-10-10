@@ -3,16 +3,20 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import session_bearer
-from app.api.errors import STUB_OPENAPI, not_implemented, stub_errors
+from app.api.deps import get_resource_read_service, require_session_actor
+from app.api.errors import error_responses
+from app.api.presenters import resource_out
 from app.domain.enums import ErrorCode, ResourceKind
 from app.schemas.resources import ResourceList, ResourceOut
+from app.services.resource_reads import ResourceReadService
 
 router = APIRouter(
     prefix="/api/v1/resources",
     tags=["resources"],
-    dependencies=[Depends(session_bearer)],
+    dependencies=[Depends(require_session_actor)],
 )
+
+ResourceReaderDependency = Annotated[ResourceReadService, Depends(get_resource_read_service)]
 
 
 @router.get(
@@ -20,24 +24,34 @@ router = APIRouter(
     response_model=ResourceList,
     summary="List sourced campus resources",
     description="Every row carries its source and freshness. Availability is UNKNOWN by default.",
-    responses=stub_errors(),
-    openapi_extra=STUB_OPENAPI,
+    responses=error_responses(ErrorCode.UNAUTHENTICATED, ErrorCode.VALIDATION_ERROR),
 )
 def list_resources(
+    resources: ResourceReaderDependency,
     kind: ResourceKind | None = None,
     q: Annotated[str | None, Query(max_length=100)] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ResourceList:
-    not_implemented("Resource listing")
+    records, total = resources.list(kind=kind, query=q, limit=limit, offset=offset)
+    return ResourceList(
+        items=[resource_out(record) for record in records],
+        limit=limit,
+        offset=offset,
+        total=total,
+    )
 
 
 @router.get(
     "/{resource_id}",
     response_model=ResourceOut,
     summary="Get one resource",
-    responses=stub_errors(ErrorCode.NOT_FOUND),
-    openapi_extra=STUB_OPENAPI,
+    responses=error_responses(
+        ErrorCode.UNAUTHENTICATED, ErrorCode.NOT_FOUND, ErrorCode.VALIDATION_ERROR
+    ),
 )
-def get_resource(resource_id: UUID) -> ResourceOut:
-    not_implemented("Resource lookup")
+def get_resource(
+    resource_id: UUID,
+    resources: ResourceReaderDependency,
+) -> ResourceOut:
+    return resource_out(resources.get(resource_id))

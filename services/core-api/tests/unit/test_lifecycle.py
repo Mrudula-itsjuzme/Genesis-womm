@@ -9,7 +9,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from app.domain.authz import Actor, Reason
+from app.domain.authz import Action, Actor, Reason
 from app.domain.enums import CommitmentStatus, EventStatus, Role
 from app.domain.lifecycle import (
     CommitmentTransition,
@@ -19,6 +19,7 @@ from app.domain.lifecycle import (
     InvalidTransitionError,
     NotAuthorizedError,
     demote_on_schedule_change,
+    event_action_for,
     mark_needs_revalidation,
     transition_commitment,
     transition_event,
@@ -346,3 +347,15 @@ def test_a_commitment_only_becomes_confirmed_with_an_admin_verifier_and_evidence
         assert result.verification is not None
     else:
         assert result.verification is None
+
+
+def test_each_reachable_status_names_the_action_it_needs() -> None:
+    assert {s: event_action_for(s) for s in EventStatus} == {
+        E.DRAFT: None,
+        E.PROPOSED: Action.PROPOSE_EVENT,
+        E.SUBMITTED: Action.SUBMIT_EVENT,
+        E.CONFIRMED: Action.CONFIRM_EVENT,
+        E.REJECTED: Action.REJECT_EVENT,
+        E.CANCELLED: Action.CANCEL_EVENT,
+        E.COMPLETED: Action.COMPLETE_EVENT,
+    }

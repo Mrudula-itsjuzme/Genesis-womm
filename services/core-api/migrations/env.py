@@ -6,10 +6,13 @@ directly. Tests may pass a live connection through ``config.attributes["connecti
 """
 
 import os
+from typing import Any
 
 from alembic import context
 from sqlalchemy import Connection, create_engine, pool, text
+from sqlalchemy.schema import SchemaItem
 
+import app.models  # noqa: F401  (registers every table on Base.metadata)
 from app.models.base import CORE_SCHEMA, VERSION_TABLE, Base
 
 config = context.config
@@ -23,13 +26,30 @@ def _url() -> str:
     return url
 
 
-def _configure(**kwargs: object) -> None:
+def _include_name(name: str | None, type_: str, parent_names: dict[str, str | None]) -> bool:
+    """Compare only schema `core`; other schemas belong to other owners or later plans."""
+    if type_ == "schema":
+        return name == CORE_SCHEMA
+    return True
+
+
+def _include_object(
+    obj: SchemaItem, name: str | None, type_: str, reflected: bool, compare_to: SchemaItem | None
+) -> bool:
+    """Alembic's own bookkeeping table is not part of the model."""
+    return not (type_ == "table" and reflected and name == VERSION_TABLE)
+
+
+def _configure(**kwargs: Any) -> None:
     context.configure(
         target_metadata=target_metadata,
         version_table=VERSION_TABLE,
         version_table_schema=CORE_SCHEMA,
         compare_type=True,
-        **kwargs,  # type: ignore[arg-type]
+        include_schemas=True,
+        include_name=_include_name,
+        include_object=_include_object,
+        **kwargs,
     )
 
 
