@@ -132,3 +132,96 @@ def test_real_groq_client_abstention_on_empty_evidence_bypasses_api(monkeypatch)
         assert status == "insufficient_evidence"
         assert "Insufficient evidence" in answer
         mock_groq_cls.assert_not_called()
+
+
+def test_real_groq_client_empty_choices_handled(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "groq_api_key", "gsk-test-key")
+    generator = GroundedGenerator(use_mock=False)
+
+    mock_chat_completion = MagicMock()
+    mock_chat_completion.choices = []
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_chat_completion
+
+    with patch("groq.Groq", return_value=mock_client):
+        chunks = [
+            EvidenceChunk(
+                evidence_id="osa-p12",
+                document_id="osa",
+                title="Handbook",
+                source_url="http://x",
+                page_start=12,
+                page_end=12,
+                excerpt="Some general information.",
+            )
+        ]
+        answer, status = generator.generate_answer(
+            query="When to submit events?", evidence_chunks=chunks
+        )
+        assert status == "insufficient_evidence"
+        assert answer == "Insufficient evidence found in campus policy documents."
+
+
+def test_real_groq_client_exception_handled(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "groq_api_key", "gsk-test-key")
+    generator = GroundedGenerator(use_mock=False)
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = Exception(
+        "Groq API rate limit or network error"
+    )
+
+    with patch("groq.Groq", return_value=mock_client):
+        chunks = [
+            EvidenceChunk(
+                evidence_id="osa-p12",
+                document_id="osa",
+                title="Handbook",
+                source_url="http://x",
+                page_start=12,
+                page_end=12,
+                excerpt="Some general information.",
+            )
+        ]
+        answer, status = generator.generate_answer(
+            query="When to submit events?", evidence_chunks=chunks
+        )
+        assert status == "insufficient_evidence"
+        assert answer == "Insufficient evidence found in campus policy documents."
+
+
+def test_real_groq_client_caches_instance(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "groq_api_key", "gsk-test-key")
+    generator = GroundedGenerator(use_mock=False)
+
+    mock_choice = MagicMock()
+    mock_choice.message.content = "Answer from groq"
+    mock_chat_completion = MagicMock(choices=[mock_choice])
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_chat_completion
+
+    with patch("groq.Groq", return_value=mock_client) as mock_groq_cls:
+        chunks = [
+            EvidenceChunk(
+                evidence_id="osa-p12",
+                document_id="osa",
+                title="Handbook",
+                source_url="http://x",
+                page_start=12,
+                page_end=12,
+                excerpt="Info",
+            )
+        ]
+        generator.generate_answer(query="Q1", evidence_chunks=chunks)
+        generator.generate_answer(query="Q2", evidence_chunks=chunks)
+
+        assert mock_groq_cls.call_count == 1
+        assert mock_client.chat.completions.create.call_count == 2

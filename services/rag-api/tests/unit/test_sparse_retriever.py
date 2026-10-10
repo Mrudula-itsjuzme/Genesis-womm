@@ -22,7 +22,7 @@ def test_sparse_retriever_exact_keyword_match():
             source_url="http://test",
             page_start=2,
             page_end=2,
-            excerpt="Sports equipment must be returned before 6 PM.",
+            excerpt="Sports and ICTS equipment must be returned before 6 PM.",
         ),
     ]
     retriever.index(chunks)
@@ -31,6 +31,39 @@ def test_sparse_retriever_exact_keyword_match():
     assert len(results) == 2
     assert results[0].evidence_id == "c1"
     assert results[0].score > results[1].score
+
+
+def test_sparse_retriever_zero_score_excluded():
+    retriever = SparseRetriever()
+    chunks = [
+        EvidenceChunk(
+            evidence_id="c1",
+            document_id="doc1",
+            title="Doc",
+            source_url="http://test",
+            page_start=1,
+            page_end=1,
+            excerpt="ICTS provides microphones.",
+        ),
+        EvidenceChunk(
+            evidence_id="c2",
+            document_id="doc1",
+            title="Doc",
+            source_url="http://test",
+            page_start=2,
+            page_end=2,
+            excerpt="Sports equipment must be returned before 6 PM.",
+        ),
+    ]
+    retriever.index(chunks)
+    # Completely irrelevant query returns empty list
+    results = retriever.search(query="astronomy telescope", top_k=5)
+    assert results == []
+
+    # Irrelevant chunks filtered out even if top_k is larger than matching count
+    results_partial = retriever.search(query="microphones", top_k=5)
+    assert len(results_partial) == 1
+    assert results_partial[0].evidence_id == "c1"
 
 
 def test_sparse_retriever_empty_index_returns_empty():

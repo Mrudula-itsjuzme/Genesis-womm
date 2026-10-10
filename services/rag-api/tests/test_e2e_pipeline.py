@@ -20,7 +20,7 @@ def test_full_rag_pipeline_flow():
 
     # 3. Check answer with citations
     answer_res = client.post(
-        "/v1/knowledge/answer", json={"query": "venue approval deadline"}
+        "/v1/knowledge/answer", json={"query": "event submission deadline"}
     )
     assert answer_res.status_code == 200
     answer_data = answer_res.json()

@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 import numpy as np
 from app.schemas.retrieval import EvidenceChunk
 

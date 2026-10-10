@@ -78,9 +78,10 @@ class SparseRetriever:
                     scores[i] += idf * (numerator / denominator)
 
         # Rank documents
-        ranked_indices = sorted(
-            range(num_docs), key=lambda i: scores[i], reverse=True
-        )[:top_k]
+        ranked_indices = [
+            i for i in sorted(range(num_docs), key=lambda i: scores[i], reverse=True)
+            if scores[i] > 0.0
+        ][:top_k]
 
         results: List[EvidenceChunk] = []
         for idx in ranked_indices:

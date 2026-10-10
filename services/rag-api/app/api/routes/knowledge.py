@@ -6,7 +6,7 @@ from app.citations.builder import CitationBuilder
 from app.generation.groq_client import GroundedGenerator
 
 router = APIRouter(prefix="/v1/knowledge", tags=["knowledge"])
-generator = GroundedGenerator(use_mock=True)
+generator = GroundedGenerator()
 
 
 @router.post("/answer", response_model=AnswerResponse)

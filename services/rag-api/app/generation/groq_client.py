@@ -8,6 +8,7 @@ class GroundedGenerator:
 
     def __init__(self, use_mock: bool = False):
         self.use_mock = use_mock or not settings.groq_api_key
+        self._client = None
 
     def generate_answer(
         self, query: str, evidence_chunks: List[EvidenceChunk]
@@ -30,9 +31,11 @@ class GroundedGenerator:
             )
 
         # Real Groq API client
-        from groq import Groq
+        if self._client is None:
+            from groq import Groq
 
-        client = Groq(api_key=settings.groq_api_key)
+            self._client = Groq(api_key=settings.groq_api_key)
+        client = self._client
         system_prompt = (
             "You are the CampusCue University Policy Assistant. You must answer questions ONLY using "
             "the provided evidence excerpts below. If the evidence does not clearly contain the answer, "
@@ -40,16 +43,27 @@ class GroundedGenerator:
         )
         user_prompt = f"Evidence:\n{context_text}\n\nQuestion: {query}"
 
-        response = client.chat.completions.create(
-            model=settings.groq_model,
-            temperature=settings.groq_temperature,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+        try:
+            response = client.chat.completions.create(
+                model=settings.groq_model,
+                temperature=settings.groq_temperature,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            if not response.choices:
+                return (
+                    "Insufficient evidence found in campus policy documents.",
+                    "insufficient_evidence",
+                )
+            content = response.choices[0].message.content or ""
+        except Exception:
+            return (
+                "Insufficient evidence found in campus policy documents.",
+                "insufficient_evidence",
+            )
 
-        content = response.choices[0].message.content or ""
         if "INSUFFICIENT_EVIDENCE" in content:
             return (
                 "Insufficient evidence found in campus policy documents.",
