@@ -2,10 +2,35 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from typing import List
+from sentence_transformers import SentenceTransformer
+from .models import DocumentChunk
+from .database import SessionLocal
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SOURCES_FILE = os.path.join(BASE_DIR, "../../sources.txt")
+
+
+def ingest_chunk(source_url: str, content: str):
+    # Generate embedding
+    embedding = model.encode(content).tolist()
+    
+    # Save to db
+    db = SessionLocal()
+    try:
+        chunk = DocumentChunk(
+            source_url=source_url,
+            content=content,
+            embedding=embedding
+        )
+        db.add(chunk)
+        db.commit()
+        db.refresh(chunk)
+        return chunk
+    finally:
+        db.close()
 
 
 def fetch_html(url: str) -> str:
@@ -61,6 +86,8 @@ def process_sources():
             text = fetch_html(url)
         
         chunks = chunk_document(text)
+        for chunk in chunks:
+            ingest_chunk(url, chunk)
         print(f"Created {len(chunks)} chunks for {url}")
 
 
