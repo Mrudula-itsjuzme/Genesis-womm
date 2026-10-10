@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.api.routes.retrieval import router as retrieval_router
 
 app = FastAPI(
     title="CampusCue RAG API",
@@ -16,6 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(retrieval_router)
+
 
 @app.get("/health")
 def health():
@@ -30,3 +33,4 @@ def ready():
         "sparse_provider": settings.rag_sparse_provider,
         "model_provider": settings.agent_model_provider,
     }
+
