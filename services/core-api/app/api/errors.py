@@ -20,6 +20,8 @@ from app.domain.enums import ErrorCode
 from app.domain.lifecycle import EvidenceRequiredError, InvalidTransitionError, NotAuthorizedError
 from app.schemas.common import ErrorEnvelope
 from app.services.errors import (
+    AgentOutputInvalidError,
+    AgentUnavailableError,
     ConflictDetectedError,
     DuplicateOverrideError,
     IdempotencyMismatchError,
@@ -46,6 +48,11 @@ STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.AGENT_OUTPUT_INVALID: 502,
     ErrorCode.NOT_IMPLEMENTED: 501,
     ErrorCode.INTERNAL_ERROR: 500,
+}
+
+_ASSISTANT_MESSAGES: dict[ErrorCode, str] = {
+    ErrorCode.DEPENDENCY_UNAVAILABLE: "The planning assistant is unavailable right now.",
+    ErrorCode.AGENT_OUTPUT_INVALID: "The planning assistant returned a reply Core could not use.",
 }
 
 _CODE_BY_HTTP_STATUS: dict[int, ErrorCode] = {
@@ -141,6 +148,8 @@ async def _handle_domain_refusal(request: Request, exc: Exception) -> JSONRespon
         DuplicateOverrideError: ErrorCode.DUPLICATE_OVERRIDE,
         IdempotencyMismatchError: ErrorCode.IDEMPOTENCY_MISMATCH,
         InvalidRequestError: ErrorCode.VALIDATION_ERROR,
+        AgentUnavailableError: ErrorCode.DEPENDENCY_UNAVAILABLE,
+        AgentOutputInvalidError: ErrorCode.AGENT_OUTPUT_INVALID,
         StaleRevisionError: ErrorCode.STALE_REVISION,
         NotFoundError: ErrorCode.NOT_FOUND,
         NotAuthorizedError: ErrorCode.FORBIDDEN,
@@ -152,6 +161,10 @@ async def _handle_domain_refusal(request: Request, exc: Exception) -> JSONRespon
         if isinstance(exc, ConflictDetectedError)
         else []
     )
+    if isinstance(exc, AgentUnavailableError | AgentOutputInvalidError):
+        # The detail can name hosts or quote the reply: keep it in the log, not the response.
+        log.warning("assistant_failure", request_id=_request_id(request), detail=str(exc))
+        return error_response(request, code, _ASSISTANT_MESSAGES[code])
     return error_response(request, code, str(exc), details)
 
 
@@ -189,6 +202,8 @@ def install_error_handlers(app: FastAPI) -> None:
         DuplicateOverrideError,
         IdempotencyMismatchError,
         InvalidRequestError,
+        AgentUnavailableError,
+        AgentOutputInvalidError,
         StaleRevisionError,
         NotFoundError,
         NotAuthorizedError,

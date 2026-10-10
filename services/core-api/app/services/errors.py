@@ -46,3 +46,17 @@ class DuplicateOverrideError(ServiceError):
 
 class InvalidRequestError(ServiceError):
     """The request is well formed but breaks a business rule, for example a blank reason."""
+
+
+class AgentUnavailableError(ServiceError):
+    """The planning assistant could not be reached or did not answer in time.
+
+    The message is for logs. It may name internal hosts, so it is never sent to a client.
+    """
+
+
+class AgentOutputInvalidError(ServiceError):
+    """The planning assistant answered, but not in the shape Core's contract allows.
+
+    The message is for logs. It may quote the reply, so it is never sent to a client.
+    """

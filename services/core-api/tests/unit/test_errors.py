@@ -21,6 +21,8 @@ from app.domain.scheduling import Conflict as DomainConflict
 from app.schemas.common import ErrorEnvelope
 from app.schemas.events import Conflict as WireConflict
 from app.services.errors import (
+    AgentOutputInvalidError,
+    AgentUnavailableError,
     ConflictDetectedError,
     IdempotencyMismatchError,
     InvalidRequestError,
@@ -86,6 +88,14 @@ def make_app() -> FastAPI:
     @app.get("/blocked")
     def blocked() -> None:
         raise ConflictDetectedError([blocking_conflict()])
+
+    @app.get("/agent-down")
+    def agent_down() -> None:
+        raise AgentUnavailableError("postgres://user:hunter2@agent:8001 refused the connection")
+
+    @app.get("/agent-garbled")
+    def agent_garbled() -> None:
+        raise AgentOutputInvalidError("reply was {'secret': 'internals'}")
 
     @app.get("/invalid")
     def invalid() -> None:
@@ -224,3 +234,22 @@ def test_a_bad_request_the_service_rejects_is_a_422_validation_error(client: Tes
     assert envelope.code is ErrorCode.VALIDATION_ERROR
     assert "end_at must be after start_at" in envelope.message
     assert envelope.details == []
+
+
+def test_an_unreachable_assistant_is_a_503_that_hides_how_it_failed(client: TestClient) -> None:
+    response = client.get("/agent-down")
+
+    assert response.status_code == 503
+    envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
+    assert envelope.code is ErrorCode.DEPENDENCY_UNAVAILABLE
+    assert "hunter2" not in response.text
+    assert "agent:8001" not in response.text
+
+
+def test_an_unusable_assistant_reply_is_a_502_that_hides_what_it_said(client: TestClient) -> None:
+    response = client.get("/agent-garbled")
+
+    assert response.status_code == 502
+    envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
+    assert envelope.code is ErrorCode.AGENT_OUTPUT_INVALID
+    assert "internals" not in response.text
