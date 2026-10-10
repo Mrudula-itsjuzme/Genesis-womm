@@ -5,7 +5,7 @@
 **Dependencies:** Plan 00; approved source documents; storage choice
 
 ## Objective
-Build an independently runnable RAG service with approved-document ingestion, sparse + dense retrieval, fusion, citations, version tracking and measurable evaluation.
+Build an independently runnable RAG service with approved-document ingestion, SPLADE sparse retrieval, local dense embeddings, fusion, citations, version tracking and measurable evaluation.
 
 ## Non-goals
 - Index private organizer conversations or unapproved data.
@@ -33,8 +33,8 @@ Build an independently runnable RAG service with approved-document ingestion, sp
 2. Implement parser adapter interface and one approved PDF/HTML source path.
 3. Preserve page numbers, headings, section paths, source URL, title, version and content hash.
 4. Add structure-aware chunking; benchmark an initial 400–700-token range and modest overlap.
-5. Store chunk metadata and dense vectors using `pgvector`.
-6. Implement sparse retrieval using PostgreSQL full-text search or a benchmarked BM25 implementation.
+5. Generate dense vectors locally and store chunk metadata and vectors using `pgvector`.
+6. Implement sparse retrieval using SPLADE.
 7. Implement dense retrieval and access filters.
 8. Implement Reciprocal Rank Fusion (RRF) and deterministic tie-breaking.
 9. Add optional reranker behind an interface; do not require it for baseline operation.
@@ -59,7 +59,7 @@ Build an independently runnable RAG service with approved-document ingestion, sp
 
 ## Definition of done
 - Search works without an LLM.
-- Sparse, dense and hybrid results can be compared on the same test set.
+- SPLADE sparse, local dense, and hybrid results can be compared on the same test set.
 - Citations resolve to stored source/page metadata.
 - A response cannot invent source IDs or page numbers.
 - Access filters run before context is passed to generation.
@@ -70,7 +70,7 @@ Build an independently runnable RAG service with approved-document ingestion, sp
 ## Risks
 - PDF extraction may scramble tables or page order.
 - Chunk boundaries can separate a rule from its exception.
-- Embedding choice should be evaluated against campus terminology and available compute.
+- The local embedding model and SPLADE checkpoint should be evaluated against campus terminology and available compute.
 - Source freshness and authority need a human verification process.
 
 ## Deviation log
