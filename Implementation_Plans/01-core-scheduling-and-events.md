@@ -1,6 +1,6 @@
 # Implementation Plan 01: Core Events and Scheduling
 
-**Status:** In progress. Conflict engine, authorization, lifecycle, persistence and the locked write path are done (batches P1 to P11); HTTP routes, auth, projection and seeds (P12 to P15) have not started  
+**Status:** In progress. Conflict engine, authorization, lifecycle, persistence and the locked write path are done (P1 to P11). Demo sessions and authenticated draft creation are complete; read routes, conflict projection, transitions, overrides, synthetic seeds and broader HTTP coverage remain.
 **Owner:** Core API workstream  
 **Dependencies:** Plan 00 contracts; PostgreSQL available
 
@@ -213,6 +213,12 @@ Exact module names may be adjusted to the selected project layout, but update th
 - **P13:** demo-login, session tokens and actor resolution from database rows (AD-21).
 - **P14:** `ConflictProjection` (AD-23) and the real event, conflict-check and resource routes.
 - **P15:** synthetic seed data (AD-22) and the end-to-end tests from AGENTS.md 10.1.
+
+### HTTP execution record (2026-10-11, branch `backend-ai`)
+
+- P13 is complete: seeded demo login issues signed Core sessions, resolves current memberships from PostgreSQL, and public routers require a valid session.
+- P14 has started: `POST /api/v1/events` is a real authenticated transactional draft write, with the standard error envelope and response projection. An integration test proves seeded login, authenticated creation and database persistence.
+- Remaining P14 work: event/resource reads, conflict-check projection, lifecycle transition and override routes.
 
 ## Risks
 - Campus-wide gap may be a product preference rather than official policy.
