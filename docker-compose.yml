@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: campuscue
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  core-api:
+    build:
+      context: ./services/core-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/campuscue
+    depends_on:
+      - db
+
+  rag-api:
+    build:
+      context: ./services/rag-api
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/campuscue
+    depends_on:
+      - db
+
+  agent-api:
+    build:
+      context: ./services/agent-api
+    ports:
+      - "8001:8001"
+    environment:
+      - CORE_API_URL=http://core-api:8000
+      - RAG_API_URL=http://rag-api:8002
+    depends_on:
+      - core-api
+      - rag-api
+
+volumes:
+  db_data:
