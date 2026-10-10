@@ -37,7 +37,35 @@ The check can warn about an exam conflict, an exam on the next day, or a class o
 Before implementing a non-trivial feature, read the three context documents and its implementation plan. If no plan exists, write and review one first.
 
 ## Local setup
-The repository is at planning stage; concrete commands must be added when the service skeletons and package managers are selected. The intended integrated workflow uses Docker Compose. Each service must also support independent local tests with mocks.
+
+`core-api` and `agent-api` are scaffolded (Python 3.12, FastAPI, managed with [uv](https://docs.astral.sh/uv/)). `rag-api` and `web` are owned by their teams and join Compose when they land. Design decisions for the two services live in `docs/architecture/architecture-campuscue-backend-ai-2026-10-10/ARCHITECTURE-SPINE.md`.
+
+**Run the stack** (PostgreSQL 18, a one-shot migration, Core on `:8000`, Agent on `127.0.0.1:8001`):
+
+```bash
+cp .env.example .env        # development-only placeholders; add GROQ_API_KEY only if you use AGENT_MODEL_PROVIDER=groq
+docker compose up --build
+curl localhost:8000/health   # liveness
+curl localhost:8000/ready    # database reachable and migrations applied
+docker compose down -v       # also drops the database volume
+```
+
+**Test one service** (no Docker, no network, no paid model; every dependency has a fake):
+
+```bash
+cd services/agent-api && make verify        # ruff, mypy, import-linter, pytest, contract drift
+cd services/core-api  && make verify-fast   # same checks, skipping the PostgreSQL tests
+cd services/core-api  && make verify        # also runs the PostgreSQL 18 tests (needs Docker)
+```
+
+**Contracts** are generated from code, so they cannot drift from it. After changing a route or schema:
+
+```bash
+cd services/core-api  && uv run python -m scripts.export_contracts
+cd services/agent-api && uv run python -m scripts.export_contracts
+```
+
+This rewrites `contracts/*.openapi.yaml` and `contracts/schemas/shared.schema.json`. `make verify` fails if they are stale. Routes marked `x-implementation-status: stub` have their final request and response schemas but return `501 NOT_IMPLEMENTED` until their plan lands, so Web and Agent can build against them now. Example payloads are in `contracts/examples/`.
 
 ## Product truth
 A tentative event is not a booking. An acknowledgment is not official confirmation. Empty calendars do not prove availability. LLMs do not own scheduling rules or authorization. An external registration redirect is not proof that a student registered. Synthetic demo data must be labeled as synthetic.

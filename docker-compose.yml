@@ -1,0 +1,78 @@
+# Backend and AI services. The RAG API and Web join this file when their owners add them.
+#
+#   docker compose up --build        # postgres, migrate (one-shot), core-api, agent-api
+#   docker compose down -v           # also drop the database volume
+#
+# Variables come from .env (copy .env.example). The defaults below are development-only
+# placeholders: APP_ENV=demo rejects them, so they cannot be used in a demo by mistake.
+
+name: campuscue
+
+x-core-env: &core-env
+  APP_ENV: ${APP_ENV:-local}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  # Built here from the POSTGRES_* values so there is one source for the credentials.
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-campuscue}:${POSTGRES_PASSWORD:-campuscue}@postgres:5432/${POSTGRES_DB:-campuscue}
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-campuscue}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campuscue}
+      POSTGRES_DB: ${POSTGRES_DB:-campuscue}
+    # PostgreSQL 18 images keep data in a versioned subdirectory of /var/lib/postgresql.
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Not published to the host: another local Postgres often owns 5432. Use
+    # `docker compose exec postgres psql -U campuscue` instead.
+
+  # One-shot: applies migrations, then exits. The API never migrates at start-up.
+  migrate:
+    build: ./services/core-api
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-campuscue}:${POSTGRES_PASSWORD:-campuscue}@postgres:5432/${POSTGRES_DB:-campuscue}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  core-api:
+    build: ./services/core-api
+    environment:
+      <<: *core-env
+      # Core alone holds the session and delegation signing keys, and no LLM credential.
+      SESSION_SIGNING_KEY: ${SESSION_SIGNING_KEY:-local-only-session-key-not-a-secret-0001}
+      DELEGATION_SIGNING_KEY: ${DELEGATION_SIGNING_KEY:-local-only-delegation-key-not-a-secret-0002}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
+      AGENT_API_URL: http://agent-api:8001
+      CAMPUS_GAP_MINUTES: ${CAMPUS_GAP_MINUTES:-120}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${CORE_API_PORT:-8000}:8000"
+
+  agent-api:
+    build: ./services/agent-api
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # The Agent holds the LLM credential and neither of Core's signing keys.
+      AGENT_MODEL_PROVIDER: ${AGENT_MODEL_PROVIDER:-fake}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
+      CORE_API_URL: http://core-api:8000
+      RAG_API_URL: ${RAG_API_URL:-http://rag-api:8002}
+    ports:
+      # Local development only. The demo environment keeps the Agent on the private network.
+      - "127.0.0.1:${AGENT_API_PORT:-8001}:8001"
+
+volumes:
+  pgdata:
