@@ -59,25 +59,25 @@ export default function ResourcesPage() {
     : MOCK_RESOURCES.filter(r => r.type === activeTab);
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-gray-50">
+    <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-[#FDF8F5]">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <div className="p-8 max-w-7xl mx-auto w-full">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">Resource Explorer</h1>
+        <div className="p-8 lg:p-12 max-w-7xl mx-auto w-full">
+          <div className="mb-10">
+            <h1 className="text-3xl font-serif font-bold text-[#7a1b32] mb-6">Resource Explorer</h1>
             
             {/* Tabs */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-rose-100/50">
               <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                 {TABS.map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`
-                      whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors
+                      whitespace-nowrap border-b-2 py-4 px-1 text-sm font-bold uppercase tracking-wider transition-colors
                       ${activeTab === tab
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        ? 'border-[#7a1b32] text-[#7a1b32]'
+                        : 'border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-600'
                       }
                     `}
                   >
@@ -88,12 +88,12 @@ export default function ResourcesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-12">
+          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6 pb-12">
             {filteredResources.map(resource => (
               <ResourceCard key={resource.id} resource={resource} />
             ))}
             {filteredResources.length === 0 && (
-              <div className="col-span-full py-12 text-center text-gray-500">
+              <div className="col-span-full py-12 text-center text-gray-500 font-medium">
                 No resources found for this category.
               </div>
             )}
@@ -102,7 +102,7 @@ export default function ResourcesPage() {
       </div>
 
       {/* Policy Assistant Sidebar */}
-      <div className="w-[400px] flex-shrink-0 shadow-lg z-10 hidden lg:block">
+      <div className="w-[450px] flex-shrink-0 shadow-[0_0_40px_rgb(0,0,0,0.05)] z-10 hidden lg:block border-l border-white/50 bg-white/50 backdrop-blur-xl">
         <PolicyAssistant />
       </div>
     </div>
