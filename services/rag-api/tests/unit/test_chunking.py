@@ -152,3 +152,21 @@ def test_structure_chunker_section_breadcrumb_none():
 def test_structure_chunker_invalid_overlap_raises():
     with pytest.raises(ValueError, match="chunk_overlap must be less than target_chunk_size"):
         StructureChunker(target_chunk_size=100, chunk_overlap=100)
+
+
+def test_chunker_bounds_within_embedding_sequence_limit():
+    chunker = StructureChunker()
+    # 250 words should exceed default target_chunk_size and split
+    long_text = " ".join([f"word{i}" for i in range(250)])
+    page = ParsedPage(page_number=1, text=long_text)
+    chunks = chunker.chunk_pages(
+        pages=[page],
+        document_id="test_doc",
+        title="Test Document",
+        source_url="https://example.com/test.pdf",
+    )
+    assert len(chunks) > 1
+    for c in chunks:
+        # Every chunk must be strictly under 200 words (~256 subword tokens)
+        assert len(c.excerpt.split()) <= 180
+

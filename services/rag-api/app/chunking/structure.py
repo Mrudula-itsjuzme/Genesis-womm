@@ -3,9 +3,9 @@ from app.schemas.retrieval import EvidenceChunk
 
 
 class StructureChunker:
-    """Splits parsed pages into 400-700 token chunks preserving section and page metadata."""
+    """Splits parsed pages into bounded chunks fitting the 256-token embedding window."""
 
-    def __init__(self, target_chunk_size: int = 500, chunk_overlap: int = 50):
+    def __init__(self, target_chunk_size: int = 180, chunk_overlap: int = 30):
         if chunk_overlap >= target_chunk_size:
             raise ValueError("chunk_overlap must be less than target_chunk_size")
         self.target_chunk_size = target_chunk_size
