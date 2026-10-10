@@ -234,8 +234,8 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
         if path in {"/health", "/ready"} or (method, path) in {
             ("POST", "/api/v1/auth/demo-login"),
             ("POST", "/api/v1/events"),
-                ("GET", "/api/v1/events"),
-                ("GET", "/api/v1/events/{event_id}"),
+            ("GET", "/api/v1/events"),
+            ("GET", "/api/v1/events/{event_id}"),
         }:
             assert "x-implementation-status" not in op
         else:
@@ -252,8 +252,8 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("GET", "/ready"),
             ("POST", "/api/v1/auth/demo-login"),
             ("POST", "/api/v1/events"),
-                ("GET", "/api/v1/events"),
-                ("GET", "/api/v1/events/{event_id}"),
+            ("GET", "/api/v1/events"),
+            ("GET", "/api/v1/events/{event_id}"),
         }
     }
     assert len(documented) == len(STUBS)
