@@ -15,7 +15,9 @@ dependencies = [
     "pyjwt==2.15.1",
     "structlog==26.1.0",
     "boto3>=1.34.0",
+    "python-multipart>=0.0.9",
 ]
+
 
 [dependency-groups]
 dev = [
