@@ -108,6 +108,31 @@ def test_an_unknown_event_is_none(session: Session) -> None:
     assert SqlEventStore(session).get(uuid4()) is None
 
 
+def test_event_listing_filters_orders_and_counts_before_pagination(
+    session: Session, world: World
+) -> None:
+    store = SqlEventStore(session)
+    early = world.event(title="Early")
+    late = world.event(
+        title="Late", start_at=START + timedelta(days=1), end_at=END + timedelta(days=1)
+    )
+    for record in (late, early):
+        store.insert(record)
+
+    items, total = store.list_events(
+        club_id=world.club,
+        status=None,
+        resource_id=None,
+        starts_after=None,
+        starts_before=None,
+        limit=1,
+        offset=1,
+    )
+
+    assert total == 2
+    assert [item.id for item in items] == [late.id]
+
+
 def test_an_update_at_the_expected_revision_persists(session: Session, world: World) -> None:
     store = SqlEventStore(session)
     record = world.event()

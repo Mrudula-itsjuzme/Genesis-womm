@@ -134,6 +134,18 @@ class UserIdentity:
 class EventReader(Protocol):
     def get(self, event_id: UUID) -> EventRecord | None: ...
 
+    def list_events(
+        self,
+        *,
+        club_id: UUID | None,
+        status: EventStatus | None,
+        resource_id: UUID | None,
+        starts_after: datetime | None,
+        starts_before: datetime | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[EventRecord], int]: ...
+
     def list_scheduling_candidates(
         self, *, starts_before: datetime, ends_after: datetime
     ) -> list[EventRecord]:

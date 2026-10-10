@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -80,6 +80,35 @@ class SqlEventStore:
     def get(self, event_id: UUID) -> EventRecord | None:
         row = self._session.get(Event, event_id, populate_existing=True)
         return None if row is None else _to_record(row)
+
+    def list_events(
+        self,
+        *,
+        club_id: UUID | None,
+        status: EventStatus | None,
+        resource_id: UUID | None,
+        starts_after: datetime | None,
+        starts_before: datetime | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[EventRecord], int]:
+        filters = []
+        if club_id is not None:
+            filters.append(Event.club_id == club_id)
+        if status is not None:
+            filters.append(Event.status == status.value)
+        if resource_id is not None:
+            filters.append(Event.resource_id == resource_id)
+        if starts_after is not None:
+            filters.append(Event.start_at >= starts_after)
+        if starts_before is not None:
+            filters.append(Event.start_at < starts_before)
+        statement = select(Event).where(*filters).order_by(Event.start_at, Event.id)
+        total = int(
+            self._session.scalar(select(func.count()).select_from(statement.subquery())) or 0
+        )
+        rows = self._session.scalars(statement.limit(limit).offset(offset)).all()
+        return [_to_record(row) for row in rows], total
 
     def list_scheduling_candidates(
         self, *, starts_before: datetime, ends_after: datetime
