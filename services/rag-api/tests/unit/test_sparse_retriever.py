@@ -1,6 +1,7 @@
-import pytest
-from app.schemas.retrieval import EvidenceChunk
+import threading
+
 from app.retrieval.sparse import SparseRetriever
+from app.schemas.retrieval import EvidenceChunk
 
 
 def test_sparse_retriever_exact_keyword_match():
@@ -162,3 +163,54 @@ def test_sparse_retriever_case_insensitivity():
     assert len(results_upper) == 1
     assert len(results_lower) == 1
     assert results_upper[0].score == results_lower[0].score
+
+
+def test_sparse_retriever_thread_safety_during_index():
+    retriever = SparseRetriever()
+    initial_chunks = [
+        EvidenceChunk(
+            evidence_id=f"c{i}",
+            document_id="doc",
+            title="Title",
+            source_url="https://example.com",
+            page_start=1,
+            page_end=1,
+            excerpt=f"chunk number {i} with unique words abc{i}",
+        )
+        for i in range(10)
+    ]
+    retriever.index(initial_chunks)
+
+    errors = []
+
+    def searcher():
+        for _ in range(50):
+            try:
+                res = retriever.search("chunk", top_k=5)
+                assert isinstance(res, list)
+            except Exception as e:  # noqa: BLE001
+                errors.append(e)
+
+    def indexer():
+        for i in range(10):
+            new_chunks = [
+                EvidenceChunk(
+                    evidence_id=f"new_{j}",
+                    document_id="doc",
+                    title="Title",
+                    source_url="https://example.com",
+                    page_start=1,
+                    page_end=1,
+                    excerpt=f"updated chunk {j} with terms def{j}",
+                )
+                for j in range(5)
+            ]
+            retriever.index(new_chunks)
+
+    t1 = threading.Thread(target=searcher)
+    t2 = threading.Thread(target=indexer)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    assert len(errors) == 0
