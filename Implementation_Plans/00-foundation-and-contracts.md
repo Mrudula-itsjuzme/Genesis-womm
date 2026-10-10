@@ -1,6 +1,6 @@
 # Implementation Plan 00: Foundation and Contracts
 
-**Status:** In progress. Backend and AI part complete on `backend-ai` (uncommitted); RAG API and Web pending  
+**Status:** In progress. Backend and AI part complete and merged to `main` (PR #2); the RAG API and Web scaffolds on `main` come from their owner and were not built to this plan  
 **Owner:** All workstream leads  
 **Prerequisites:** Product scope and service boundaries reviewed
 

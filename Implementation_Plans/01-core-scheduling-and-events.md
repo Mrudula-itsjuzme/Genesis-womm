@@ -1,6 +1,6 @@
 # Implementation Plan 01: Core Events and Scheduling
 
-**Status:** Planned  
+**Status:** In progress. Conflict engine, authorization, lifecycle, persistence and the locked write path are done (batches P1 to P11); HTTP routes, auth, projection and seeds (P12 to P15) have not started  
 **Owner:** Core API workstream  
 **Dependencies:** Plan 00 contracts; PostgreSQL available
 
