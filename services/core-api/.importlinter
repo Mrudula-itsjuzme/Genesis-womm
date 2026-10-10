@@ -1,0 +1,121 @@
+[importlinter]
+root_package = app
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = API depends on services, services on domain
+type = layers
+layers =
+    app.api
+    app.services
+    app.domain
+
+[importlinter:contract:domain-is-pure]
+name = Domain imports only the standard library
+type = forbidden
+source_modules =
+    app.domain
+forbidden_modules =
+    app.api
+    app.services
+    app.schemas
+    app.repositories
+    app.models
+    app.clients
+    app.ingestion
+    fastapi
+    starlette
+    pydantic
+    pydantic_settings
+    sqlalchemy
+    alembic
+    psycopg
+    httpx
+    jwt
+    structlog
+
+[importlinter:contract:services-use-ports]
+name = Services reach adapters only through ports
+type = forbidden
+source_modules =
+    app.services
+forbidden_modules =
+    app.api
+    app.schemas
+    app.repositories
+    app.models
+    app.clients
+    app.ingestion
+    fastapi
+    starlette
+    sqlalchemy
+    alembic
+    psycopg
+    httpx
+    jwt
+
+[importlinter:contract:api-via-services]
+name = The API layer never touches adapters directly
+type = forbidden
+source_modules =
+    app.api
+forbidden_modules =
+    app.repositories
+    app.models
+    app.clients
+    app.ingestion
+
+[importlinter:contract:adapters-below-api]
+name = Adapters never import the API layer
+type = forbidden
+source_modules =
+    app.repositories
+    app.models
+    app.clients
+    app.ingestion
+forbidden_modules =
+    app.api
+
+[importlinter:contract:settings-at-composition-root]
+name = Only the composition root reads settings
+type = forbidden
+source_modules =
+    app.api
+    app.services
+    app.domain
+    app.schemas
+    app.repositories
+    app.models
+    app.clients
+    app.ingestion
+forbidden_modules =
+    app.settings
+
+[importlinter:contract:composition-root-is-top]
+name = Nothing imports the composition root
+type = forbidden
+source_modules =
+    app.api
+    app.services
+    app.domain
+    app.schemas
+    app.repositories
+    app.models
+    app.clients
+    app.ingestion
+forbidden_modules =
+    app.main
+    app.container
+
+[importlinter:contract:schemas-are-plain-dtos]
+name = Wire schemas depend only on domain enums
+type = forbidden
+source_modules =
+    app.schemas
+forbidden_modules =
+    app.api
+    app.services
+    app.repositories
+    app.models
+    app.clients
+    app.ingestion
