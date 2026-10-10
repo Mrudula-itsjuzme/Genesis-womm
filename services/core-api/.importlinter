@@ -107,6 +107,14 @@ forbidden_modules =
     app.main
     app.container
 
+[importlinter:contract:schedule-store-is-private]
+name = Only the schedule write service may import the event writers
+type = protected
+protected_modules =
+    app.services.schedule_store
+allowed_importers =
+    app.services.schedule_write
+
 [importlinter:contract:schemas-are-plain-dtos]
 name = Wire schemas depend only on domain enums
 type = forbidden

@@ -12,58 +12,68 @@ const CalendarGrid = () => {
   ];
 
   return (
-    <div className="flex-1 p-4 bg-gray-50 overflow-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Tentative Calendar</h1>
-        <div className="flex space-x-2 bg-white rounded-lg p-1 border border-gray-200">
-          {['Month', 'Week', 'List'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md ${
-                activeTab === tab
-                  ? 'bg-gray-100 text-gray-800'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+    <div className="flex-1 p-8 lg:p-12 overflow-y-auto">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-end mb-8">
+          <div>
+            <h1 className="text-3xl font-serif font-bold text-[#7a1b32] mb-1">Campus Calendar</h1>
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Plan and visualize events</p>
+          </div>
+          
+          <div className="flex space-x-1 bg-white rounded-full p-1 shadow-sm border border-rose-50">
+            {['Month', 'Week', 'List'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-full transition-all ${
+                  activeTab === tab
+                    ? 'bg-[#7a1b32] text-white shadow-md'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-stone-50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 rounded-t-xl">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="py-3 text-center text-sm font-semibold text-gray-600 border-r last:border-r-0 border-gray-200">
-              {day}
-            </div>
-          ))}
-        </div>
-        
-        <div className="grid grid-cols-7 auto-rows-[minmax(120px,auto)]">
-          {Array.from({ length: 35 }).map((_, index) => {
-            const dayEvents = events.filter(e => e.day === index);
-            return (
-              <div key={index} className="border-r border-b border-gray-100 p-2 relative min-h-[120px] last:border-r-0">
-                <span className="text-sm text-gray-400 font-medium">{index + 1}</span>
-                <div className="mt-1 space-y-1">
-                  {dayEvents.map((event, i) => (
-                    <div 
-                      key={i} 
-                      className={`text-xs p-1.5 rounded truncate border ${
-                        event.conflict ? 'bg-red-50 border-red-200 text-red-700' :
-                        event.type === 'tentative' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
-                        'bg-blue-50 border-blue-200 text-blue-700'
-                      }`}
-                    >
-                      {event.title}
-                    </div>
-                  ))}
-                </div>
+        <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-none overflow-hidden">
+          <div className="grid grid-cols-7 border-b border-stone-100 bg-[#FFF5F0]/50">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <div key={day} className="py-4 text-center text-xs font-bold uppercase tracking-wider text-[#7a1b32] border-r last:border-r-0 border-stone-100/50">
+                {day}
               </div>
-            );
-          })}
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-7 auto-rows-[minmax(140px,auto)]">
+            {Array.from({ length: 35 }).map((_, index) => {
+              const dayEvents = events.filter(e => e.day === index);
+              const isToday = index === 18; // Mock today
+              return (
+                <div key={index} className={`border-r border-b border-stone-100/50 p-2.5 relative min-h-[140px] last:border-r-0 transition-colors hover:bg-stone-50/30 ${isToday ? 'bg-rose-50/30' : ''}`}>
+                  <span className={`flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full mb-1 ${isToday ? 'bg-[#7a1b32] text-white shadow-md' : 'text-gray-400'}`}>
+                    {index + 1}
+                  </span>
+                  
+                  <div className="mt-2 space-y-1.5">
+                    {dayEvents.map((event, i) => (
+                      <div 
+                        key={i} 
+                        className={`text-[10px] p-2 rounded-lg font-bold uppercase tracking-wide leading-tight shadow-sm border ${
+                          event.conflict ? 'bg-rose-50 border-rose-100 text-rose-800' :
+                          event.type === 'tentative' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                          'bg-emerald-50 border-emerald-100 text-emerald-700'
+                        }`}
+                      >
+                        {event.title}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

@@ -388,3 +388,5 @@ Genesis-womm/
 - Alembic 1.20 with SQLAlchemy 2.1.4 on PostgreSQL 18 is verified: upgrade, idempotent re-run, downgrade, `alembic check` and the `DATABASE_URL`-only one-shot all pass (`services/core-api/tests/integration/test_migrations.py`).
 - Groq strict `json_schema` support for `llama-3.3-70b-versatile` is unconfirmed; AD-11 relies on tool use plus Pydantic validation instead. Confirm when the Groq provider lands (Plan 03).
 - RAG asked to adopt `X-Request-ID` and the error envelope and to state its storage choice (AD-19).
+- AD-4's concurrency claim is now backed: `tests/integration/test_schedule_concurrency.py` shows exactly one of two racing confirmations wins on PostgreSQL 18, and a control run without the lock double-books. The same-venue exclusion constraint stays Deferred as a backstop.
+- RAG has chosen PostgreSQL with pgvector (`pgvector/pgvector:0.8.1-pg18` in Compose); its tables are in the default schema today, not a `rag` schema with its own role (AD-20).

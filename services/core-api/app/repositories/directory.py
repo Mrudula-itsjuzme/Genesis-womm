@@ -1,0 +1,120 @@
+"""PostgreSQL adapters for who is acting and what can be booked (spine AD-21, AD-16).
+
+Roles are read from rows and turned into an ``Actor`` per request. Nothing a client supplied
+can reach this code as a role.
+"""
+
+from uuid import UUID
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.domain.authz import Actor
+from app.domain.enums import AvailabilityState, FreshnessState, ResourceKind, Role
+from app.models.directory import Club, Membership, Resource, User
+from app.services.ports import MembershipIdentity, ResourceRecord, UserIdentity
+
+
+class SqlClubReader:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def exists(self, club_id: UUID) -> bool:
+        found = self._session.scalar(select(Club.id).where(Club.id == club_id))
+        return found is not None
+
+
+class SqlResourceReader:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def availability_of(self, resource_id: UUID) -> AvailabilityState | None:
+        state = self._session.scalar(
+            select(Resource.availability_state).where(Resource.id == resource_id)
+        )
+        return None if state is None else AvailabilityState(state)
+
+    @staticmethod
+    def _record(row: Resource) -> ResourceRecord:
+        return ResourceRecord(
+            id=row.id,
+            kind=ResourceKind(row.kind),
+            name=row.name,
+            description=row.description,
+            location=row.location,
+            capacity=row.capacity,
+            availability_state=AvailabilityState(row.availability_state),
+            freshness_state=FreshnessState(row.freshness_state),
+            source_id=row.source_id,
+            source_url=row.source_url,
+            collected_at=row.collected_at,
+            last_checked_at=row.last_checked_at,
+            is_synthetic=row.is_synthetic,
+        )
+
+    def get(self, resource_id: UUID) -> ResourceRecord | None:
+        row = self._session.get(Resource, resource_id)
+        return None if row is None else self._record(row)
+
+    def list_resources(
+        self, *, kind: ResourceKind | None, query: str | None, limit: int, offset: int
+    ) -> tuple[list[ResourceRecord], int]:
+        filters = []
+        if kind is not None:
+            filters.append(Resource.kind == kind.value)
+        if query:
+            filters.append(Resource.name.ilike(f"%{query.strip()}%"))
+        statement = select(Resource).where(*filters).order_by(Resource.name, Resource.id)
+        total = int(
+            self._session.scalar(select(func.count()).select_from(statement.subquery())) or 0
+        )
+        rows = self._session.scalars(statement.limit(limit).offset(offset)).all()
+        return [self._record(row) for row in rows], total
+
+
+class SqlActorReader:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def load_actor(self, user_id: UUID, *, via_agent: bool = False) -> Actor | None:
+        user = self._session.execute(select(User.campus_admin).where(User.id == user_id)).first()
+        if user is None:
+            return None
+        memberships = {
+            club_id: Role(role)
+            for club_id, role in self._session.execute(
+                select(Membership.club_id, Membership.role).where(Membership.user_id == user_id)
+            )
+        }
+        return Actor(
+            user_id=user_id,
+            campus_admin=user.campus_admin,
+            memberships=memberships,
+            via_agent=via_agent,
+        )
+
+    def load_identity(self, user_id: UUID) -> UserIdentity | None:
+        user = self._session.scalar(select(User).where(User.id == user_id))
+        if user is None:
+            return None
+        memberships = tuple(
+            MembershipIdentity(club_id=club_id, club_name=club_name, role=Role(role))
+            for club_id, club_name, role in self._session.execute(
+                select(Membership.club_id, Club.name, Membership.role)
+                .join(Club, Club.id == Membership.club_id)
+                .where(Membership.user_id == user_id)
+                .order_by(Club.name, Membership.club_id)
+            )
+        )
+        return UserIdentity(
+            id=user.id,
+            email=user.email,
+            display_name=user.display_name,
+            campus_admin=user.campus_admin,
+            memberships=memberships,
+            is_synthetic=user.is_synthetic,
+        )
+
+    def load_identity_by_email(self, email: str) -> UserIdentity | None:
+        user_id = self._session.scalar(select(User.id).where(User.email == email))
+        return None if user_id is None else self.load_identity(user_id)

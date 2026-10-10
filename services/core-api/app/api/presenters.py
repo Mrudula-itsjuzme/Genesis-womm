@@ -1,0 +1,58 @@
+"""Safe API projections for service records. ORM objects never reach route responses."""
+
+from app.domain.enums import AvailabilityState
+from app.domain.scheduling import Conflict as DomainConflict
+from app.schemas.events import Conflict, EventOut
+from app.schemas.resources import ResourceOut
+from app.services.ports import EventRecord, ResourceRecord
+
+
+def event_out(record: EventRecord, availability: AvailabilityState) -> EventOut:
+    return EventOut(
+        id=record.id,
+        club_id=record.club_id,
+        title=record.title,
+        description=record.description,
+        start_at=record.start_at,
+        end_at=record.end_at,
+        resource_id=record.resource_id,
+        expected_attendance=record.expected_attendance,
+        audience_tags=list(record.audience_tags),
+        status=record.status,
+        revision=record.revision,
+        venue_availability=availability,
+        synthetic=record.is_synthetic,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    )
+
+
+def conflict_out(conflict: DomainConflict) -> Conflict:
+    return Conflict(
+        type=conflict.type,
+        severity=conflict.severity,
+        constraint=conflict.constraint,
+        event_ids=list(conflict.event_ids),
+        start_at=conflict.window.start,
+        end_at=conflict.window.end,
+        message=conflict.message,
+        override_required=conflict.override_required,
+    )
+
+
+def resource_out(record: ResourceRecord) -> ResourceOut:
+    return ResourceOut(
+        id=record.id,
+        kind=record.kind,
+        name=record.name,
+        description=record.description,
+        location=record.location,
+        capacity=record.capacity,
+        availability_state=record.availability_state,
+        freshness_state=record.freshness_state,
+        source_id=record.source_id,
+        source_url=record.source_url,
+        collected_at=record.collected_at,
+        last_checked_at=record.last_checked_at,
+        synthetic=record.is_synthetic,
+    )

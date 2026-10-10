@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from app.domain.enums import AgentActionStatus, AgentActionType, ConflictType, EventStatus, Severity
 from app.schemas.agent import AgentAction, AgentActionCreate, ChatMessage, ChatRequest
+from app.schemas.auth import DemoLoginRequest, SessionOut
 from app.schemas.events import (
     Conflict,
     ConflictCheckRequest,
@@ -33,6 +34,31 @@ def test_event_create_accepts_a_minimal_proposal_and_trims_the_title() -> None:
     assert event.title == "Robotics Demo Day"
     assert event.resource_id is None
     assert event.audience_tags == []
+
+
+def test_demo_login_is_strict_and_session_output_is_typed() -> None:
+    assert DemoLoginRequest.model_validate({"email": "  demo@example.invalid  "}).email == (
+        "demo@example.invalid"
+    )
+    with pytest.raises(ValidationError):
+        DemoLoginRequest.model_validate({"email": "demo@example.invalid", "campus_admin": True})
+
+    session = SessionOut.model_validate(
+        {
+            "access_token": "signed-token",
+            "expires_at": "2026-10-10T08:00:00Z",
+            "user": {
+                "id": str(uuid4()),
+                "email": "demo@example.invalid",
+                "display_name": "Demo Organizer",
+                "campus_admin": False,
+                "memberships": [],
+                "synthetic": True,
+            },
+        }
+    )
+    assert session.token_type == "bearer"
+    assert session.user.synthetic is True
 
 
 @pytest.mark.parametrize(

@@ -31,6 +31,11 @@ def _make_tree(root: Path, extra: dict[str, str]) -> None:
         (root / package / "__init__.py").touch()
     for module in ("settings", "main", "container"):
         (root / "app" / f"{module}.py").touch()
+    (root / "app" / "services" / "schedule_store.py").touch()
+    # The one module allowed to import the event writers.
+    (root / "app" / "services" / "schedule_write.py").write_text(
+        "import app.services.schedule_store\n"
+    )
     for relative, body in extra.items():
         (root / relative).write_text(body)
     (root / ".importlinter").write_text((SERVICE_ROOT / ".importlinter").read_text())
@@ -68,6 +73,11 @@ def test_clean_tree_is_accepted(tmp_path: Path) -> None:
         ("app/services/bad.py", "import app.settings\n"),
         ("app/clients/bad.py", "import app.settings\n"),
         ("app/api/bad.py", "import app.container\n"),
+        # Spine AD-4: nothing else may write an event around the engine and the lock.
+        ("app/services/bad.py", "import app.services.schedule_store\n"),
+        ("app/services/bad.py", "from app.services.schedule_store import EventWriter\n"),
+        ("app/api/bad.py", "import app.services.schedule_store\n"),
+        ("app/repositories/bad.py", "import app.services.schedule_store\n"),
         ("app/repositories/bad.py", "import app.main\n"),
     ],
 )
