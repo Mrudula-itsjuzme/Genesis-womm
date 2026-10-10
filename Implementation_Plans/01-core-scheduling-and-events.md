@@ -117,6 +117,20 @@ Exact module names may be adjusted to the selected project layout, but update th
 - **Expected Commit:** `feat(contracts): preview confirmation with as_status and align examples with the engine`
 - **Definition of Done:** both services pass `make verify`; contract drift check clean; examples equal engine output.
 
+### Batch P5: Authorization decision (spine AD-21)
+- **Files:** `services/core-api/app/domain/authz.py`, `services/core-api/tests/unit/test_authz.py`
+- **Verification:** `uv run pytest tests/unit/test_authz.py`
+- **Expected Commit:** `feat(core): add the single authorization decision point`
+- **Definition of Done:** the full role-by-action matrix is table-tested; only a CAMPUS_ADMIN can confirm or override; a delegated (agent) principal never gets more than the human would, and never confirms, overrides, confirms an agent action or mints a delegation; a student-only actor is denied every organizer action.
+- **Rules:** roles are inputs derived from the database per request, never from a client-supplied value. Scopes: any organizer-class actor; own-club organizer; own-club admin; campus admin; owner of the resource. A campus admin acts for any club. The agent may only view, check conflicts and file proposals.
+
+### Batch P6: Lifecycle transition tables (spine AD-7)
+- **Files:** `services/core-api/app/domain/lifecycle.py`, `services/core-api/tests/unit/test_lifecycle.py`
+- **Verification:** `uv run pytest tests/unit/test_lifecycle.py`
+- **Expected Commit:** `feat(core): add event and commitment lifecycle transitions`
+- **Definition of Done:** the allowed edges equal the spine diagrams exactly and every other pair is rejected; a move into CONFIRMED needs an authorized actor, an evidence reference and sets `verified_by` and `verified_at`; ACKNOWLEDGED is never CONFIRMED; demotion of a CONFIRMED event on a time or venue change is a system step, not a user transition.
+- **Check order:** authorization, then the transition table, then evidence, so an unauthorized actor learns nothing about state.
+
 ## Risks
 - Campus-wide gap may be a product preference rather than official policy.
 - Cross-row temporal constraints require careful concurrency handling.
