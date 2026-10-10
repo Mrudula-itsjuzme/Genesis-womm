@@ -18,6 +18,7 @@ This directory contains versioned service contracts and example payloads. OpenAP
 - Mutation endpoints should accept `Idempotency-Key` when retrying can duplicate a state change.
 - Change endpoints include `expected_revision` or `expected_version`.
 - Do not expose ORM/database objects directly as API schemas.
+- Student academic-risk data is private to the authenticated student. Organizer responses must not contain student calendar titles, timetable entries, attendance values, or warning details.
 
 ## Conflict object
 ```json
@@ -91,3 +92,55 @@ The `.invalid` domain is deliberately illustrative and must not be used as a rea
 ```
 
 The Core API must derive and validate the actor's authorization. A client-provided `authorized_by` value is not proof of authority.
+
+## Student event publication
+```json
+{
+  "event_id": "uuid",
+  "visibility": "CAMPUS_PUBLIC",
+  "registration_mode": "EXTERNAL",
+  "registration_url": "https://example.invalid/register",
+  "registration_opens_at": "2026-10-10T09:00:00+05:30",
+  "registration_closes_at": "2026-10-19T18:00:00+05:30",
+  "published_at": "2026-10-10T09:00:00+05:30"
+}
+```
+
+`registration_mode` is one of `INTERNAL`, `EXTERNAL`, or `NONE`. A publication controls student discovery only; it does not indicate university approval, confirmed venue availability, or registration completion.
+
+## Registration-risk check
+```json
+{
+  "event_id": "uuid",
+  "can_continue": true,
+  "warnings": [
+    {
+      "type": "EXAM_NEXT_DAY",
+      "severity": "warning",
+      "message": "You have an exam tomorrow at 09:00.",
+      "source": "SEEDED_ACADEMIC_CALENDAR"
+    },
+    {
+      "type": "CLASS_ATTENDANCE_RISK",
+      "severity": "warning",
+      "message": "This event overlaps CSE201. Your current attendance is 60%.",
+      "source": "MOCK_ATTENDANCE"
+    }
+  ],
+  "checks_completed": ["ACADEMIC_CALENDAR", "TIMETABLE", "ATTENDANCE"]
+}
+```
+
+Risk types are `EXAM_OVERLAP`, `EXAM_NEXT_DAY`, `CLASS_OVERLAP`, `CLASS_ATTENDANCE_RISK`, and `ACADEMIC_DATA_UNAVAILABLE`. Warnings are advisory. The response belongs only to the current student and does not calculate or claim institutional attendance eligibility.
+
+## Registration result
+```json
+{
+  "event_id": "uuid",
+  "status": "REDIRECTED_TO_EXTERNAL_REGISTRATION",
+  "registration_id": "uuid",
+  "redirect_url": "https://example.invalid/register"
+}
+```
+
+Internal registration returns `REGISTERED`. External registration returns `REDIRECTED_TO_EXTERNAL_REGISTRATION`; the platform does not know whether the student completed the external form.

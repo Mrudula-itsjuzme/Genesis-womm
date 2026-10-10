@@ -8,6 +8,8 @@ External systems and sources:
 - OSA Student Affairs Handbook and other approved policy documents.
 - Campus event pages and verified facility/service information.
 - Official booking or calendar system, only if access is authorized and integration is approved.
+- Student-selected Google Calendar, using read-only access only when the student connects it.
+- Mock attendance and timetable providers for the MVP. An institutional academic-record API is not assumed.
 - Human organizers and authorized administrators.
 - Optional LLM/embedding/reranking providers.
 
@@ -41,6 +43,8 @@ flowchart TB
 Owns operational records and decisions:
 - identity/authorization integration;
 - clubs, memberships, events, resources;
+- event publication, internal registrations, and external-registration redirects;
+- student-private timetable, academic-calendar, and mock-attendance records used for registration-risk checks;
 - schedule validation and transaction-safe conflict prevention;
 - event revisions, commitments, evidence references, dependencies, tasks;
 - scoped administrator overrides and audit history;
@@ -70,6 +74,8 @@ It does not decide current event status or venue availability.
 ### Frontend
 Owns interaction and presentation only. It cannot be the enforcement point for scheduling, permissions or status transitions.
 
+The frontend has separate organizer and student views. The student event feed includes only events that an organizer explicitly published to that audience. Private planning records, commitments, evidence, calendar data, timetable data, attendance values, and registration-risk warnings never appear in organizer views.
+
 ## 4. Trust boundaries
 - Browser → Core API: authenticated public application boundary.
 - Core API → Agent/RAG: private service-to-service boundary.
@@ -77,6 +83,15 @@ Owns interaction and presentation only. It cannot be the enforcement point for s
 - RAG document text → model: untrusted content. Text cannot override system/tool policy.
 - Official confirmation: trusted only when actor/source authorization and evidence checks pass.
 - External LLM/embedding provider: data egress boundary; avoid sending private data unless explicitly approved.
+- Student academic data: private boundary. The Core API returns academic-risk results only to the authenticated student and does not send calendar titles, timetable entries, attendance values, or risk details to organizers, Agent, or RAG.
+
+## 4.1 Student registration-risk flow
+1. An organizer publishes an event with a student audience and one registration mode: internal, external, or none.
+2. A student lists published events and opens an event detail page.
+3. Before registration or external redirect, the Core API evaluates the event interval against the student's seeded or connected academic-calendar events, timetable, and mock attendance snapshot.
+4. Core returns private advisory warnings for direct exam conflicts, next-day exams, and class overlaps with attendance context.
+5. The student chooses to continue or cancel. Warnings do not make an academic eligibility decision.
+6. Internal registration creates a registration record. External mode records only that the student was redirected; it does not claim the external form was completed.
 
 ## 5. Event change flow
 1. User submits proposed changes with the current event revision.
@@ -129,6 +144,7 @@ For development, ports 8001 and 8002 may be published to localhost for direct te
 - Conflict checker unavailable: do not confirm or commit a schedule mutation that requires validation.
 - Stale revision: reject mutation with a conflict response and require refresh/review.
 - Unknown venue availability: present as unknown, not free.
+- Academic data unavailable: registration remains possible and the student sees that no academic-risk check could be completed.
 
 ## 10. Observability
 Propagate `request_id`/correlation ID across Core, Agent and RAG. Log request metadata, tool name, latency, outcome, model/index version and error category. Do not log secrets, private conversation exports, full sensitive document bodies, or unrestricted user prompts by default.
