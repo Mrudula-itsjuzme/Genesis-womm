@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Phone, HeartPulse, Send, Book, Building, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Phone, HeartPulse, Send, Book, Building, CheckCircle2, HelpCircle, Clock } from 'lucide-react';
 
 export default function Dashboard() {
   return (
