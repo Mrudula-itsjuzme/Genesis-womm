@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Phone, HeartPulse, Send, Book, Building, CheckCircle2, HelpCircle, Clock } from 'lucide-react';
 
 export default function Dashboard() {
@@ -10,8 +11,8 @@ export default function Dashboard() {
         <div 
           className="absolute inset-0 z-0 bg-cover bg-center"
           style={{ 
-            backgroundImage: "url('https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
-            filter: "brightness(0.7) sepia(0.3) hue-rotate(-20deg) contrast(1.1) saturate(1.2)"
+            backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/2/2c/Amrita_Vishwa_Vidyapeetham_coimbatore_campus.jpg')",
+            filter: "brightness(0.65) saturate(1.1)"
           }}
         />
         
@@ -21,7 +22,7 @@ export default function Dashboard() {
           <p className="text-lg md:text-xl font-light mb-8 opacity-90 drop-shadow-md">Let's make something happen on campus.</p>
           
           {/* Main Search Bar */}
-          <div className="relative max-w-2xl bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center px-4 py-3 border border-white/20 transition-all hover:bg-white">
+          <div className="relative max-w-2xl bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center px-4 py-3 border border-white/20 transition-all hover:bg-white focus-within:bg-white focus-within:ring-2 focus-within:ring-rose-500">
             <Search className="w-5 h-5 text-gray-500 mr-3" />
             <input 
               type="text" 
@@ -50,7 +51,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           
           {/* Card 1 */}
-          <div className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer flex flex-col justify-between group h-44">
+          <Link href="/plan" className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col justify-between group h-44">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4 backdrop-blur-md">
               <Calendar className="w-5 h-5" />
             </div>
@@ -59,19 +60,19 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <p className="text-xs text-rose-100/70 max-w-[80%]">Find a date, check availability and get started</p>
                 <div className="w-8 h-8 rounded-full bg-white text-rose-900 flex items-center justify-center shadow-md">
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Card 2 */}
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-stone-800 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group h-44 relative overflow-hidden">
+          <Link href="/venues" className="bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between group h-44 relative overflow-hidden">
             <div 
               className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
               style={{ backgroundImage: "url('https://images.unsplash.com/photo-1590457635677-7871b6d05f3b?auto=format&fit=crop&w=600&q=80')" }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-stone-50/95 via-stone-50/80 to-transparent z-0" />
+            <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
             <div className="relative z-10">
               <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-rose-800 flex items-center justify-center mb-4">
                 <MapPin className="w-5 h-5" />
@@ -81,20 +82,20 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-gray-600 max-w-[80%] font-medium">View halls, classrooms, labs and open spaces</p>
                   <div className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm">
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Card 3 */}
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-stone-800 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group h-44 relative overflow-hidden">
+          <Link href="/policy" className="bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between group h-44 relative overflow-hidden">
             <div 
               className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
               style={{ backgroundImage: "url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=600&q=80')" }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-stone-50/95 via-stone-50/80 to-transparent z-0" />
+            <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
             <div className="relative z-10">
               <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-rose-800 flex items-center justify-center mb-4">
                 <FileText className="w-5 h-5" />
@@ -104,20 +105,20 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-gray-600 max-w-[80%] font-medium">Get instant answers from OSA guidelines</p>
                   <div className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm">
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Card 4 */}
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-stone-800 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group h-44 relative overflow-hidden">
+          <Link href="/changes" className="bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between group h-44 relative overflow-hidden">
              <div 
               className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
               style={{ backgroundImage: "url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80')" }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-stone-50/95 via-stone-50/80 to-transparent z-0" />
+            <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
             <div className="relative z-10">
               <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-amber-600 flex items-center justify-center mb-4">
                 <BarChart2 className="w-5 h-5" />
@@ -127,12 +128,12 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-gray-600 max-w-[80%] font-medium">Understand how changes affect other events</p>
                   <div className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm">
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
 
         </div>
 
