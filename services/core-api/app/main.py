@@ -43,6 +43,10 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.state.event_reads = container.event_reads
     app.state.resource_reads = container.resource_reads
     app.state.conflict_checks = container.conflict_checks
+    app.state.delegation = container.delegation
+    if container.internal_api_key is not None:
+        # Absent means the facade fails closed (api/deps.py), never open.
+        app.state.internal_api_key = container.internal_api_key
 
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)

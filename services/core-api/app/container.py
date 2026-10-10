@@ -10,12 +10,14 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.clients.delegation import PyJwtDelegationService
 from app.clients.tokens import PyJwtTokenService
 from app.domain.scheduling import Policy
 from app.domain.time import SystemClock
 from app.repositories.health import SqlReadinessProbe
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.conflict_checks import ConflictCheckService
+from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
 from app.services.readiness import ReadinessService
 from app.services.resource_reads import ResourceReadService
@@ -40,6 +42,8 @@ class Container:
     event_reads: EventReadService | None = None
     resource_reads: ResourceReadService | None = None
     conflict_checks: ConflictCheckService | None = None
+    delegation: DelegationService | None = None
+    internal_api_key: str | None = None
 
     def dispose(self) -> None:
         if self.engine is not None:
@@ -81,6 +85,10 @@ def build_container(settings: Settings) -> Container:
     )
     event_reads = EventReadService(lambda: SqlUnitOfWork(database_sessions))
     resource_reads = ResourceReadService(lambda: SqlUnitOfWork(database_sessions))
+    delegation = DelegationService(
+        lambda: SqlUnitOfWork(database_sessions),
+        PyJwtDelegationService(settings.delegation_signing_key.get_secret_value()),
+    )
     return Container(
         readiness=readiness,
         engine=engine,
@@ -89,4 +97,6 @@ def build_container(settings: Settings) -> Container:
         event_reads=event_reads,
         resource_reads=resource_reads,
         conflict_checks=conflict_checks,
+        delegation=delegation,
+        internal_api_key=settings.internal_api_key.get_secret_value(),
     )
