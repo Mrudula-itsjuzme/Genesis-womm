@@ -2,6 +2,7 @@ from datetime import UTC, timedelta
 from uuid import UUID, uuid4
 
 from app.clients.tokens import PyJwtTokenService
+from app.domain.authz import Actor
 from app.domain.enums import Role
 from app.services.ports import MembershipIdentity, UserIdentity
 from app.services.sessions import SessionService
@@ -18,6 +19,17 @@ class FakeActors:
 
     def load_identity(self, user_id: UUID) -> UserIdentity | None:
         return next((user for user in self._users.values() if user.id == user_id), None)
+
+    def load_actor(self, user_id: UUID, *, via_agent: bool = False) -> Actor | None:
+        user = self.load_identity(user_id)
+        if user is None:
+            return None
+        return Actor(
+            user_id=user.id,
+            campus_admin=user.campus_admin,
+            memberships={membership.club_id: membership.role for membership in user.memberships},
+            via_agent=via_agent,
+        )
 
 
 class FakeUnitOfWork:

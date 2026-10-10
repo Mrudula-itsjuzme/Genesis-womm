@@ -1,6 +1,6 @@
 import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -12,7 +12,7 @@ from app.main import create_app
 from app.schemas.common import ErrorEnvelope
 from app.services.ports import UserIdentity
 from app.services.readiness import ReadinessService
-from app.services.sessions import IssuedSession
+from app.services.sessions import IssuedSession, SessionService
 from tests.fakes import FakeReadinessProbe, make_settings
 
 EVENT = str(uuid4())
@@ -76,8 +76,11 @@ def client() -> TestClient:
     )
     container = Container(
         readiness=ReadinessService(FakeReadinessProbe(), "0001"),
-        sessions=FakeSessionService(
-            IssuedSession(access_token="demo-token", expires_at=datetime.now(UTC), user=user)
+        sessions=cast(
+            SessionService,
+            FakeSessionService(
+                IssuedSession(access_token="demo-token", expires_at=datetime.now(UTC), user=user)
+            ),
         ),
     )
     return TestClient(create_app(make_settings(), container), raise_server_exceptions=False)

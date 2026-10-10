@@ -1,5 +1,4 @@
-from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -33,6 +32,6 @@ class UserOut(BaseModel):
 
 class SessionOut(BaseModel):
     access_token: str = Field(min_length=1)
-    token_type: str = "bearer"
+    token_type: Literal["bearer"] = "bearer"  # noqa: S105 - OAuth bearer scheme identifier
     expires_at: CampusDatetime
     user: UserOut

@@ -180,6 +180,22 @@ class ActorReader(Protocol):
         ...
 
 
+class DirectoryUnitOfWork(Protocol):
+    """The short read-only transaction used to resolve a user session."""
+
+    @property
+    def actors(self) -> ActorReader: ...
+
+    def __enter__(self) -> Self: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None: ...
+
+
 class AuditWriter(Protocol):
     def add(self, record: AuditRecord) -> None: ...
 

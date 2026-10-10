@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.services.ports import TokenService, UnitOfWork, UserIdentity
+from app.services.ports import DirectoryUnitOfWork, TokenService, UserIdentity
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,9 @@ class IssuedSession:
 
 
 class SessionService:
-    def __init__(self, uow_factory: Callable[[], UnitOfWork], tokens: TokenService) -> None:
+    def __init__(
+        self, uow_factory: Callable[[], DirectoryUnitOfWork], tokens: TokenService
+    ) -> None:
         self._uow_factory = uow_factory
         self._tokens = tokens
 

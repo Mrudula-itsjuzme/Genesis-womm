@@ -1875,6 +1875,7 @@ components:
           title: Access Token
         token_type:
           type: string
+          const: bearer
           title: Token Type
           default: bearer
         expires_at:

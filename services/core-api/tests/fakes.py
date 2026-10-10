@@ -52,6 +52,7 @@ from app.services.ports import (  # noqa: E402
     EvidenceData,
     OverrideRecord,
     StoredResponse,
+    UserIdentity,
 )
 
 INACTIVE = {EventStatus.REJECTED, EventStatus.CANCELLED, EventStatus.COMPLETED}
@@ -203,6 +204,12 @@ class _Actors:
                 via_agent=via_agent,
             )
         )
+
+    def load_identity(self, user_id: UUID) -> UserIdentity | None:
+        return None
+
+    def load_identity_by_email(self, email: str) -> UserIdentity | None:
+        return None
 
 
 class _Audit:
