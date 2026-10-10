@@ -101,7 +101,7 @@ def _operations(openapi: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]
 
 def test_every_route_but_the_probes_is_marked_as_a_stub(openapi: dict[str, Any]) -> None:
     for method, path, op in _operations(openapi):
-        if path in {"/health", "/ready"}:
+        if path in {"/health", "/ready"} or "/proposals" in path:
             assert "x-implementation-status" not in op
         else:
             assert op.get("x-implementation-status") == "stub", f"{method} {path}"
@@ -111,9 +111,10 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
     documented = {
         (method, path.replace(EVENT, "{event_id}"))
         for method, path, _ in _operations(openapi)
-        if path not in {"/health", "/ready"}
+        if path not in {"/health", "/ready"} and "/proposals" not in path
     }
     assert len(documented) == len(STUBS)
+
 
 
 def test_validation_errors_are_documented_with_the_envelope_not_fastapis_default(
