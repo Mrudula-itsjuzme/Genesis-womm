@@ -113,9 +113,16 @@ class EventReader(Protocol):
 
 
 class ResourceReader(Protocol):
-    def availability_of(self, resource_id: UUID | None) -> AvailabilityState:
-        """UNKNOWN for no venue or an unknown one. An empty calendar never means free."""
+    def availability_of(self, resource_id: UUID) -> AvailabilityState | None:
+        """The venue's evidence-backed state, or None if there is no such resource.
+
+        A venue starts UNKNOWN. An empty calendar never means it is free.
+        """
         ...
+
+
+class ClubReader(Protocol):
+    def exists(self, club_id: UUID) -> bool: ...
 
 
 class OverrideReader(Protocol):
@@ -150,6 +157,7 @@ class UnitOfWork(Protocol):
     """One transaction. Leaving the block without ``commit`` rolls everything back."""
 
     events: EventReader
+    clubs: ClubReader
     resources: ResourceReader
     overrides: OverrideReader
     actors: ActorReader
