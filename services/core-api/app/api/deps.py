@@ -12,6 +12,7 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from app.api.errors import ApiError
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
+from app.services.event_reads import EventReadService
 from app.services.readiness import ReadinessService
 from app.services.schedule_write import ScheduleWriteService
 from app.services.sessions import SessionService
@@ -50,6 +51,13 @@ def get_schedule_write_service(request: Request) -> ScheduleWriteService:
     if service is None:
         raise RuntimeError("schedule write service is not configured")
     return cast(ScheduleWriteService, service)
+
+
+def get_event_read_service(request: Request) -> EventReadService:
+    service = getattr(request.app.state, "event_reads", None)
+    if service is None:
+        raise RuntimeError("event read service is not configured")
+    return cast(EventReadService, service)
 
 
 def require_session_actor(
