@@ -1,6 +1,6 @@
 # Implementation Plan 01: Core Events and Scheduling
 
-**Status:** In progress. Conflict engine, authorization, lifecycle, persistence and the locked write path are done (P1 to P11). Demo sessions and authenticated draft creation are complete; read routes, conflict projection, transitions, overrides, synthetic seeds and broader HTTP coverage remain.
+**Status:** In progress. Conflict engine, authorization, lifecycle, persistence, the locked write path, demo sessions, authorized reads, transitions, overrides, advisory conflict checks and the Agent facade's authentication and read tools are done. Agent action persistence, `ConflictProjection`, synthetic seeds and the Core side of the Agent chat remain (see HANDOFF.md).
 **Owner:** Core API workstream  
 **Dependencies:** Plan 00 contracts; PostgreSQL available
 
@@ -231,3 +231,5 @@ Exact module names may be adjusted to the selected project layout, but update th
 - 2026-10-10: P7 to P11 executed; see the execution record above for deviations and the red-commit incident.
 - 2026-10-10: Batch P4 exceeds 3 files by design (AGENTS.md 11.3.3, atomic multi-service changeset): the Agent's tests compare its mirror strictly against Core's contract and examples, so a required response field (`evaluated_as`) cannot land in smaller green commits. No contract is otherwise broken; `as_status` is optional.
 - 2026-10-10: Added the conflict engine slice (batches P1 to P4) for the backend/AI workstream. Persistence, the write path and routes remain as the plan's later steps. Corrected the conflict `window` wording from Plan 00's schemas: for overlapping events it is the shared interval, which also fixes nested events at different venues.
+- 2026-10-11: The Agent facade slice exceeds 3 files in one commit (`1215882`: `app/api/routes/internal.py`, two test files and the regenerated `contracts/core-api.openapi.yaml`) because a route change and its generated contract cannot be separated without leaving the contract-drift gate red (AGENTS.md 11.3.3). No other batch exceeded the limit.
+- 2026-10-11: Two defects in code merged from the teammate's pushes were fixed under AGENTS.md 10.3 rather than planned: the Agent's HTTP clients called routes that do not exist in Core or RAG (now pinned by recording tests), and Core did not return conflicts in a 409 or map `InvalidRequestError` (now both). Details and the remaining weak spots are in HANDOFF.md.
