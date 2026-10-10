@@ -7,7 +7,7 @@ operation as that person through the same write path as any other request.
 """
 
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -323,6 +323,23 @@ class AgentActionService:
             return uow.agent_actions.list_for(
                 actor.user_id, status=status, event_id=event_id, limit=limit, offset=offset
             )
+
+    def owned_by(self, actor: Actor, action_ids: Sequence[UUID]) -> list[AgentActionRecord]:
+        """The actor's own proposals among these ids, as stored, in the order asked and once each.
+
+        An id that does not exist, or belongs to someone else, is simply absent.
+        """
+        found: list[AgentActionRecord] = []
+        seen: set[UUID] = set()
+        with self._uow_factory() as uow:
+            for action_id in action_ids:
+                if action_id in seen:
+                    continue
+                seen.add(action_id)
+                record = uow.agent_actions.get(action_id)
+                if record is not None and record.requested_by == actor.user_id:
+                    found.append(record)
+        return found
 
     # ---- deciding ----
 

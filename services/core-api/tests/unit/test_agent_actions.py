@@ -659,3 +659,44 @@ def test_rejecting_loses_to_another_rejection_and_agrees_with_it(world: World) -
     rejected = racing(world, rejected_by_someone).reject(ctx(ORGANIZER), action.id)
 
     assert rejected.status is AgentActionStatus.REJECTED
+
+
+# ---- re-loading proposals by id (the chat reply is checked against this) ---------------
+
+
+def other_agent() -> Actor:
+    return Actor(user_id=OTHER_CLUB.user_id, memberships=OTHER_CLUB.memberships, via_agent=True)
+
+
+def test_owned_by_returns_only_the_actors_own_proposals_in_the_order_asked(world: World) -> None:
+    first = world.svc.file(ctx(AGENT), draft_command(title="First")).action
+    second = world.svc.file(ctx(AGENT), draft_command(title="Second")).action
+    theirs = world.svc.file(ctx(other_agent()), draft_command(club_id=str(CLUB_B))).action
+
+    found = world.svc.owned_by(ORGANIZER, [second.id, theirs.id, uuid4(), first.id])
+
+    assert [a.id for a in found] == [second.id, first.id]
+
+
+def test_owned_by_returns_each_proposal_once(world: World) -> None:
+    only = world.svc.file(ctx(AGENT), draft_command()).action
+
+    found = world.svc.owned_by(ORGANIZER, [only.id, only.id, only.id])
+
+    assert [a.id for a in found] == [only.id]
+
+
+def test_owned_by_reflects_the_current_state_not_what_anyone_claimed(world: World) -> None:
+    action = world.svc.file(ctx(AGENT), draft_command()).action
+    world.svc.reject(ctx(ORGANIZER), action.id)
+
+    [found] = world.svc.owned_by(ORGANIZER, [action.id])
+
+    assert found.status is AgentActionStatus.REJECTED
+
+
+def test_owned_by_with_nothing_asked_reads_nothing(world: World) -> None:
+    log_before = len(world.db.log)
+
+    assert world.svc.owned_by(ORGANIZER, []) == []
+    assert "read:agent_action" not in world.db.log[log_before:]

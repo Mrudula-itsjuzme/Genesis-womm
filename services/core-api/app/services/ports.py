@@ -8,7 +8,7 @@ live in ``schedule_store``, which only ``ScheduleWriteService`` may import (spin
 from dataclasses import dataclass, replace
 from datetime import datetime
 from types import TracebackType
-from typing import Any, Protocol, Self
+from typing import Any, Literal, Protocol, Self
 from uuid import UUID
 
 from app.domain.authz import Actor
@@ -390,3 +390,21 @@ class AgentActionUnitOfWork(Protocol):
     ) -> None: ...
 
     def commit(self) -> None: ...
+
+
+@dataclass(frozen=True)
+class ChatTurn:
+    """What a person said to the planning assistant: bounded history, newest last."""
+
+    messages: tuple[tuple[Literal["user", "assistant"], str], ...]
+    event_id: UUID | None = None
+
+
+class AgentGateway(Protocol):
+    def chat(self, turn: ChatTurn, *, delegation_token: str, request_id: str) -> dict[str, Any]:
+        """Relay one turn to the Agent and return its reply as decoded JSON.
+
+        Raises ``AgentUnavailableError`` when it cannot be reached or does not answer in time,
+        and ``AgentOutputInvalidError`` when it answers with something that is not a reply.
+        """
+        ...
