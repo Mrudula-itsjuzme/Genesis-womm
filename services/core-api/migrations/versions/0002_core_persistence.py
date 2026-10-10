@@ -159,6 +159,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_events_club_id", "events", ["club_id"], schema=SCHEMA)
     op.create_index("ix_events_status", "events", ["status"], schema=SCHEMA)
+    op.create_index("ix_events_end_at", "events", ["end_at"], schema=SCHEMA)
 
     op.create_table(
         "event_revisions",

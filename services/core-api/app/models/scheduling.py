@@ -62,6 +62,8 @@ class Event(Base):
         Index("ix_events_resource_id_start_at", "resource_id", "start_at"),
         Index("ix_events_club_id", "club_id"),
         Index("ix_events_status", "status"),
+        # The conflict window asks for events that have not ended yet: `end_at > :t`.
+        Index("ix_events_end_at", "end_at"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
