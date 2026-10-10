@@ -7,6 +7,13 @@ CampusCue helps student clubs plan events **before approvals arrive**, discover 
 
 It is **not** an official venue-booking portal, a replacement for Student Affairs, or another generic club directory.
 
+
+## UI Concept Mockup
+
+![CampusCue dashboard, tentative calendar, campus resource explorer, policy assistant, change-impact tracking and reports](assets/campuscue-ui-mockup.webp)
+
+*Concept visualization only. Dates, event listings, capacities, policy citations, sync indicators and approval statuses shown in the image are illustrative, not verified live Amrita data. The actual product must display source-backed facts and mark unverified information clearly.*
+
 ---
 
 ## 1. The problem
