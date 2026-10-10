@@ -187,6 +187,27 @@ Exact module names may be adjusted to the selected project layout, but update th
 - **Expected Commit:** `test(core): verify the write path and its concurrency on postgres 18`
 - **Definition of Done:** two sessions racing to confirm conflicting events yield exactly one CONFIRMED and one `CONFLICT_DETECTED`; a control run without the lock lets both through, which proves the test can see the race.
 
+### Execution record: persistence and write path (2026-10-10, branch `backend-ai`)
+
+**Status:** P7 to P11 complete and verified. The HTTP milestone (P12 to P15) has not started.
+
+| Check | Result |
+|---|---|
+| `services/core-api: make verify` (exit 0) | 494 unit and contract tests, plus 96 on PostgreSQL 18; ruff, format, mypy (83 files), 9 import-linter contracts, contract drift clean |
+| `services/agent-api: make verify` (exit 0) | 176 tests (unchanged) |
+| Concurrency | Two sessions racing to confirm conflicting events: exactly one wins. The control run with the lock disabled double-books, which proves the test can see the race. Eight sessions racing for one slot: one winner. 12 consecutive runs, no flake. |
+| Mutation checks | 28 deliberate breakages across the write service, adapters, unit of work, migration drift and the query window (lock removed or moved, blocking ignored, warnings blocking, stale check, early denial, idempotency, audit, revision history, transaction boundary, window edges, lock lifetime). Each failed the intended test; one real gap (venue availability on transitions) was found and closed. |
+| Per-commit isolation | Every commit of the slice was extracted and checked on its own tree (lint, types, layering, tests). |
+
+**Deviations from the batches above:**
+- P8's in-memory unit of work moved to P9; P9 became several commits: a JSON codec (P9a), a lifecycle helper that lets the service deny before taking the lock, a ports adjustment so a missing club or venue is a clean not-found, and read-only port properties (a protocol attribute is invariant, so the fake could not satisfy it).
+- Added, not planned: the candidate query is bounded to the candidate's interval widened by the campus gap (`list_scheduling_candidates(starts_before, ends_after)`), with a property test that dropping everything outside the window never changes the engine's answer, and index `ix_events_end_at`. Without it every write would re-read every confirmed event ever stored. Migration `0002` was amended in place because it had not been applied anywhere shared.
+- `migrations/env.py` now compares only schema `core` and ignores the version table. Before this, `alembic check` passed vacuously because autogenerate reflected only the default schema.
+- Two explicitly named unique constraints bypassed the naming convention; they now carry full conventional names.
+- A refusal's audit write is guarded twice: its own transaction, and a suppressed logger, so a broken audit store or logger can never replace the real refusal.
+
+**Incident, recorded for honesty:** three commits were made while one test was failing, because a gate command piped pytest through `tail` and so hid the exit code. The test failed only in the full run: an earlier test configured structlog under `capsys`, leaving it writing to a closed stdout, and the log call inside an `except` handler then raised and masked a `NotAuthorizedError`. The commits were unpushed and were reset and redone. Fixes: a test fixture that resets structlog between tests, a guard around the handler's own logging with a regression test, and a commit helper that refuses to commit unless `make verify-fast` (or `verify`) exits 0.
+
 ### Next milestone (not in this slice)
 - **P12:** contract additions (`POST /api/v1/events/{event_id}/transitions`, `POST /api/v1/overrides`, `POST /api/v1/auth/demo-login`) with examples, as one contract-first change.
 - **P13:** demo-login, session tokens and actor resolution from database rows (AD-21).
@@ -201,5 +222,6 @@ Exact module names may be adjusted to the selected project layout, but update th
 ## Deviation log
 - Initial plan dated 2026-10-10; implementation not started.
 - 2026-10-10: Added the persistence and write path slice (batches P7a to P11) for the backend/AI workstream; HTTP, auth, projection and seeds are staged as P12 to P15. The first-pass Core on `main` was replaced by the layered Core before this slice (PR #2), so there is one `events` table and one migration root.
+- 2026-10-10: P7 to P11 executed; see the execution record above for deviations and the red-commit incident.
 - 2026-10-10: Batch P4 exceeds 3 files by design (AGENTS.md 11.3.3, atomic multi-service changeset): the Agent's tests compare its mirror strictly against Core's contract and examples, so a required response field (`evaluated_as`) cannot land in smaller green commits. No contract is otherwise broken; `as_status` is optional.
 - 2026-10-10: Added the conflict engine slice (batches P1 to P4) for the backend/AI workstream. Persistence, the write path and routes remain as the plan's later steps. Corrected the conflict `window` wording from Plan 00's schemas: for overlapping events it is the shared interval, which also fixes nested events at different venues.
