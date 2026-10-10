@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -234,3 +234,78 @@ def test_a_delegated_user_can_check_a_candidate_for_their_own_club(world: World)
 
 def test_the_unsaved_candidate_is_the_nil_uuid_the_agent_is_told_to_expect() -> None:
     assert str(UNSAVED_CANDIDATE_ID) == "00000000-0000-0000-0000-000000000000"
+
+
+# ---- one entry point for the facade: a saved event, or a candidate -------------------
+
+
+def test_a_request_naming_a_saved_event_checks_that_event(world: World) -> None:
+    saved = draft(world, venue=CERTIFIED)
+
+    result = checker(world).check_request(ORGANIZER, event_id=saved.event.id)
+
+    assert result.saved
+    assert result.event.id == saved.event.id
+
+
+def test_a_request_with_a_club_and_times_checks_an_unsaved_candidate(world: World) -> None:
+    result = checker(world).check_request(
+        ORGANIZER, club_id=CLUB_A, start_at=at(11), end_at=at(13), resource_id=CERTIFIED
+    )
+
+    assert not result.saved
+    assert result.event.id == UNSAVED_CANDIDATE_ID
+
+
+def test_a_saved_event_check_keeps_the_difference_between_omitted_and_null_venue(
+    world: World,
+) -> None:
+    saved = draft(world, venue=CERTIFIED)
+    service = checker(world)
+
+    kept = service.check_request(ORGANIZER, event_id=saved.event.id)
+    cleared = service.check_request(
+        ORGANIZER, event_id=saved.event.id, resource_id=None, resource_id_was_provided=True
+    )
+
+    assert kept.event.resource_id == CERTIFIED
+    assert cleared.event.resource_id is None
+
+
+def test_naming_both_a_saved_event_and_a_club_is_ambiguous(world: World) -> None:
+    saved = draft(world)
+    with pytest.raises(InvalidRequestError, match="either"):
+        checker(world).check_request(ORGANIZER, event_id=saved.event.id, club_id=CLUB_A)
+
+
+def test_naming_neither_a_saved_event_nor_a_club_is_a_bad_request(world: World) -> None:
+    with pytest.raises(InvalidRequestError, match="event_id or club_id"):
+        checker(world).check_request(ORGANIZER)
+
+
+@pytest.mark.parametrize(
+    ("start", "end"),
+    [(at(11), None), (None, at(13)), (None, None)],
+    ids=["no end", "no start", "no times"],
+)
+def test_a_candidate_needs_both_times(
+    world: World, start: datetime | None, end: datetime | None
+) -> None:
+    with pytest.raises(InvalidRequestError, match="start_at and end_at"):
+        checker(world).check_request(ORGANIZER, club_id=CLUB_A, start_at=start, end_at=end)
+
+
+def test_a_candidate_request_can_preview_a_confirmation(world: World) -> None:
+    confirmed(world, actor=OTHER_CLUB, club=CLUB_B, venue=CERTIFIED)
+
+    result = checker(world).check_request(
+        ORGANIZER,
+        club_id=CLUB_A,
+        start_at=at(11),
+        end_at=at(13),
+        resource_id=CERTIFIED,
+        as_status=EventStatus.CONFIRMED,
+    )
+
+    assert result.event.status is EventStatus.CONFIRMED
+    assert any(c.severity is Severity.BLOCKING for c in result.conflicts)

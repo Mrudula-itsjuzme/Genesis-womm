@@ -68,6 +68,44 @@ class ConflictCheckService:
             )
             return self._evaluate(uow, candidate, saved=True)
 
+    def check_request(
+        self,
+        actor: Actor,
+        *,
+        event_id: UUID | None = None,
+        club_id: UUID | None = None,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
+        resource_id: UUID | None = None,
+        resource_id_was_provided: bool = False,
+        as_status: EventStatus | None = None,
+    ) -> ConflictCheckResult:
+        """Check a saved event or an unsaved candidate, whichever the request describes."""
+        if event_id is not None and club_id is not None:
+            raise InvalidRequestError("name either event_id or club_id, not both")
+        if event_id is not None:
+            return self.check(
+                actor,
+                event_id,
+                start_at=start_at,
+                end_at=end_at,
+                resource_id=resource_id,
+                resource_id_was_provided=resource_id_was_provided,
+                as_status=as_status,
+            )
+        if club_id is None:
+            raise InvalidRequestError("event_id or club_id is required")
+        if start_at is None or end_at is None:
+            raise InvalidRequestError("a candidate needs both start_at and end_at")
+        return self.check_candidate(
+            actor,
+            club_id=club_id,
+            start_at=start_at,
+            end_at=end_at,
+            resource_id=resource_id,
+            as_status=as_status,
+        )
+
     def check_candidate(
         self,
         actor: Actor,
