@@ -1,7 +1,10 @@
 from functools import lru_cache
 
+import numpy as np
+
 from app.config import settings
 from app.generation.groq_client import GroundedGenerator
+from app.ingest import load_persisted_corpus
 from app.retrieval.dense import DenseRetriever
 from app.retrieval.sparse import SparseRetriever
 from app.schemas.retrieval import EvidenceChunk
@@ -32,18 +35,32 @@ _SEED_CHUNKS = [
 ]
 
 
+def _get_initial_corpus() -> tuple[list[EvidenceChunk], np.ndarray | None]:
+    chunks, embeddings = load_persisted_corpus()
+    if chunks:
+        return chunks, embeddings
+    return _SEED_CHUNKS, None
+
+
 @lru_cache
 def get_dense_retriever() -> DenseRetriever:
     use_mock = settings.rag_embedding_provider != "local"
     retriever = DenseRetriever(use_mock_embeddings=use_mock)
-    retriever.index(_SEED_CHUNKS)
+    chunks, embeddings = _get_initial_corpus()
+    if embeddings is not None and not use_mock and len(chunks) == len(embeddings):
+        with retriever._lock:
+            retriever.chunks = list(chunks)
+            retriever.embeddings = embeddings
+    else:
+        retriever.index(chunks)
     return retriever
 
 
 @lru_cache
 def get_sparse_retriever() -> SparseRetriever:
     retriever = SparseRetriever()
-    retriever.index(_SEED_CHUNKS)
+    chunks, _ = _get_initial_corpus()
+    retriever.index(chunks)
     return retriever
 
 
