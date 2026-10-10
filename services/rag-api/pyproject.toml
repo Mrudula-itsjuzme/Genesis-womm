@@ -47,8 +47,16 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
     "sqlalchemy.*",
+    "pgvector",
     "pgvector.*",
     "requests.*",
     "bs4.*",
+    "pandas.*",
+    "pandas",
+    "datasets.*",
+    "datasets",
+    "ragas.*",
+    "ragas",
 ]
 ignore_missing_imports = true
+
