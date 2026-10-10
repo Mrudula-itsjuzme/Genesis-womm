@@ -14,25 +14,27 @@ All required models have been pre-downloaded and verified in the local HuggingFa
 
 | Model Role | HuggingFace Identifier | Dimension / Output | Local Footprint | Purpose |
 |---|---|---|---|---|
-| **Dense Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | 384d normalized vector | ~90 MB | Semantic similarity search via dot product cosine similarity |
+| **Dense Embeddings** | `BAAI/bge-base-en-v1.5` | 768d normalized vector | ~430 MB | High-capacity semantic search (512 token context window, MTEB retrieval SOTA) |
 | **Cross-Encoder Re-ranker** | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Relevance logit score | ~90 MB | Stage 2 joint-attention candidate re-ranking |
 | **Neural Sparse (SPLADE)** | `naver/splade-cocondenser-ensembledistil` | 30,522d sparse term weights | ~250 MB | Semantic term expansion without losing exact keyword precision |
 | **Exact Keyword (Sparse)** | In-memory BM25 (`SparseRetriever`) | Term frequency / IDF | 0 MB (Code) | Deterministic matching for acronyms, room numbers, and policy codes |
 
 > [!NOTE]
-> Local model weights are cached under `~/.cache/huggingface/hub/` on Windows/Linux and do not require internet access once loaded.
+> Local model weights are cached under `~/.cache/huggingface/hub/` on Windows/Linux and are strictly excluded from Git. Run `python services/rag-api/scripts/download_models.py` to download or update them.
 
 ---
 
 ## 2. Structure-Aware Chunking Pipeline (`COR-01`)
 
-### 2.1 The 256-Token Sequence Boundary
-The dense embedding model (`all-MiniLM-L6-v2`) enforces a hard maximum sequence limit of **256 WordPiece tokens**. Chunks exceeding 256 tokens are silently truncated by BERT, causing severe information loss.
+### 2.1 High-Capacity 768-Dimension Semantic Space & 512-Token Boundary
+The dense embedding model is upgraded to **`BAAI/bge-base-en-v1.5` (768 dimensions)**:
+1. **Geometric Capacity:** 768 dimensions provides double the feature space compared to 384d models, resolving subtle distinction between related university procedures (e.g. *OD attendance approvals* vs. *medical leave exemption* vs. *condonation*).
+2. **512-Token Context Window:** The 512-token sequence limit comfortably accommodates rich chunks up to 300+ words with full section breadcrumbs and headings without truncation.
 
 In `services/rag-api/app/chunking/structure.py`, the chunker is calibrated as follows:
 - **Target chunk size:** `180 words` (~230–240 WordPiece tokens)
 - **Overlap:** `30 words` (~40 WordPiece tokens)
-- **Result:** 100% of chunk content is preserved within the 256-token window without truncation.
+- **Result:** Chunks sit comfortably within the 512-token window, ensuring zero truncation while preserving localized semantic density.
 
 ### 2.2 Provenance & Evidence Invariants
 Every chunk created by `StructureChunker` generates a deterministic `EvidenceChunk` with:
@@ -64,10 +66,10 @@ services/rag-api/.venv/Scripts/python.exe services/rag-api/app/ingest.py
    - PDF pages are extracted page-by-page via `PDFParser` preserving page boundaries.
    - HTML pages are cleaned via `BeautifulSoup` (stripping navigation, headers, footers, scripts).
 3. **Calibrated Chunking:** `StructureChunker(target_chunk_size=180, chunk_overlap=30)` outputs **78 high-fidelity chunks**.
-4. **Dense Vectorization:** Computes normalized 384d vectors using local `SentenceTransformer('all-MiniLM-L6-v2')`.
+4. **Dense Vectorization:** Computes normalized 768d vectors using local `SentenceTransformer('BAAI/bge-base-en-v1.5')`.
 5. **Corpus Persistence:** Saves artifacts to `services/rag-api/data/`:
    - `corpus_chunks.jsonl` (78 chunks, JSON Lines)
-   - `dense_embeddings.npy` (Matrix shape `(78, 384)`, float32)
+   - `dense_embeddings.npy` (Matrix shape `(78, 768)`, float32)
 6. **PostgreSQL Sync (Optional):** If PostgreSQL is running (`docker compose up -d postgres`), chunks are automatically synced to the `document_chunks` table.
 
 ---
@@ -85,7 +87,7 @@ from app.retrieval.fusion import reciprocal_rank_fusion
 chunks, embeddings = load_persisted_corpus()
 
 # 2. Initialize retrievers
-dense = DenseRetriever(model_name="all-MiniLM-L6-v2")
+dense = DenseRetriever(model_name="BAAI/bge-base-en-v1.5")
 dense.chunks = chunks
 dense.embeddings = embeddings
 
