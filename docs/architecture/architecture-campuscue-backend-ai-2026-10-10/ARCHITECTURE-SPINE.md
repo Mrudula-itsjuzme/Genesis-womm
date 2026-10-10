@@ -5,7 +5,7 @@ purpose: build-substrate
 altitude: initiative
 paradigm: 'Two hexagons (ports-and-adapters) joined by typed HTTP contracts: Core API as functional-core/imperative-shell modular monolith, Agent API as a bounded tool-calling orchestrator'
 scope: 'Core API and Agent API of CampusCue (branch backend-ai). RAG API and Web are external parties reached only through contracts/.'
-status: draft
+status: final
 created: '2026-10-10'
 updated: '2026-10-10'
 binds: ['PROJECT.md core features 1-10', 'Implementation_Plans/01', 'Implementation_Plans/03', 'Implementation_Plans/05', 'Implementation_Plans/06 (structured path)']
@@ -15,7 +15,7 @@ companions: ['walkthrough.html', 'https://claude.ai/artifact/LF5WfmFEPtTtmz9whYs
 
 # Architecture Spine — CampusCue Backend and AI
 
-Tags: `[ADOPTED]` = already settled by the repo docs. `[ASSUMPTION]` = Fast-path inference, correct in review.
+Tags: `[ADOPTED]` = settled by the repo docs or confirmed by the backend/AI owner (2026-10-10, recommended options taken). `[ASSUMPTION]` = open inference, correct in review. None remain.
 
 ## Design Paradigm
 
@@ -56,7 +56,7 @@ Arrows read "may import". Nothing imports `api`. `domain` imports nothing outsid
 - **Prevents:** domain logic in routes or prompts; I/O inside scheduling code; services that cannot run or test alone.
 - **Rule:** Core: `domain/` ← `services/` (use cases, and the ports they define) ← `api/`; `repositories/`, `models/`, `clients/`, `ingestion/` implement ports and may import `domain/` and service ports. Agent: `api/` → `orchestration/` → `tools/` → `ports`; `providers/` and `clients/` implement ports. Every outbound dependency (database, Agent, RAG, Groq, clock, id source, HTTP fetch) sits behind a port with a deterministic fake. Import direction is enforced by import-linter (`layers`; `forbidden` including external packages such as fastapi, sqlalchemy and httpx inside `domain/`; `protected` for single-importer modules). Call-level bans on `datetime.datetime.now` and `os.environ` are enforced by ruff `banned-api` in a nested `ruff.toml` under `domain/` and `services/`. Both run in each service's `verify` command.
 
-### AD-3 — Core is synchronous, Agent is asynchronous [ASSUMPTION]
+### AD-3 — Core is synchronous, Agent is asynchronous [ADOPTED]
 
 - **Binds:** core-api, agent-api
 - **Prevents:** mixed sync/async session bugs across feature slices.
@@ -68,13 +68,13 @@ Arrows read "may import". Nothing imports `api`. `domain` imports nothing outsid
 - **Prevents:** two concurrent requests both passing a stale pre-check; a second code path that writes events around the engine.
 - **Rule:** Every write that sets or changes an event's interval, venue or status calls `ScheduleWriteService.commit(...)` and nothing else; rescheduling an existing event is the apply step of AD-14. It opens one transaction, takes `pg_advisory_xact_lock(CAMPUS_SCHEDULE_KEY)` first, loads active events from committed state, runs the pure engine (AD-5, AD-6), then either raises `CONFLICT_DETECTED` or writes event, revision and audit rows (AD-8) in that transaction. Conflict-check endpoints and Agent tools run the same engine without the lock and mark responses `advisory: true`. Event write methods are importable only from `ScheduleWriteService` (import-linter `protected`). The locked transaction makes no network call (no Agent, RAG, LLM or fetch). Enforcement is not claimed until the two-session concurrency test passes.
 
-### AD-5 — Conflicts: independent constraints, severity by stage [ASSUMPTION]
+### AD-5 — Conflicts: independent constraints, severity by stage [ADOPTED]
 
 - **Binds:** scheduling, Agent explanations, Web rendering
 - **Prevents:** a single generic "conflict"; tentative proposals being blocked; an override waiving more than its scope; clients re-deriving severity.
 - **Rule:** The engine is a pure `evaluate(candidate, others, overrides, policy) -> list[Conflict]`. `others` are all events except the candidate itself, other clubs' DRAFTs (private, never compared), and events REJECTED, CANCELLED or COMPLETED. For each other event, `VENUE_OVERLAP` (same venue, half-open overlap) and `CAMPUS_GAP` (any venue; violated unless `end_a + gap <= start_b` or `end_b + gap <= start_a`) are evaluated independently — one conflict per violated constraint, never short-circuited. Typing by stage: both events CONFIRMED → `VENUE_OVERLAP` / `CAMPUS_GAP_VIOLATION`, severity `blocking`, `override_required: true`; either event not CONFIRMED → `TENTATIVE_OVERLAP`, severity `warning`, `override_required: false`, with an additive `constraint` field naming the violated constraint. Blocking conflicts reject only the transition to CONFIRMED; drafts and proposals always save. Every candidate with a venue also gets one `UNKNOWN_AVAILABILITY` (severity `info`) unless AD-16 says confirmed. `DEPENDENCY_CONFLICT` covers shared resource, organizer or audience. `type` and `severity` are assigned only in the engine; clients render them verbatim. Boundaries are property-tested: exactly 120 minutes passes, 119 fails, back-to-back at one venue passes `VENUE_OVERLAP` but fails `CAMPUS_GAP`.
 
-### AD-6 — Overrides are pair-scoped, admin-only, server-derived [ASSUMPTION]
+### AD-6 — Overrides are pair-scoped, admin-only, server-derived [ADOPTED]
 
 - **Binds:** overrides, confirmation, Agent facade
 - **Prevents:** a campus-gap exception silently permitting a venue double-booking; client-asserted authority; an `ignore_conflicts` escape hatch.
@@ -84,7 +84,7 @@ Arrows read "may import". Nothing imports `api`. `domain` imports nothing outsid
 
 - **Binds:** events, commitments, evidence
 - **Prevents:** free-form status writes; acknowledgment read as confirmation; organizer claims shown as verified; evidence lost on change.
-- **Rule:** Event and commitment state machines are transition tables in `domain/lifecycle`; status changes only through `transition(entity, to, actor, evidence?)`. No request schema has a writable `status`. A move into CONFIRMED requires an authorized actor (AD-21), an `evidence_records` row, and `verified_by`/`verified_at` set from that actor; organizer-supplied claims keep `reported_by` and display as REPORTED until verified. `ACKNOWLEDGED` never implies `CONFIRMED`. Changing a CONFIRMED event's interval or venue demotes it to SUBMITTED and moves dependent commitments to NEEDS_REVALIDATION in the same transaction; evidence is never deleted [ASSUMPTION: demotion]. Publication is a separate record and never implies approval. Event COMPLETED and administrative closure are separate states.
+- **Rule:** Event and commitment state machines are transition tables in `domain/lifecycle`; status changes only through `transition(entity, to, actor, evidence?)`. No request schema has a writable `status`. A move into CONFIRMED requires an authorized actor (AD-21), an `evidence_records` row, and `verified_by`/`verified_at` set from that actor; organizer-supplied claims keep `reported_by` and display as REPORTED until verified. `ACKNOWLEDGED` never implies `CONFIRMED`. Changing a CONFIRMED event's interval or venue demotes it to SUBMITTED and moves dependent commitments to NEEDS_REVALIDATION in the same transaction; evidence is never deleted. Publication is a separate record and never implies approval. Event COMPLETED and administrative closure are separate states.
 
 ```mermaid
 stateDiagram-v2
@@ -205,7 +205,7 @@ stateDiagram-v2
 
 - **Binds:** all Core routes and facade
 - **Prevents:** authority from client-supplied ids or token claims; role logic scattered across handlers.
-- **Rule:** `domain/authz.authorize(actor, action, resource_ctx) -> Decision` is the only place roles are interpreted; routes and services call it and tests table-drive it. Roles `ORGANIZER`, `CLUB_ADMIN`, `CAMPUS_ADMIN`, `STUDENT` are derived per request from user and membership rows, never from token claims or request-supplied `authorized_by`, `club_id` or `role`. Until stakeholders decide, only CAMPUS_ADMIN may confirm bookings or create overrides [ASSUMPTION]. Hackathon authentication is a Core-issued session JWT from a demo-login for seeded synthetic personas, available only when `APP_ENV` ∈ {local, test, demo}; real SSO plugs in behind the same actor resolution.
+- **Rule:** `domain/authz.authorize(actor, action, resource_ctx) -> Decision` is the only place roles are interpreted; routes and services call it and tests table-drive it. Roles `ORGANIZER`, `CLUB_ADMIN`, `CAMPUS_ADMIN`, `STUDENT` are derived per request from user and membership rows, never from token claims or request-supplied `authorized_by`, `club_id` or `role`. Until stakeholders decide (PLAN open decision 3), only CAMPUS_ADMIN may confirm bookings or create overrides; widening it is a change to `authz` alone. Hackathon authentication is a Core-issued session JWT from a demo-login for seeded synthetic personas, available only when `APP_ENV` ∈ {local, test, demo}; real SSO plugs in behind the same actor resolution.
 
 ### AD-22 — Configuration, secrets and external egress
 
@@ -213,11 +213,11 @@ stateDiagram-v2
 - **Prevents:** committed secrets; LLM credentials in Core; private data leaving through a provider; real data mixed with demo data.
 - **Rule:** Each service reads typed `pydantic-settings` from environment; `.env` is gitignored and `.env.example` holds placeholders only. `APP_ENV` ∈ {`local`, `test`, `demo`}; seeds and demo-login refuse any other value. The Groq key exists only in Agent (and in RAG for its own calls); Core holds no LLM credentials. Core alone holds `SESSION_SIGNING_KEY` and `DELEGATION_SIGNING_KEY` (distinct); Agent holds neither. Groq is an egress boundary: Agent sends only facade-shaped content (AD-10). Seed rows set `is_synthetic = true`, surfaced as `synthetic` on event, resource and student responses.
 
-### AD-23 — Cross-club conflicts are projected, not leaked [ASSUMPTION]
+### AD-23 — Cross-club conflicts are projected, not leaked [ADOPTED]
 
 - **Binds:** conflict-check, tentative calendar, Agent facade
 - **Prevents:** one club learning another's private plans; each endpoint redacting differently; Agent explanations exposing hidden fields.
-- **Rule:** The engine's raw `Conflict` never crosses the API. A `ConflictProjection` in `services/` shapes every conflict for the requester: for another club's non-DRAFT event it exposes only the minimal shared fields (event name, organizing club, window, preferred venue, status, audience tags) and omits commitments, evidence, approvals, contacts and internal notes; for the requester's own club it exposes full detail. Public routes and the Agent facade use this single projection. Until PLAN open decision 8 is settled, DRAFT is private and PROPOSED-or-later events share the minimal field set [ASSUMPTION].
+- **Rule:** The engine's raw `Conflict` never crosses the API. A `ConflictProjection` in `services/` shapes every conflict for the requester: for another club's non-DRAFT event it exposes only the minimal shared fields (event name, organizing club, window, preferred venue, status, audience tags) and omits commitments, evidence, approvals, contacts and internal notes; for the requester's own club it exposes full detail. Public routes and the Agent facade use this single projection. Until PLAN open decision 8 is settled, DRAFT is private and PROPOSED-or-later events share the minimal field set.
 
 ## Consistency Conventions
 
@@ -257,6 +257,7 @@ stateDiagram-v2
 | ruff | 0.17.0 |
 | mypy | 2.4.0 |
 | import-linter | 2.15 |
+| httpx2 | 2.13.1 (tests only: Starlette's `TestClient` deprecates `httpx`; runtime stays on httpx 0.28.1) |
 | uv | 0.12.22 |
 
 ## Structural Seed
@@ -383,7 +384,7 @@ Genesis-womm/
 
 ## Open Items
 
-- AD-3, AD-5, AD-6, AD-7 (demotion), AD-21 (roles) and AD-23 (cross-club sharing) are `[ASSUMPTION]` — confirm or correct.
-- Alembic 1.20 with SQLAlchemy 2.1 is declared compatible (`SQLAlchemy>=2.0`) but not smoke-tested; do so at skeleton time.
-- Groq strict `json_schema` support for `llama-3.3-70b-versatile` is unconfirmed; AD-11 relies on tool use plus Pydantic validation instead.
+- AD-3, AD-5, AD-6, AD-7 (demotion), AD-21 (roles) and AD-23 (cross-club sharing) were confirmed by the backend/AI owner on 2026-10-10 by taking the recommended option. Web and RAG owners have not signed off; AD-5 severity, AD-21 roles and AD-23 projection change what Web renders, so they are the ones to show them.
+- Alembic 1.20 with SQLAlchemy 2.1.4 on PostgreSQL 18 is verified: upgrade, idempotent re-run, downgrade, `alembic check` and the `DATABASE_URL`-only one-shot all pass (`services/core-api/tests/integration/test_migrations.py`).
+- Groq strict `json_schema` support for `llama-3.3-70b-versatile` is unconfirmed; AD-11 relies on tool use plus Pydantic validation instead. Confirm when the Groq provider lands (Plan 03).
 - RAG asked to adopt `X-Request-ID` and the error envelope and to state its storage choice (AD-19).
