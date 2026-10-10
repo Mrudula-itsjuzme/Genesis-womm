@@ -35,11 +35,11 @@ scratch/
 *.safetensors
 *.pt
 *.pth
-*.onnx
-*.h5
 *.tflite
-models/
+/models/
+/services/*/models/
 checkpoints/
+
 
 # Local vector database stores and sqlite
 chroma_db/
