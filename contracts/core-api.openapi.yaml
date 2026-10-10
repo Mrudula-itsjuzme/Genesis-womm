@@ -567,12 +567,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '503':
           description: DEPENDENCY_UNAVAILABLE
           content:
@@ -587,7 +581,6 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
       security:
       - sessionBearer: []
-      x-implementation-status: stub
   /api/v1/agent-actions:
     get:
       tags:
@@ -939,6 +932,231 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/clubs/{club_id}/events/{event_id}/proposals:
+    post:
+      tags:
+      - proposals
+      summary: Upload Proposal
+      operationId: upload_proposal_api_v1_clubs__club_id__events__event_id__proposals_post
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: club_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Club Id
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_upload_proposal_api_v1_clubs__club_id__events__event_id__proposals_post'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalUploadOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/proposals/{proposal_id}:
+    get:
+      tags:
+      - proposals
+      summary: Get Proposal
+      operationId: get_proposal_api_v1_proposals__proposal_id__get
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: proposal_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Proposal Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/proposals/{proposal_id}/download-url:
+    get:
+      tags:
+      - proposals
+      summary: Download Url
+      operationId: download_url_api_v1_proposals__proposal_id__download_url_get
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: proposal_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Proposal Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalDownloadUrlOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/proposals/{proposal_id}/status:
+    patch:
+      tags:
+      - proposals
+      summary: Review Proposal
+      operationId: review_proposal_api_v1_proposals__proposal_id__status_patch
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: proposal_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Proposal Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProposalStatusPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: INVALID_TRANSITION
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/overrides:
     post:
       tags:
@@ -1191,6 +1409,22 @@ components:
       - CONFIRMED
       title: AvailabilityState
       description: UNKNOWN until evidence says otherwise; an empty calendar never means free.
+    Body_upload_proposal_api_v1_clubs__club_id__events__event_id__proposals_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+          description: Event proposal PDF document
+        title:
+          type: string
+          title: Title
+          description: Title of the proposal
+          default: Event Proposal
+      type: object
+      required:
+      - file
+      title: Body_upload_proposal_api_v1_clubs__club_id__events__event_id__proposals_post
     ChatMessage:
       properties:
         role:
@@ -1892,6 +2126,189 @@ components:
       - CAMPUS_GAP
       - VENUE_OVERLAP
       title: OverrideScope
+    ProposalDownloadUrlOut:
+      properties:
+        download_url:
+          type: string
+          title: Download Url
+        expires_in_seconds:
+          type: integer
+          title: Expires In Seconds
+          default: 900
+      additionalProperties: false
+      type: object
+      required:
+      - download_url
+      title: ProposalDownloadUrlOut
+    ProposalOut:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        event_id:
+          type: string
+          format: uuid
+          title: Event Id
+        club_id:
+          type: string
+          format: uuid
+          title: Club Id
+        submitted_by:
+          type: string
+          format: uuid
+          title: Submitted By
+        revision:
+          type: integer
+          title: Revision
+        status:
+          $ref: '#/components/schemas/ProposalStatus'
+        title:
+          type: string
+          title: Title
+        minio_bucket:
+          type: string
+          title: Minio Bucket
+        minio_key:
+          type: string
+          title: Minio Key
+        file_size_bytes:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: File Size Bytes
+        sha256_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sha256 Hash
+        submitted_at:
+          type: string
+          format: date-time
+          title: Submitted At
+        reviewed_by:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Reviewed By
+        reviewed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Reviewed At
+        review_note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Review Note
+        rag_ingested_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Rag Ingested At
+        rag_deleted_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Rag Deleted At
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - event_id
+      - club_id
+      - submitted_by
+      - revision
+      - status
+      - title
+      - minio_bucket
+      - minio_key
+      - submitted_at
+      title: ProposalOut
+    ProposalStatus:
+      type: string
+      enum:
+      - DRAFT
+      - SUBMITTED
+      - UNDER_REVIEW
+      - APPROVED
+      - REJECTED
+      - REVISION_REQUESTED
+      - CHUNKED
+      - ARCHIVED
+      title: ProposalStatus
+      description: Proposal lifecycle. Ingestion into RAG requires APPROVED status.
+    ProposalStatusPatch:
+      properties:
+        action:
+          type: string
+          enum:
+          - approve
+          - reject
+          - request_revision
+          title: Action
+        review_note:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Review Note
+      additionalProperties: false
+      type: object
+      required:
+      - action
+      title: ProposalStatusPatch
+    ProposalUploadOut:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        event_id:
+          type: string
+          format: uuid
+          title: Event Id
+        club_id:
+          type: string
+          format: uuid
+          title: Club Id
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+        status:
+          $ref: '#/components/schemas/ProposalStatus'
+        title:
+          type: string
+          title: Title
+        minio_key:
+          type: string
+          title: Minio Key
+        file_size_bytes:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: File Size Bytes
+        submitted_at:
+          type: string
+          format: date-time
+          title: Submitted At
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - event_id
+      - club_id
+      - revision
+      - status
+      - title
+      - minio_key
+      - submitted_at
+      title: ProposalUploadOut
     ReadyOut:
       properties:
         status:
