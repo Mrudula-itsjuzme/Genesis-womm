@@ -1,7 +1,7 @@
 # HANDOFF: CampusCue backend and AI workstream
 
-> **Written:** 2026-10-10, end of the session that built the Core API and Agent API foundations.
-> **Branch:** `backend-ai` (HEAD `a266f18` plus the commit that adds this file). **Owner of this workstream:** Shruhath (git author `Shruhath`).
+> **Updated:** 2026-10-11, before the requested local-commit and push handoff.
+> **Branch:** `backend-ai`, HEAD `f7bc48f`, 48 commits ahead of `origin/backend-ai` before push. **Owner of this workstream:** Shruhath (git author `Shruhath`).
 > **If you read nothing else, read sections 1, 2, 3 and 21.**
 
 This file follows the 17-item handoff list in `AGENTS.md` section 15 and adds the context a cold-start agent needs: working rules, a map of the code, the exact design of the next milestone, and the traps the previous session fell into. Everything here was checked against the repository on the day it was written. Where something is a recommendation and not a fact, it says so.
@@ -57,11 +57,19 @@ This workstream owns **Core API and Agent API**. The RAG API and the web UI belo
 | **Write path** | `ScheduleWriteService`: lock, engine, revision, audit, idempotency in one transaction. **Proved under a real two-session race on PostgreSQL 18** |
 | Agent API | skeleton, ports, deterministic fakes, typed 501 stubs; **no orchestration, no HTTP clients, no model provider yet** |
 
-**Not built (this is your work):** everything HTTP-facing in Core. The Core routes are still typed stubs that return `501`. The write path exists and is tested, but **nothing in the running app calls it yet** (section 15, item 1). No sessions or login, no real event/conflict-check/resource routes, no `ConflictProjection`, no seed data, and no Agent orchestration.
+**Still not built:** conflict-check HTTP wiring and `ConflictProjection`; event transition and override routes; synthetic seeds; the Agent orchestration and its internal facade. Core authentication, event creation/reads, and resource reads are already live.
 
-**Test status:** Core 494 unit and contract tests plus 96 PostgreSQL integration tests; Agent 176 tests. All gates exit 0 (section 12).
+**Last verified test status:** Core fast gate: 506 passed, 100 deselected. Agent baseline remains 176 passing tests from the prior handoff.
 
-**Git status:** 23 commits on `backend-ai` are **not pushed** (plus this file's commit). `origin/main` already contains everything up to `095d16b` (PR #2).
+**Git status:** 48 local commits are not pushed before the requested push. `docs/presentations/Campus-Cue.pdf` is unrelated untracked content.
+
+### Pause-state update (2026-10-11)
+
+- Core resource catalogue reads are real: authenticated `GET /api/v1/resources` and `GET /api/v1/resources/{resource_id}` call `ResourceReadService`, return sourced metadata, and are no longer OpenAPI stubs. Commit: `bb3b4b7 feat(core): expose sourced resource reads`.
+- The immediately preceding resource-read commits are `ce9b485`, `42df134`, and `6626963`; together they add the port, read service, container wiring, SQL adapter support, and tests.
+- Advisory conflict checks are implemented and committed: `f7bc48f feat(core): add advisory conflict checks`. The service uses the deterministic engine without writes or a lock, authorizes `CHECK_CONFLICTS`, preserves the omitted-versus-null `resource_id` distinction, and is covered by three unit tests.
+- The latest completed Core fast gate was run after the conflict-check slice: `command make verify-fast` exited 0 with **506 passed, 100 deselected**; ruff, formatting, mypy, import-linter, and contract drift all passed.
+- The only other untracked path is `docs/presentations/Campus-Cue.pdf`; it belongs to someone else and must remain untouched and unstaged.
 
 ---
 
