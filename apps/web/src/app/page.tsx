@@ -67,17 +67,19 @@ export default function Dashboard() {
 
           {/* Card 2 */}
           <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-stone-800 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group h-44 relative overflow-hidden">
-            <div className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-x-4 translate-y-4">
-              <Building className="w-full h-full" />
-            </div>
+            <div 
+              className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
+              style={{ backgroundImage: "url('https://images.unsplash.com/photo-1590457635677-7871b6d05f3b?auto=format&fit=crop&w=600&q=80')" }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-stone-50/95 via-stone-50/80 to-transparent z-0" />
             <div className="relative z-10">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center mb-4">
+              <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-rose-800 flex items-center justify-center mb-4">
                 <MapPin className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-lg font-bold mb-1 text-gray-900 group-hover:translate-x-1 transition-transform">Explore Venues</h3>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500 max-w-[80%]">View halls, classrooms, labs and open spaces</p>
+                  <p className="text-xs text-gray-600 max-w-[80%] font-medium">View halls, classrooms, labs and open spaces</p>
                   <div className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm">
                     <ArrowRight className="w-4 h-4" />
                   </div>
@@ -88,17 +90,19 @@ export default function Dashboard() {
 
           {/* Card 3 */}
           <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-stone-800 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group h-44 relative overflow-hidden">
-            <div className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-x-4 translate-y-4">
-              <Book className="w-full h-full" />
-            </div>
+            <div 
+              className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
+              style={{ backgroundImage: "url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=600&q=80')" }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-stone-50/95 via-stone-50/80 to-transparent z-0" />
             <div className="relative z-10">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center mb-4">
+              <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-rose-800 flex items-center justify-center mb-4">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-lg font-bold mb-1 text-gray-900 group-hover:translate-x-1 transition-transform">Ask a Policy Question</h3>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500 max-w-[80%]">Get instant answers from OSA guidelines</p>
+                  <p className="text-xs text-gray-600 max-w-[80%] font-medium">Get instant answers from OSA guidelines</p>
                   <div className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm">
                     <ArrowRight className="w-4 h-4" />
                   </div>
@@ -108,18 +112,20 @@ export default function Dashboard() {
           </div>
 
           {/* Card 4 */}
-          <div className="bg-[#FAF8F5] border border-amber-100/50 rounded-2xl p-6 text-stone-800 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group h-44 relative overflow-hidden">
-             <div className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-x-4 translate-y-4">
-              <BarChart2 className="w-full h-full" />
-            </div>
+          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-stone-800 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group h-44 relative overflow-hidden">
+             <div 
+              className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
+              style={{ backgroundImage: "url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80')" }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-stone-50/95 via-stone-50/80 to-transparent z-0" />
             <div className="relative z-10">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center mb-4">
+              <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-amber-600 flex items-center justify-center mb-4">
                 <BarChart2 className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-lg font-bold mb-1 text-gray-900 group-hover:translate-x-1 transition-transform">See Change Impact</h3>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500 max-w-[80%]">Understand how changes affect other events</p>
+                  <p className="text-xs text-gray-600 max-w-[80%] font-medium">Understand how changes affect other events</p>
                   <div className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm">
                     <ArrowRight className="w-4 h-4" />
                   </div>
