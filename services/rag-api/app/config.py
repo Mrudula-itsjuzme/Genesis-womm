@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -17,6 +19,7 @@ class Settings(BaseSettings):
     rag_embedding_device: str = Field(default="cpu")
     rag_sparse_provider: str = Field(default="splade")
 
+    data_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parent.parent / "data")
     log_level: str = Field(default="INFO")
 
 

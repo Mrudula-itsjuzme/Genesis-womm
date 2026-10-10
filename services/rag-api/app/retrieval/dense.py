@@ -45,6 +45,10 @@ class DenseRetriever:
             model = self._get_model()
             return np.array(model.encode(texts, normalize_embeddings=True))
 
+    def encode(self, texts: list[str]) -> np.ndarray:
+        """Encode a list of texts into normalized embedding vectors."""
+        return self._encode(texts)
+
     def index(self, chunks: list[EvidenceChunk]):
         if not chunks:
             with self._lock:

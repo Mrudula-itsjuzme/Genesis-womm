@@ -24,6 +24,7 @@ class ChromaStore:
         self._collections: dict[str, Any] = {}
         self._lock = threading.RLock()
         self._mock_chunks: dict[str, list[EvidenceChunk]] = {collection_name: []}
+        self._mock_metadatas: dict[str, list[dict[str, Any]]] = {collection_name: []}
 
     def _get_client(self) -> Any:
         if self._client is None and not self.use_mock:
@@ -70,7 +71,20 @@ class ChromaStore:
             if self.use_mock:
                 if target_name not in self._mock_chunks:
                     self._mock_chunks[target_name] = []
+                    self._mock_metadatas[target_name] = []
                 self._mock_chunks[target_name].extend([c.model_copy() for c in chunks])
+                for idx, c in enumerate(chunks):
+                    meta: dict[str, Any] = {
+                        "document_id": c.document_id,
+                        "title": c.title,
+                        "source_url": c.source_url,
+                        "page_start": c.page_start,
+                        "page_end": c.page_end,
+                        "section": c.section or "",
+                    }
+                    if extra_metadatas and idx < len(extra_metadatas):
+                        meta.update(extra_metadatas[idx])
+                    self._mock_metadatas[target_name].append(meta)
                 return
 
             collection = self.get_or_create_collection(target_name)
@@ -78,7 +92,7 @@ class ChromaStore:
             documents = [c.excerpt for c in chunks]
             metadatas = []
             for idx, c in enumerate(chunks):
-                meta: dict[str, Any] = {
+                chunk_meta: dict[str, Any] = {
                     "document_id": c.document_id,
                     "title": c.title,
                     "source_url": c.source_url,
@@ -87,8 +101,8 @@ class ChromaStore:
                     "section": c.section or "",
                 }
                 if extra_metadatas and idx < len(extra_metadatas):
-                    meta.update(extra_metadatas[idx])
-                metadatas.append(meta)
+                    chunk_meta.update(extra_metadatas[idx])
+                metadatas.append(chunk_meta)
 
             collection.upsert(
                 ids=ids,
@@ -109,14 +123,34 @@ class ChromaStore:
 
         with self._lock:
             if self.use_mock:
-                chunks = self._mock_chunks.get(target_name, [])
-                if where and "event_id" in where:
-                    target_event = where["event_id"]
-                    # If dict filter like {"$eq": ...}
-                    if isinstance(target_event, dict):
-                        target_event = target_event.get("$eq")
-                    chunks = [c for c in chunks if str(target_event) in c.evidence_id or str(target_event) in c.document_id]
-                return [c.model_copy() for c in chunks[:top_k]]
+                current_chunks = self._mock_chunks.get(target_name, [])
+                current_metas = self._mock_metadatas.get(target_name, [])
+                filtered: list[EvidenceChunk] = []
+                for c, meta in zip(current_chunks, current_metas):
+                    match = True
+                    if where:
+                        for k, v in where.items():
+                            target_val = v.get("$eq") if isinstance(v, dict) else v
+                            meta_val = meta.get(k)
+                            if meta_val is not None:
+                                if meta_val != target_val:
+                                    match = False
+                                    break
+                            elif (
+                                k == "event_id"
+                                and (
+                                    str(target_val) in c.evidence_id
+                                    or str(target_val) in c.source_url
+                                    or str(target_val) in c.document_id
+                                )
+                            ) or getattr(c, k, None) == target_val:
+                                pass
+                            else:
+                                match = False
+                                break
+                    if match:
+                        filtered.append(c.model_copy())
+                return filtered[:top_k]
 
             collection = self.get_or_create_collection(target_name)
             emb_list: Any = (
@@ -177,22 +211,39 @@ class ChromaStore:
         target_name = collection_name or self.default_collection_name
         with self._lock:
             if self.use_mock:
-                current = self._mock_chunks.get(target_name, [])
-                remaining = []
+                current_chunks = self._mock_chunks.get(target_name, [])
+                current_metas = self._mock_metadatas.get(target_name, [])
+                remaining_chunks: list[EvidenceChunk] = []
+                remaining_metas: list[dict[str, Any]] = []
                 deleted_count = 0
-                for c in current:
+                for c, meta in zip(current_chunks, current_metas):
                     match = True
                     for k, v in where.items():
                         target_val = v.get("$eq") if isinstance(v, dict) else v
-                        if k == "event_id" and str(target_val) in c.evidence_id or getattr(c, k, None) == target_val:
-                            match = True
+                        meta_val = meta.get(k)
+                        if meta_val is not None:
+                            if meta_val != target_val:
+                                match = False
+                                break
+                        elif (
+                            k == "event_id"
+                            and (
+                                str(target_val) in c.evidence_id
+                                or str(target_val) in c.source_url
+                                or str(target_val) in c.document_id
+                            )
+                        ) or getattr(c, k, None) == target_val:
+                            pass
                         else:
                             match = False
+                            break
                     if match:
                         deleted_count += 1
                     else:
-                        remaining.append(c)
-                self._mock_chunks[target_name] = remaining
+                        remaining_chunks.append(c)
+                        remaining_metas.append(meta)
+                self._mock_chunks[target_name] = remaining_chunks
+                self._mock_metadatas[target_name] = remaining_metas
                 return deleted_count
 
             collection = self.get_or_create_collection(target_name)
