@@ -40,6 +40,11 @@ class FakeSessionService:
     def issue_for_demo_email(self, email: str) -> IssuedSession | None:
         return self._issued if email == "organizer@example.invalid" else None
 
+    def resolve_access_token(self, access_token: str) -> UserIdentity | None:
+        if self._issued is not None and access_token == self._issued.access_token:
+            return self._issued.user
+        return None
+
 
 # (method, path, json body or None)
 STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
@@ -88,7 +93,12 @@ def openapi(client: TestClient) -> dict[str, Any]:
 def test_stub_returns_the_501_envelope(
     client: TestClient, method: str, path: str, body: dict[str, Any] | None
 ) -> None:
-    response = client.request(method, path, json=body, headers={REQUEST_ID_HEADER: "stub-1"})
+    response = client.request(
+        method,
+        path,
+        json=body,
+        headers={REQUEST_ID_HEADER: "stub-1", "Authorization": "Bearer demo-token"},
+    )
     assert response.status_code == 501, response.text
     envelope = ErrorEnvelope.model_validate(response.json())
     assert envelope.code.value == "NOT_IMPLEMENTED"
@@ -109,7 +119,9 @@ def test_stub_returns_the_501_envelope(
 def test_validation_runs_before_the_stub(
     client: TestClient, method: str, path: str, body: dict[str, Any] | None
 ) -> None:
-    response = client.request(method, path, json=body)
+    response = client.request(
+        method, path, json=body, headers={"Authorization": "Bearer demo-token"}
+    )
     assert response.status_code == 422, response.text
     assert response.json()["code"] == "VALIDATION_ERROR"
 
@@ -131,6 +143,15 @@ def test_demo_login_hides_whether_an_unknown_user_exists(client: TestClient) -> 
 
     assert response.status_code == 401, response.text
     assert response.json()["code"] == "UNAUTHENTICATED"
+
+
+def test_public_routes_reject_a_missing_or_invalid_session_before_the_stub(
+    client: TestClient,
+) -> None:
+    for headers in ({}, {"Authorization": "Bearer invalid"}):
+        response = client.get("/api/v1/events", headers=headers)
+        assert response.status_code == 401, response.text
+        assert response.json()["code"] == "UNAUTHENTICATED"
 
 
 def _operations(openapi: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:

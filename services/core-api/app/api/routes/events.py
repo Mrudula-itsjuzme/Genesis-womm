@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query
 
-from app.api.deps import session_bearer
+from app.api.deps import require_session_actor
 from app.api.errors import STUB_OPENAPI, not_implemented, stub_errors
 from app.domain.enums import ErrorCode, EventStatus
 from app.schemas.events import (
@@ -19,7 +19,7 @@ from app.schemas.events import (
 router = APIRouter(
     prefix="/api/v1/events",
     tags=["events"],
-    dependencies=[Depends(session_bearer)],
+    dependencies=[Depends(require_session_actor)],
 )
 
 IdempotencyKey = Annotated[

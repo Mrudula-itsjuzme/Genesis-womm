@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import session_bearer
+from app.api.deps import require_session_actor
 from app.api.errors import STUB_OPENAPI, not_implemented, stub_errors
 from app.domain.enums import ErrorCode, ResourceKind
 from app.schemas.resources import ResourceList, ResourceOut
@@ -11,7 +11,7 @@ from app.schemas.resources import ResourceList, ResourceOut
 router = APIRouter(
     prefix="/api/v1/resources",
     tags=["resources"],
-    dependencies=[Depends(session_bearer)],
+    dependencies=[Depends(require_session_actor)],
 )
 
 

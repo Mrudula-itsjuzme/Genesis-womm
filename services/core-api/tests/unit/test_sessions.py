@@ -16,6 +16,9 @@ class FakeActors:
         self.queried_email = email
         return self._users.get(email)
 
+    def load_identity(self, user_id: UUID) -> UserIdentity | None:
+        return next((user for user in self._users.values() if user.id == user_id), None)
+
 
 class FakeUnitOfWork:
     def __init__(self, actors: FakeActors) -> None:
@@ -66,3 +69,14 @@ def test_demo_login_does_not_issue_a_token_for_unknown_email() -> None:
 
     assert service.issue_for_demo_email("unknown@example.invalid") is None
     assert actors.queried_email == "unknown@example.invalid"
+
+
+def test_access_token_resolves_to_the_current_server_side_identity() -> None:
+    user = user_identity(uuid4())
+    actors = FakeActors({user.email: user})
+    token_service = PyJwtTokenService("s" * 40)
+    service = SessionService(lambda: FakeUnitOfWork(actors), token_service)
+    token, _ = token_service.issue(user.id)
+
+    assert service.resolve_access_token(token) == user
+    assert service.resolve_access_token("not-a-token") is None

@@ -32,3 +32,12 @@ class SessionService:
             return None
         access_token, expires_at = self._tokens.issue(user.id)
         return IssuedSession(access_token=access_token, expires_at=expires_at, user=user)
+
+    def resolve_access_token(self, access_token: str) -> UserIdentity | None:
+        """Resolve a valid session token to its current server-side directory identity."""
+        try:
+            user_id = self._tokens.verify(access_token)
+        except ValueError:
+            return None
+        with self._uow_factory() as uow:
+            return uow.actors.load_identity(user_id)
