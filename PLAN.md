@@ -89,8 +89,8 @@ All demo events and statuses must be explicitly labeled synthetic.
 | Web frontend | User interaction, visualization, editable drafts, confirmation prompts | Authoritative conflict enforcement or permission checks |
 
 ### Recommended stack
-- Frontend: React + Vite or Next.js; choose one and standardize before implementation.
-- Core API: Python + FastAPI for MVP simplicity; Go is acceptable if explicitly selected before implementation.
+- Frontend: Next.js + Tailwind CSS (selected).
+- Core API: Python + FastAPI for MVP simplicity.
 - Agent API: Python + FastAPI.
 - RAG API: Python + FastAPI.
 - Database: PostgreSQL. Use `pgvector` for embeddings and PostgreSQL full-text search as the first hybrid retrieval baseline.
