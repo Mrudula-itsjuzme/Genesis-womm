@@ -1,7 +1,9 @@
 """Composition root: the only place that wires adapters to use cases."""
 
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
+from uuid import UUID, uuid4
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
@@ -9,13 +11,21 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.clients.tokens import PyJwtTokenService
+from app.domain.scheduling import Policy
+from app.domain.time import SystemClock
 from app.repositories.health import SqlReadinessProbe
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.readiness import ReadinessService
+from app.services.schedule_write import ScheduleWriteService
 from app.services.sessions import SessionService
 from app.settings import Settings
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
+
+
+class UuidSource:
+    def new_id(self) -> UUID:
+        return uuid4()
 
 
 @dataclass
@@ -23,6 +33,7 @@ class Container:
     readiness: ReadinessService
     engine: Engine | None = None
     sessions: SessionService | None = None
+    schedule_write: ScheduleWriteService | None = None
 
     def dispose(self) -> None:
         if self.engine is not None:
@@ -51,4 +62,15 @@ def build_container(settings: Settings) -> Container:
         lambda: SqlUnitOfWork(database_sessions),
         PyJwtTokenService(settings.session_signing_key.get_secret_value()),
     )
-    return Container(readiness=readiness, engine=engine, sessions=sessions)
+    schedule_write = ScheduleWriteService(
+        lambda: SqlUnitOfWork(database_sessions),
+        clock=SystemClock(),
+        ids=UuidSource(),
+        policy=Policy(campus_gap=timedelta(minutes=settings.campus_gap_minutes)),
+    )
+    return Container(
+        readiness=readiness,
+        engine=engine,
+        sessions=sessions,
+        schedule_write=schedule_write,
+    )

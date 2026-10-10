@@ -13,6 +13,7 @@ from app.api.errors import ApiError
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
 from app.services.readiness import ReadinessService
+from app.services.schedule_write import ScheduleWriteService
 from app.services.sessions import SessionService
 
 session_bearer = HTTPBearer(
@@ -42,6 +43,13 @@ def get_session_service(request: Request) -> SessionService:
     if sessions is None:
         raise RuntimeError("session service is not configured")
     return cast(SessionService, sessions)
+
+
+def get_schedule_write_service(request: Request) -> ScheduleWriteService:
+    service = getattr(request.app.state, "schedule_write", None)
+    if service is None:
+        raise RuntimeError("schedule write service is not configured")
+    return cast(ScheduleWriteService, service)
 
 
 def require_session_actor(
