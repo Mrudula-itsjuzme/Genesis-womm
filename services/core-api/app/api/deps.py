@@ -10,6 +10,7 @@ from fastapi import Request
 from fastapi.security import APIKeyHeader, HTTPBearer
 
 from app.services.readiness import ReadinessService
+from app.services.sessions import SessionService
 
 session_bearer = HTTPBearer(
     auto_error=False,
@@ -31,3 +32,10 @@ internal_key = APIKeyHeader(
 
 def get_readiness(request: Request) -> ReadinessService:
     return cast(ReadinessService, request.app.state.readiness)
+
+
+def get_session_service(request: Request) -> SessionService:
+    sessions = getattr(request.app.state, "sessions", None)
+    if sessions is None:
+        raise RuntimeError("session service is not configured")
+    return cast(SessionService, sessions)

@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -9,7 +10,9 @@ from app.api.middleware import REQUEST_ID_HEADER
 from app.container import Container
 from app.main import create_app
 from app.schemas.common import ErrorEnvelope
+from app.services.ports import UserIdentity
 from app.services.readiness import ReadinessService
+from app.services.sessions import IssuedSession
 from tests.fakes import FakeReadinessProbe, make_settings
 
 EVENT = str(uuid4())
@@ -28,6 +31,15 @@ VALID_ACTION: dict[str, Any] = {
     "type": "CREATE_FOLLOWUP_DRAFT",
     "summary": "Ask ICTS to revalidate",
 }
+
+
+class FakeSessionService:
+    def __init__(self, issued: IssuedSession | None) -> None:
+        self._issued = issued
+
+    def issue_for_demo_email(self, email: str) -> IssuedSession | None:
+        return self._issued if email == "organizer@example.invalid" else None
+
 
 # (method, path, json body or None)
 STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
@@ -49,7 +61,20 @@ STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
 
 @pytest.fixture(scope="module")
 def client() -> TestClient:
-    container = Container(readiness=ReadinessService(FakeReadinessProbe(), "0001"))
+    user = UserIdentity(
+        id=uuid4(),
+        email="organizer@example.invalid",
+        display_name="Demo Organizer",
+        campus_admin=False,
+        memberships=(),
+        is_synthetic=True,
+    )
+    container = Container(
+        readiness=ReadinessService(FakeReadinessProbe(), "0001"),
+        sessions=FakeSessionService(
+            IssuedSession(access_token="demo-token", expires_at=datetime.now(UTC), user=user)
+        ),
+    )
     return TestClient(create_app(make_settings(), container), raise_server_exceptions=False)
 
 
@@ -89,6 +114,25 @@ def test_validation_runs_before_the_stub(
     assert response.json()["code"] == "VALIDATION_ERROR"
 
 
+def test_demo_login_returns_a_bearer_token_and_server_side_profile(client: TestClient) -> None:
+    response = client.post("/api/v1/auth/demo-login", json={"email": "organizer@example.invalid"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["access_token"], body["token_type"], body["user"]["email"]) == (
+        "demo-token",
+        "bearer",
+        "organizer@example.invalid",
+    )
+
+
+def test_demo_login_hides_whether_an_unknown_user_exists(client: TestClient) -> None:
+    response = client.post("/api/v1/auth/demo-login", json={"email": "unknown@example.invalid"})
+
+    assert response.status_code == 401, response.text
+    assert response.json()["code"] == "UNAUTHENTICATED"
+
+
 def _operations(openapi: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
     http = {"get", "post", "put", "patch", "delete"}
     return [
@@ -99,9 +143,9 @@ def _operations(openapi: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]
     ]
 
 
-def test_every_route_but_the_probes_is_marked_as_a_stub(openapi: dict[str, Any]) -> None:
+def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) -> None:
     for method, path, op in _operations(openapi):
-        if path in {"/health", "/ready"}:
+        if path in {"/health", "/ready", "/api/v1/auth/demo-login"}:
             assert "x-implementation-status" not in op
         else:
             assert op.get("x-implementation-status") == "stub", f"{method} {path}"
@@ -111,7 +155,7 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
     documented = {
         (method, path.replace(EVENT, "{event_id}"))
         for method, path, _ in _operations(openapi)
-        if path not in {"/health", "/ready"}
+        if path not in {"/health", "/ready", "/api/v1/auth/demo-login"}
     }
     assert len(documented) == len(STUBS)
 
@@ -133,7 +177,9 @@ def test_public_routes_use_the_session_scheme_and_facade_routes_the_delegation_s
 ) -> None:
     for method, path, op in _operations(openapi):
         schemes = {name for requirement in op.get("security", []) for name in requirement}
-        if path.startswith("/api/v1"):
+        if path == "/api/v1/auth/demo-login":
+            assert schemes == set(), f"{method} {path}"
+        elif path.startswith("/api/v1"):
             assert schemes == {"sessionBearer"}, f"{method} {path}"
         elif path.startswith("/internal/v1"):
             assert schemes == {"delegationBearer", "internalKey"}, f"{method} {path}"
