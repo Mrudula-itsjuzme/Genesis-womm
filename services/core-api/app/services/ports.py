@@ -156,14 +156,30 @@ class IdempotencyStore(Protocol):
 class UnitOfWork(Protocol):
     """One transaction. Leaving the block without ``commit`` rolls everything back."""
 
-    events: EventReader
-    clubs: ClubReader
-    resources: ResourceReader
-    overrides: OverrideReader
-    actors: ActorReader
-    audit: AuditWriter
-    evidence: EvidenceWriter
-    idempotency: IdempotencyStore
+    # Read-only members, so an adapter may expose a more specific type than the port names.
+    @property
+    def events(self) -> EventReader: ...
+
+    @property
+    def clubs(self) -> ClubReader: ...
+
+    @property
+    def resources(self) -> ResourceReader: ...
+
+    @property
+    def overrides(self) -> OverrideReader: ...
+
+    @property
+    def actors(self) -> ActorReader: ...
+
+    @property
+    def audit(self) -> AuditWriter: ...
+
+    @property
+    def evidence(self) -> EvidenceWriter: ...
+
+    @property
+    def idempotency(self) -> IdempotencyStore: ...
 
     def __enter__(self) -> Self: ...
 

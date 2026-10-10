@@ -53,11 +53,19 @@ class ScheduleLock(Protocol):
 
 
 class ScheduleWriters(Protocol):
-    lock: ScheduleLock
-    events: EventWriter
-    revisions: RevisionWriter
-    overrides: OverrideWriter
+    @property
+    def lock(self) -> ScheduleLock: ...
+
+    @property
+    def events(self) -> EventWriter: ...
+
+    @property
+    def revisions(self) -> RevisionWriter: ...
+
+    @property
+    def overrides(self) -> OverrideWriter: ...
 
 
 class ScheduleUnitOfWork(UnitOfWork, Protocol):
-    schedule: ScheduleWriters
+    @property
+    def schedule(self) -> ScheduleWriters: ...
