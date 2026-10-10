@@ -96,7 +96,7 @@ def fetch_html_and_chunk(
 
 def build_and_save_corpus(
     sources: list[dict[str, str]] | None = None,
-    model_name: str = "all-MiniLM-L6-v2",
+    model_name: str = "BAAI/bge-base-en-v1.5",
 ) -> tuple[list[EvidenceChunk], np.ndarray]:
     """Scrapes approved sources, creates calibrated chunks, computes dense embeddings, and saves to disk."""
     target_sources = sources or APPROVED_SOURCES
@@ -115,7 +115,7 @@ def build_and_save_corpus(
 
     print(f"\nTotal corpus chunks generated: {len(all_chunks)}")
     if not all_chunks:
-        return [], np.empty((0, 384), dtype=np.float32)
+        return [], np.empty((0, 768), dtype=np.float32)
 
     # Compute dense embeddings using local sentence-transformers
     print(f"Computing local dense embeddings with {model_name}...")
