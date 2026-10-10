@@ -4,14 +4,17 @@ import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Phone,
 
 export default function Dashboard() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ backgroundColor: '#FAF9F8' }}>
       {/* Hero Section */}
       <section className="relative w-full h-[400px] overflow-hidden flex flex-col justify-center px-8 md:px-16 lg:px-24">
         {/* Background Image Placeholder */}
         <div 
-          className="absolute inset-0 z-0 bg-cover bg-center"
+          className="absolute inset-0 z-0"
           style={{ 
             backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/2/2c/Amrita_Vishwa_Vidyapeetham_coimbatore_campus.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
             filter: "brightness(0.65) saturate(1.1)"
           }}
         />
@@ -51,29 +54,39 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           
           {/* Card 1 */}
-          <Link href="/plan" className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col justify-between group h-44">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4 backdrop-blur-md">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold mb-1 group-hover:translate-x-1 transition-transform">Plan an Event</h3>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-rose-100/70 max-w-[80%]">Find a date, check availability and get started</p>
-                <div className="w-8 h-8 rounded-full bg-white text-rose-900 flex items-center justify-center shadow-md">
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          <Link href="/plan" className="block bg-gradient-to-br from-rose-900 to-rose-950 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all h-44 cursor-pointer relative z-30">
+            <div className="h-full flex flex-col justify-between group">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4 backdrop-blur-md">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold mb-1 group-hover:translate-x-1 transition-transform">Plan an Event</h3>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-rose-100/70 max-w-[80%]">Find a date, check availability and get started</p>
+                  <div className="w-8 h-8 rounded-full bg-white text-rose-900 flex items-center justify-center shadow-md">
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
                 </div>
               </div>
             </div>
           </Link>
 
           {/* Card 2 */}
-          <Link href="/venues" className="bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between group h-44 relative overflow-hidden">
-            <div 
-              className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
-              style={{ backgroundImage: "url('https://images.unsplash.com/photo-1590457635677-7871b6d05f3b?auto=format&fit=crop&w=600&q=80')" }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
-            <div className="relative z-10">
+          <Link href="/venues" className="block bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
+            <div className="absolute inset-0 w-full h-full">
+              <div 
+                className="absolute inset-0 z-0 transition-transform group-hover:scale-105 duration-700"
+                style={{ 
+                  backgroundImage: "url('https://images.unsplash.com/photo-1590457635677-7871b6d05f3b?auto=format&fit=crop&w=600&q=80')",
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  opacity: 0.4 
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
+            </div>
+            <div className="relative z-10 h-full flex flex-col justify-between group pointer-events-none">
               <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-rose-800 flex items-center justify-center mb-4">
                 <MapPin className="w-5 h-5" />
               </div>
@@ -90,13 +103,21 @@ export default function Dashboard() {
           </Link>
 
           {/* Card 3 */}
-          <Link href="/policy" className="bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between group h-44 relative overflow-hidden">
-            <div 
-              className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
-              style={{ backgroundImage: "url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=600&q=80')" }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
-            <div className="relative z-10">
+          <Link href="/policy" className="block bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
+            <div className="absolute inset-0 w-full h-full">
+              <div 
+                className="absolute inset-0 z-0 transition-transform group-hover:scale-105 duration-700"
+                style={{ 
+                  backgroundImage: "url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=600&q=80')",
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  opacity: 0.4
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
+            </div>
+            <div className="relative z-10 h-full flex flex-col justify-between group pointer-events-none">
               <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-rose-800 flex items-center justify-center mb-4">
                 <FileText className="w-5 h-5" />
               </div>
@@ -113,13 +134,21 @@ export default function Dashboard() {
           </Link>
 
           {/* Card 4 */}
-          <Link href="/changes" className="bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between group h-44 relative overflow-hidden">
-             <div 
-              className="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-transform group-hover:scale-105 duration-700"
-              style={{ backgroundImage: "url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80')" }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
-            <div className="relative z-10">
+          <Link href="/changes" className="block bg-white border border-gray-200 rounded-2xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
+             <div className="absolute inset-0 w-full h-full">
+              <div 
+                className="absolute inset-0 z-0 transition-transform group-hover:scale-105 duration-700"
+                style={{ 
+                  backgroundImage: "url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80')",
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  opacity: 0.4
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent z-0" />
+            </div>
+            <div className="relative z-10 h-full flex flex-col justify-between group pointer-events-none">
               <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-amber-600 flex items-center justify-center mb-4">
                 <BarChart2 className="w-5 h-5" />
               </div>
