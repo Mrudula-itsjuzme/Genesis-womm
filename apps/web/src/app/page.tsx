@@ -29,9 +29,11 @@ export default function Dashboard() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold text-gray-900">Welcome back, Arjun</h1>
-        <p className="text-gray-500 mt-1">Here is what is happening with your events.</p>
+      <header className="flex items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, Arjun <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 align-middle ml-2">DEMO DATA</span></h1>
+          <p className="text-gray-500 mt-1">Here is what is happening with your events.</p>
+        </div>
       </header>
 
       {/* Hero Card */}
