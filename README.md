@@ -37,7 +37,21 @@ The check can warn about an exam conflict, an exam on the next day, or a class o
 Before implementing a non-trivial feature, read the three context documents and its implementation plan. If no plan exists, write and review one first.
 
 ## Local setup
-The repository is at planning stage; concrete commands must be added when the service skeletons and package managers are selected. The intended integrated workflow uses Docker Compose. Each service must also support independent local tests with mocks.
+
+The intended integrated workflow uses Docker Compose. Each service also supports independent local execution and tests with mocks.
+
+### Running RAG API Service
+
+```bash
+cd services/rag-api
+pip install -e .
+uvicorn app.main:app --port 8002 --reload
+```
+
+Run tests:
+```bash
+pytest services/rag-api/tests/ -v
+```
 
 ## Product truth
 A tentative event is not a booking. An acknowledgment is not official confirmation. Empty calendars do not prove availability. LLMs do not own scheduling rules or authorization. An external registration redirect is not proof that a student registered. Synthetic demo data must be labeled as synthetic.
