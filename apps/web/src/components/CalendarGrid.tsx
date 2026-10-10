@@ -37,7 +37,7 @@ const CalendarGrid = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-none overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-none overflow-hidden">
           <div className="grid grid-cols-7 border-b border-stone-100 bg-[#FFF5F0]/50">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div key={day} className="py-4 text-center text-xs font-bold uppercase tracking-wider text-[#7a1b32] border-r last:border-r-0 border-stone-100/50">

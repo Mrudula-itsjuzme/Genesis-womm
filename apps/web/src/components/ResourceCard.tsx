@@ -15,7 +15,7 @@ export interface ResourceProps {
 
 export const ResourceCard: React.FC<{ resource: ResourceProps }> = ({ resource }) => {
   return (
-    <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(122,27,50,0.06)] transition-all duration-300 overflow-hidden flex flex-col h-full group border-none">
+    <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgb(122,27,50,0.06)] transition-all duration-300 overflow-hidden flex flex-col h-full group border-none">
       <div className="p-6 flex-grow">
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-xl font-bold text-gray-900 tracking-tight group-hover:text-[#7a1b32] transition-colors">{resource.name}</h3>
