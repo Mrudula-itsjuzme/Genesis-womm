@@ -12,7 +12,7 @@ from typing import Any, Protocol, Self
 from uuid import UUID
 
 from app.domain.authz import Actor
-from app.domain.enums import AvailabilityState, EventStatus, OverrideScope
+from app.domain.enums import AvailabilityState, EventStatus, OverrideScope, Role
 from app.domain.scheduling import Override, ScheduledEvent
 
 
@@ -110,6 +110,27 @@ class TokenService(Protocol):
     def verify(self, token: str) -> UUID: ...
 
 
+@dataclass(frozen=True)
+class MembershipIdentity:
+    """A membership that may be safely returned in a signed-in user's profile."""
+
+    club_id: UUID
+    club_name: str
+    role: Role
+
+
+@dataclass(frozen=True)
+class UserIdentity:
+    """Directory data for a known user, loaded only from the authoritative store."""
+
+    id: UUID
+    email: str
+    display_name: str
+    campus_admin: bool
+    memberships: tuple[MembershipIdentity, ...]
+    is_synthetic: bool
+
+
 class EventReader(Protocol):
     def get(self, event_id: UUID) -> EventRecord | None: ...
 
@@ -148,6 +169,14 @@ class OverrideReader(Protocol):
 class ActorReader(Protocol):
     def load_actor(self, user_id: UUID, *, via_agent: bool = False) -> Actor | None:
         """Build an Actor from database rows, never from anything a client supplied."""
+        ...
+
+    def load_identity(self, user_id: UUID) -> UserIdentity | None:
+        """Return a user's profile and memberships from database rows."""
+        ...
+
+    def load_identity_by_email(self, email: str) -> UserIdentity | None:
+        """Return a user's profile and memberships by their stored email address."""
         ...
 
 

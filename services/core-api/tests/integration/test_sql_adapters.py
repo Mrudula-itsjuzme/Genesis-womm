@@ -294,6 +294,29 @@ def test_an_unknown_user_has_no_actor(session: Session) -> None:
     assert SqlActorReader(session).load_actor(UUID(int=1)) is None
 
 
+def test_a_user_identity_includes_only_database_backed_memberships(session: Session) -> None:
+    conn = session.connection()
+    user = make_user(conn)
+    first, second = make_club(conn), make_club(conn)
+    insert(conn, "memberships", user_id=user, club_id=second, role="ORGANIZER", created_at=NOW)
+    insert(conn, "memberships", user_id=user, club_id=first, role="CLUB_ADMIN", created_at=NOW)
+
+    identity = SqlActorReader(session).load_identity_by_email(f"{user}@example.invalid")
+
+    assert identity is not None
+    assert (identity.id, identity.display_name, identity.campus_admin, identity.is_synthetic) == (
+        user,
+        "Test User",
+        False,
+        True,
+    )
+    assert {(membership.club_id, membership.role) for membership in identity.memberships} == {
+        (first, Role.CLUB_ADMIN),
+        (second, Role.ORGANIZER),
+    }
+    assert SqlActorReader(session).load_identity(UUID(int=1)) is None
+
+
 # ---- the campus lock ------------------------------------------------------------------
 
 
