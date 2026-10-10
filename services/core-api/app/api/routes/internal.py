@@ -7,22 +7,25 @@ field-allowlisted DTOs; no route here can reach student-private data, contacts o
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Request
 
 from app.api.deps import (
+    get_agent_action_service,
     get_conflict_check_service,
     get_event_read_service,
     require_delegated_actor,
     require_internal_key,
 )
-from app.api.errors import STUB_OPENAPI, error_responses, not_implemented, stub_errors
-from app.api.presenters import conflict_check_out, event_out
+from app.api.errors import error_responses
+from app.api.presenters import agent_action_out, conflict_check_out, event_out
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
 from app.schemas.agent import AgentAction, AgentActionCreate, AgentConflictCheckRequest
 from app.schemas.events import ConflictCheckOut, EventOut
+from app.services.agent_actions import AgentActionService, NewAgentAction
 from app.services.conflict_checks import ConflictCheckService
 from app.services.event_reads import EventReadService
+from app.services.schedule_write import RequestContext
 
 router = APIRouter(
     prefix="/internal/v1",
@@ -97,15 +100,38 @@ def get_event_details(
     response_model=AgentAction,
     summary="File a proposal for a human to confirm",
     description=(
-        "The Agent's only write. Creates a PROPOSED action; it can never confirm an event, "
-        "create an override or send a message."
+        "The Agent's only write. Creates a PROPOSED action for the delegated user, with the "
+        "conflicts a dry run found stored alongside it. It can never confirm an event, create an "
+        "override or send a message; the person confirms it with their own session. A retry with "
+        "the same Idempotency-Key returns the same proposal."
     ),
-    responses=stub_errors(ErrorCode.NOT_FOUND, ErrorCode.IDEMPOTENCY_MISMATCH),
-    openapi_extra=STUB_OPENAPI,
+    responses=error_responses(
+        ErrorCode.UNAUTHENTICATED,
+        ErrorCode.FORBIDDEN,
+        ErrorCode.NOT_FOUND,
+        ErrorCode.VALIDATION_ERROR,
+        ErrorCode.IDEMPOTENCY_MISMATCH,
+    ),
 )
 def file_agent_action(
     payload: AgentActionCreate,
     actor: DelegatedActor,
+    service: Annotated[AgentActionService, Depends(get_agent_action_service)],
+    request: Request,
     idempotency_key: IdempotencyKey = None,
 ) -> AgentAction:
-    not_implemented("Agent action filing")
+    filed = service.file(
+        RequestContext(
+            actor=actor,
+            request_id=str(request.state.request_id),
+            idempotency_key=idempotency_key,
+        ),
+        NewAgentAction(
+            type=payload.type,
+            summary=payload.summary,
+            target_event_id=payload.target_event_id,
+            expected_revision=payload.expected_revision,
+            payload=payload.payload,
+        ),
+    )
+    return agent_action_out(filed.action)

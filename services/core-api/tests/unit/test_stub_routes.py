@@ -33,10 +33,6 @@ VALID_EVENT: dict[str, Any] = {
     "end_at": "2026-10-20T11:00:00+05:30",
 }
 VALID_CHAT: dict[str, Any] = {"messages": [{"role": "user", "content": "Plan a demo day"}]}
-VALID_ACTION: dict[str, Any] = {
-    "type": "CREATE_FOLLOWUP_DRAFT",
-    "summary": "Ask ICTS to revalidate",
-}
 
 
 INTERNAL_KEY = "i" * 40
@@ -158,7 +154,6 @@ STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
     ("GET", "/api/v1/agent-actions", None),
     ("POST", f"/api/v1/agent-actions/{ACTION}/confirm", None),
     ("POST", f"/api/v1/agent-actions/{ACTION}/reject", None),
-    ("POST", "/internal/v1/agent-actions", VALID_ACTION),
 ]
 
 
@@ -217,7 +212,6 @@ def test_stub_returns_the_501_envelope(
         ("POST", "/api/v1/events", {**VALID_EVENT, "start_at": "2026-10-20T09:00:00"}),
         ("POST", "/api/v1/events", {**VALID_EVENT, "status": "CONFIRMED"}),
         ("POST", "/api/v1/agent/chat", {"messages": []}),
-        ("POST", "/internal/v1/agent-actions", {**VALID_ACTION, "type": "CONFIRM_EVENT"}),
         ("GET", "/api/v1/events/not-a-uuid", None),
         ("GET", "/api/v1/events?limit=500", None),
     ],
@@ -293,6 +287,7 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
             ("POST", "/api/v1/overrides"),
             ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
             ("GET", "/internal/v1/agent-tools/events/{event_id}"),
+            ("POST", "/internal/v1/agent-actions"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }:
@@ -318,6 +313,7 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("POST", "/api/v1/overrides"),
             ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
             ("GET", "/internal/v1/agent-tools/events/{event_id}"),
+            ("POST", "/internal/v1/agent-actions"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }

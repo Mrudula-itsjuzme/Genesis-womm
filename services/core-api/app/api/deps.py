@@ -13,6 +13,7 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from app.api.errors import ApiError
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
+from app.services.agent_actions import AgentActionService
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
@@ -76,6 +77,13 @@ def get_delegation_service(request: Request) -> DelegationService:
     if service is None:
         raise RuntimeError("delegation service is not configured")
     return cast(DelegationService, service)
+
+
+def get_agent_action_service(request: Request) -> AgentActionService:
+    service = getattr(request.app.state, "agent_actions", None)
+    if service is None:
+        raise RuntimeError("agent action service is not configured")
+    return cast(AgentActionService, service)
 
 
 def get_resource_read_service(request: Request) -> ResourceReadService:

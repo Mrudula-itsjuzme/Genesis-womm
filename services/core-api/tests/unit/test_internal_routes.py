@@ -10,11 +10,13 @@ from fastapi.testclient import TestClient
 from app.clients.delegation import PyJwtDelegationService
 from app.container import Container
 from app.domain.authz import Actor
-from app.domain.enums import AvailabilityState, EventStatus
+from app.domain.enums import AgentActionStatus, AgentActionType, AvailabilityState, EventStatus
 from app.domain.scheduling import Policy
 from app.domain.time import FixedClock
 from app.main import create_app
+from app.schemas.agent import AgentAction
 from app.schemas.events import ConflictCheckOut, EventOut
+from app.services.agent_actions import AgentActionService
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
@@ -68,6 +70,13 @@ def client(world: World) -> TestClient:
         delegation=DelegationService(db.uow, PyJwtDelegationService(DELEGATION_KEY)),
         conflict_checks=ConflictCheckService(db.uow, clock=FixedClock(NOW), policy=POLICY),
         event_reads=EventReadService(db.uow),
+        agent_actions=AgentActionService(
+            db.uow,
+            checks=ConflictCheckService(db.uow, clock=FixedClock(NOW), policy=POLICY),
+            writes=world.svc,
+            clock=FixedClock(NOW),
+            ids=world.ids,
+        ),
         internal_api_key=INTERNAL_KEY,
     )
     app = create_app(make_settings(), container)
@@ -263,18 +272,153 @@ def test_a_missing_event_is_404(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-# ---- the one facade route still to build ----------------------------------------------
+# ---- file_agent_action: the Agent's only write ---------------------------------------
+
+ACTIONS = "/internal/v1/agent-actions"
 
 
-def test_filing_an_action_still_requires_both_credentials_before_it_says_not_implemented(
-    client: TestClient,
+def draft_body(**overrides: Any) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "type": "CREATE_EVENT_DRAFT",
+        "summary": "Draft a robotics demo day",
+        "payload": {
+            "club_id": str(CLUB_A),
+            "title": "Robotics Demo Day",
+            "start_at": at(11).isoformat(),
+            "end_at": at(13).isoformat(),
+            "resource_id": str(CERTIFIED),
+        },
+    }
+    body.update(overrides)
+    return body
+
+
+def test_filing_a_proposal_returns_it_as_proposed_and_creates_nothing(
+    client: TestClient, world: World
 ) -> None:
-    body = {"type": "CREATE_EVENT_DRAFT", "summary": "Draft a demo day"}
+    response = client.post(ACTIONS, json=draft_body(), headers=as_agent_for(ORGANIZER))
 
-    unauthenticated = client.post("/internal/v1/agent-actions", json=body)
-    authenticated = client.post(
-        "/internal/v1/agent-actions", json=body, headers=as_agent_for(ORGANIZER)
+    assert response.status_code == 201, response.text
+    out = AgentAction.model_validate(response.json())
+    assert out.status is AgentActionStatus.PROPOSED
+    assert out.requires_human_review is True
+    assert world.db.state.events == {}
+    stored = world.db.state.agent_actions[out.action_id]
+    assert stored.requested_by == ORGANIZER.user_id
+
+
+def test_the_proposal_carries_the_dry_run_the_user_will_see(
+    client: TestClient, world: World
+) -> None:
+    confirmed(world, actor=OTHER_CLUB, club=CLUB_B, start=(12, 0), end=(14, 0), venue=CERTIFIED)
+
+    response = client.post(ACTIONS, json=draft_body(), headers=as_agent_for(ORGANIZER))
+
+    assert response.status_code == 201, response.text
+    conflicts = response.json()["conflicts"]
+    assert {c["type"] for c in conflicts} == {"TENTATIVE_OVERLAP"}
+    assert {c["severity"] for c in conflicts} == {"warning"}
+
+
+def test_a_retried_filing_returns_the_same_proposal(client: TestClient, world: World) -> None:
+    headers = {**as_agent_for(ORGANIZER), "Idempotency-Key": "turn-1-call-1"}
+
+    first = client.post(ACTIONS, json=draft_body(), headers=headers)
+    second = client.post(ACTIONS, json=draft_body(), headers=headers)
+
+    assert (first.status_code, second.status_code) == (201, 201)
+    assert second.json()["action_id"] == first.json()["action_id"]
+    assert len(world.db.state.agent_actions) == 1
+
+
+def test_the_same_key_with_a_different_body_is_a_422_mismatch(client: TestClient) -> None:
+    headers = {**as_agent_for(ORGANIZER), "Idempotency-Key": "k"}
+    client.post(ACTIONS, json=draft_body(), headers=headers)
+
+    response = client.post(ACTIONS, json=draft_body(summary="Something else"), headers=headers)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "IDEMPOTENCY_MISMATCH"
+
+
+def test_the_agent_cannot_file_for_a_club_its_user_is_not_in(client: TestClient) -> None:
+    body = draft_body()
+    body["payload"]["club_id"] = str(CLUB_B)
+
+    response = client.post(ACTIONS, json=body, headers=as_agent_for(ORGANIZER))
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "FORBIDDEN"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        draft_body(type="CONFIRM_EVENT"),
+        draft_body(type="BOOK_EVENT"),
+        draft_body(status="EXECUTED"),
+        draft_body(authorized_by=str(CAMPUS.user_id)),
+        draft_body(summary=""),
+        draft_body(payload={"title": "No club or times"}),
+        draft_body(payload={**draft_body()["payload"], "status": "CONFIRMED"}),
+    ],
+    ids=[
+        "confirm type",
+        "book type",
+        "status field",
+        "authorized_by field",
+        "blank summary",
+        "incomplete payload",
+        "payload with a status",
+    ],
+)
+def test_nothing_authority_bearing_can_be_filed(client: TestClient, body: dict[str, Any]) -> None:
+    response = client.post(ACTIONS, json=body, headers=as_agent_for(ORGANIZER))
+
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "VALIDATION_ERROR"
+
+
+def test_filing_requires_both_credentials(client: TestClient) -> None:
+    assert client.post(ACTIONS, json=draft_body()).status_code == 401
+    assert (
+        client.post(
+            ACTIONS, json=draft_body(), headers={"X-Internal-Key": INTERNAL_KEY}
+        ).status_code
+        == 401
     )
 
-    assert unauthenticated.status_code == 401
-    assert authenticated.status_code == 501
+
+def test_a_change_request_keeps_its_type_target_and_revision(
+    client: TestClient, world: World
+) -> None:
+    saved = confirmed(world, start=(14, 0), end=(15, 0))
+    body = {
+        "type": "REQUEST_EVENT_CHANGE",
+        "summary": "Move it an hour later",
+        "target_event_id": str(saved.event.id),
+        "expected_revision": saved.event.revision,
+        "payload": {"start_at": at(15).isoformat()},
+    }
+
+    response = client.post(ACTIONS, json=body, headers=as_agent_for(ORGANIZER))
+
+    assert response.status_code == 201, response.text
+    out = AgentAction.model_validate(response.json())
+    assert out.type is AgentActionType.REQUEST_EVENT_CHANGE
+    assert out.target_event_id == saved.event.id
+    assert out.expected_revision == saved.event.revision
+    assert out.status is AgentActionStatus.PROPOSED
+
+
+def test_the_request_id_follows_the_proposal_into_the_audit_trail(
+    client: TestClient, world: World
+) -> None:
+    client.post(
+        ACTIONS,
+        json=draft_body(),
+        headers={**as_agent_for(ORGANIZER), "X-Request-ID": "trace-me-123"},
+    )
+
+    [row] = world.db.state.audit
+    assert (row.action, row.request_id, row.via) == ("FILE_AGENT_ACTION", "trace-me-123", "AGENT")

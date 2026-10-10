@@ -898,8 +898,10 @@ paths:
       tags:
       - 'internal: agent facade'
       summary: File a proposal for a human to confirm
-      description: The Agent's only write. Creates a PROPOSED action; it can never confirm an event, create
-        an override or send a message.
+      description: The Agent's only write. Creates a PROPOSED action for the delegated user, with the
+        conflicts a dry run found stored alongside it. It can never confirm an event, create an override
+        or send a message; the person confirms it with their own session. A retry with the same Idempotency-Key
+        returns the same proposal.
       operationId: file_agent_action_internal_v1_agent_actions_post
       security:
       - internalKey: []
@@ -941,25 +943,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: VALIDATION_ERROR / IDEMPOTENCY_MISMATCH
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: NOT_FOUND
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
+        '422':
+          description: VALIDATION_ERROR / IDEMPOTENCY_MISMATCH
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/overrides:
     post:
       tags:
