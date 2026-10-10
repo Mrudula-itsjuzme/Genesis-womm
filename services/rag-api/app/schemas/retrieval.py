@@ -1,4 +1,4 @@
-from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -23,5 +23,5 @@ class SearchRequest(BaseModel):
 
 class SearchResponse(BaseModel):
     query: str
-    candidates: List[EvidenceChunk]
-    request_id: Optional[str] = None
+    candidates: list[EvidenceChunk]
+    request_id: str | None = None

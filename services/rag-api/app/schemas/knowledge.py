@@ -1,4 +1,5 @@
-from typing import List, Literal, Optional
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -23,5 +24,5 @@ class AnswerResponse(BaseModel):
     query: str
     answer: str
     status: Literal["grounded", "insufficient_evidence"]
-    citations: List[Citation]
-    request_id: Optional[str] = None
+    citations: list[Citation]
+    request_id: str | None = None
