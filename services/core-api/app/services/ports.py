@@ -134,6 +134,12 @@ class TokenService(Protocol):
     def verify(self, token: str) -> UUID: ...
 
 
+class DelegationTokenService(Protocol):
+    def issue(self, user_id: UUID, request_id: str) -> tuple[str, datetime]: ...
+
+    def verify(self, token: str) -> UUID: ...
+
+
 @dataclass(frozen=True)
 class MembershipIdentity:
     """A membership that may be safely returned in a signed-in user's profile."""
