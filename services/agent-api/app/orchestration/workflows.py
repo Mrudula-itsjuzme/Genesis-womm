@@ -84,8 +84,7 @@ async def run_analyze_change(
         ChatMessage(
             role="user",
             content=(
-                f"Event ID: {payload.event_id}\n"
-                f"Requested change: {payload.change_description}"
+                f"Event ID: {payload.event_id}\nRequested change: {payload.change_description}"
             ),
         )
     ]
