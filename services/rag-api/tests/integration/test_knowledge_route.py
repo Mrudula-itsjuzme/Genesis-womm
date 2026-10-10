@@ -1,7 +1,13 @@
-from fastapi.testclient import TestClient
+import pytest
 from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
+
+
+@pytest.fixture(name="client")
+def client_fixture():
+    return TestClient(app)
 
 
 def test_answer_route_returns_grounded_answer_and_citations():
@@ -13,6 +19,8 @@ def test_answer_route_returns_grounded_answer_and_citations():
     assert data["status"] in ["grounded", "insufficient_evidence"]
     assert "citations" in data
     assert isinstance(data["citations"], list)
+    assert "request_id" in data
+    assert data["request_id"] is not None
 
     if data["status"] == "grounded":
         assert len(data["citations"]) > 0
@@ -41,6 +49,8 @@ def test_answer_route_abstains_with_empty_citations_when_insufficient_evidence(m
     data = response.json()
     assert data["status"] == "insufficient_evidence"
     assert data["citations"] == []
+    assert "request_id" in data
+    assert data["request_id"] is not None
 
 
 def test_answer_route_respects_top_k():
@@ -55,3 +65,25 @@ def test_answer_route_rejects_empty_query():
     payload = {"query": ""}
     response = client.post("/v1/knowledge/answer", json=payload)
     assert response.status_code == 422
+
+
+def test_answer_route_with_dependency_override(client):
+    from app.api.deps import get_grounded_generator
+
+    class InjectedMockGenerator:
+        def generate_answer(self, query, candidates=None, evidence_chunks=None):
+            return ("Override answer test.", "grounded")
+
+    app.dependency_overrides[get_grounded_generator] = InjectedMockGenerator
+    try:
+        response = client.post(
+            "/v1/knowledge/answer",
+            json={"query": "test override question"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["answer"] == "Override answer test."
+        assert "request_id" in data
+        assert data["request_id"] is not None
+    finally:
+        app.dependency_overrides.pop(get_grounded_generator, None)
