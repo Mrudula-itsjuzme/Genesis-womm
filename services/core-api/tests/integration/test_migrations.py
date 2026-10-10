@@ -4,7 +4,7 @@ import pytest
 from alembic import command
 from sqlalchemy import Engine, text
 
-from tests.conftest import alembic_config, upgrade
+from tests.conftest import alembic_config, code_head, upgrade
 
 pytestmark = pytest.mark.integration
 
@@ -29,7 +29,7 @@ def test_upgrade_creates_core_schemas_and_records_the_head(engine: Engine) -> No
         version = connection.execute(
             text("SELECT version_num FROM core.alembic_version_core")
         ).scalar_one()
-    assert version == "0001"
+    assert version == code_head()
 
 
 def test_upgrade_is_idempotent(engine: Engine) -> None:

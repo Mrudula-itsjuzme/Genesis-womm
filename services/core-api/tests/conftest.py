@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine, text
 from testcontainers.community.postgres import PostgresContainer
 
@@ -18,6 +19,13 @@ def alembic_config(connection: object | None = None) -> Config:
     if connection is not None:
         config.attributes["connection"] = connection
     return config
+
+
+def code_head() -> str:
+    """The migration head the code ships, so tests never hard-code a revision."""
+    head = ScriptDirectory.from_config(alembic_config()).get_current_head()
+    assert head is not None
+    return head
 
 
 @pytest.fixture(scope="session")
