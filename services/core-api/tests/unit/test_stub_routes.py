@@ -273,23 +273,28 @@ def _operations(openapi: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]
 
 def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) -> None:
     for method, path, op in _operations(openapi):
-        if path in {"/health", "/ready"} or (method, path) in {
-            ("POST", "/api/v1/auth/demo-login"),
-            ("POST", "/api/v1/events"),
-            ("GET", "/api/v1/events"),
-            ("GET", "/api/v1/events/{event_id}"),
-            ("POST", "/api/v1/events/{event_id}/conflict-check"),
-            ("POST", "/api/v1/events/{event_id}/transitions"),
-            ("POST", "/api/v1/overrides"),
-            ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
-            ("GET", "/internal/v1/agent-tools/events/{event_id}"),
-            ("POST", "/internal/v1/agent-actions"),
-            ("GET", "/api/v1/agent-actions"),
-            ("POST", "/api/v1/agent-actions/{action_id}/confirm"),
-            ("POST", "/api/v1/agent-actions/{action_id}/reject"),
-            ("GET", "/api/v1/resources"),
-            ("GET", "/api/v1/resources/{resource_id}"),
-        }:
+        if (
+            path in {"/health", "/ready"}
+            or "/proposals" in path
+            or (method, path)
+            in {
+                ("POST", "/api/v1/auth/demo-login"),
+                ("POST", "/api/v1/events"),
+                ("GET", "/api/v1/events"),
+                ("GET", "/api/v1/events/{event_id}"),
+                ("POST", "/api/v1/events/{event_id}/conflict-check"),
+                ("POST", "/api/v1/events/{event_id}/transitions"),
+                ("POST", "/api/v1/overrides"),
+                ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
+                ("GET", "/internal/v1/agent-tools/events/{event_id}"),
+                ("POST", "/internal/v1/agent-actions"),
+                ("GET", "/api/v1/agent-actions"),
+                ("POST", "/api/v1/agent-actions/{action_id}/confirm"),
+                ("POST", "/api/v1/agent-actions/{action_id}/reject"),
+                ("GET", "/api/v1/resources"),
+                ("GET", "/api/v1/resources/{resource_id}"),
+            }
+        ):
             assert "x-implementation-status" not in op
         else:
             assert op.get("x-implementation-status") == "stub", f"{method} {path}"
@@ -299,10 +304,10 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
     documented = {
         (method, path.replace(EVENT, "{event_id}"))
         for method, path, _ in _operations(openapi)
-        if (method, path)
+        if path not in {"/health", "/ready"}
+        and "/proposals" not in path
+        and (method, path)
         not in {
-            ("GET", "/health"),
-            ("GET", "/ready"),
             ("POST", "/api/v1/auth/demo-login"),
             ("POST", "/api/v1/events"),
             ("GET", "/api/v1/events"),

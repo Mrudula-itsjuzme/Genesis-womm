@@ -14,7 +14,10 @@ dependencies = [
     "httpx==0.28.1",
     "pyjwt==2.15.1",
     "structlog==26.1.0",
+    "boto3>=1.34.0",
+    "python-multipart>=0.0.9",
 ]
+
 
 [dependency-groups]
 dev = [
@@ -52,7 +55,17 @@ plugins = ["pydantic.mypy"]
 files = ["app", "scripts", "tests"]
 exclude = ["migrations"]
 
+[[tool.mypy.overrides]]
+module = [
+    "boto3.*",
+    "boto3",
+    "botocore.*",
+    "botocore",
+]
+ignore_missing_imports = true
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
+

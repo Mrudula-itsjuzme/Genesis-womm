@@ -177,7 +177,6 @@ def test_e2e_scenarios_1_to_5(engine: Engine) -> None:
             headers=admin_headers,
         )
         assert t3.status_code == 409  # gap violation
-
         # 5. An authorized campus-gap override must still reject a venue overlap.
         o1 = client.post(
             "/api/v1/overrides",

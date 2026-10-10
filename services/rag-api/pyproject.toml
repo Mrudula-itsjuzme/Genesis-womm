@@ -18,6 +18,8 @@ dependencies = [
     "sentence-transformers>=3.0.0",
     "groq>=0.11.0",
     "numpy>=1.26.0",
+    "chromadb>=0.5.0",
+    "beautifulsoup4>=4.12.0",
 ]
 
 [project.optional-dependencies]
@@ -45,8 +47,16 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
     "sqlalchemy.*",
+    "pgvector",
     "pgvector.*",
     "requests.*",
     "bs4.*",
+    "pandas.*",
+    "pandas",
+    "datasets.*",
+    "datasets",
+    "ragas.*",
+    "ragas",
 ]
 ignore_missing_imports = true
+

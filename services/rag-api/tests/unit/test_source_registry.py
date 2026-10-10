@@ -1,5 +1,5 @@
 import pytest
-from app.ingestion.source_registry import SourceRegistry, SourceEntry
+from app.ingestion.source_registry import SourceEntry, SourceRegistry
 
 
 def test_get_allowed_source():

@@ -1,0 +1,105 @@
+# RAG Proposal Ingestion & Lifecycle API Contracts
+$schema: "http://json-schema.org/draft-07/schema#"
+title: RAGProposalIngestSchemas
+description: Schemas for RAG API proposal ingestion from presigned URLs and lifecycle deletion.
+
+ProposalIngestRequest:
+  type: object
+  required:
+    - proposal_id
+    - event_id
+    - club_id
+    - revision
+    - presigned_url
+    - title
+  properties:
+    proposal_id:
+      type: string
+      format: uuid
+      description: Proposal identifier.
+    event_id:
+      type: string
+      format: uuid
+      description: Event identifier for metadata scoping.
+    club_id:
+      type: string
+      format: uuid
+      description: Club identifier.
+    revision:
+      type: integer
+      minimum: 1
+      description: Revision number of the proposal.
+    presigned_url:
+      type: string
+      format: uri
+      description: Single-use 15-min presigned URL to download the approved proposal PDF.
+    title:
+      type: string
+      description: Proposal title or document name.
+    submitted_by:
+      type: string
+      description: User ID of the submitter.
+    approved_by:
+      type: string
+      description: User ID of the approving official.
+
+ProposalIngestResponse:
+  type: object
+  required:
+    - proposal_id
+    - event_id
+    - chunks_ingested
+    - collection
+    - status
+  properties:
+    proposal_id:
+      type: string
+      format: uuid
+    event_id:
+      type: string
+      format: uuid
+    chunks_ingested:
+      type: integer
+      minimum: 0
+    collection:
+      type: string
+      enum:
+        - proposals
+    status:
+      type: string
+      enum:
+        - success
+        - failed
+
+ProposalDeleteRequest:
+  type: object
+  required:
+    - event_id
+  properties:
+    event_id:
+      type: string
+      format: uuid
+      description: Event ID whose proposal chunks must be removed.
+
+ProposalDeleteResponse:
+  type: object
+  required:
+    - proposal_id
+    - event_id
+    - chunks_deleted
+    - status
+  properties:
+    proposal_id:
+      type: string
+      format: uuid
+    event_id:
+      type: string
+      format: uuid
+    chunks_deleted:
+      type: integer
+      minimum: 0
+    status:
+      type: string
+      enum:
+        - success
+        - not_found

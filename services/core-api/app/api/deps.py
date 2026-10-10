@@ -5,6 +5,7 @@ sessions for `/api/v1`, and for the Agent facade the internal key plus a delegat
 """
 
 import hmac
+from datetime import UTC, datetime
 from typing import Annotated, cast
 
 from fastapi import Depends, Request
@@ -13,14 +14,41 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from app.api.errors import ApiError
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
+from app.domain.time import Clock
 from app.services.agent_actions import AgentActionService
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
+from app.services.minio_client import MinIOProposalStorage
 from app.services.readiness import ReadinessService
 from app.services.resource_reads import ResourceReadService
 from app.services.schedule_write import ScheduleWriteService
 from app.services.sessions import SessionService
+from app.settings import Settings
+
+
+class SystemClock:
+    """Live clock producing aware UTC timestamps."""
+
+    def now(self) -> datetime:
+        return datetime.now(UTC)
+
+
+def get_clock() -> Clock:
+    return SystemClock()
+
+
+def get_minio_storage(request: Request) -> MinIOProposalStorage:
+    settings: Settings = request.app.state.settings
+    return MinIOProposalStorage(
+        endpoint=settings.minio_endpoint,
+        access_key=settings.minio_access_key.get_secret_value(),
+        secret_key=settings.minio_secret_key.get_secret_value(),
+        proposal_bucket=settings.minio_proposal_bucket,
+        archive_bucket=settings.minio_archive_bucket,
+        use_ssl=settings.minio_use_ssl,
+    )
+
 
 session_bearer = HTTPBearer(
     auto_error=False,

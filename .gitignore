@@ -29,3 +29,20 @@ build/
 .DS_Store
 scratch/
 *.log
+
+# Machine learning models and checkpoints (use scripts/download_models.py)
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.tflite
+/models/
+/services/*/models/
+checkpoints/
+
+
+# Local vector database stores and sqlite
+chroma_db/
+*.sqlite3
+*.sqlite
+

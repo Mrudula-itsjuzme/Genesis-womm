@@ -10,7 +10,9 @@ class DenseRetriever:
     """Local vector retriever using sentence-transformers or deterministic mock for fast tests."""
 
     def __init__(
-        self, model_name: str = "all-MiniLM-L6-v2", use_mock_embeddings: bool = False
+        self,
+        model_name: str = "BAAI/bge-base-en-v1.5",
+        use_mock_embeddings: bool = False,
     ):
         self.model_name = model_name
         self.use_mock_embeddings = use_mock_embeddings
@@ -42,6 +44,10 @@ class DenseRetriever:
         else:
             model = self._get_model()
             return np.array(model.encode(texts, normalize_embeddings=True))
+
+    def encode(self, texts: list[str]) -> np.ndarray:
+        """Encode a list of texts into normalized embedding vectors."""
+        return self._encode(texts)
 
     def index(self, chunks: list[EvidenceChunk]):
         if not chunks:

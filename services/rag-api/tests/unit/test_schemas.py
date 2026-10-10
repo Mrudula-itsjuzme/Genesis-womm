@@ -1,7 +1,7 @@
 import pytest
-from pydantic import ValidationError
+from app.schemas.knowledge import AnswerRequest, AnswerResponse, Citation
 from app.schemas.retrieval import EvidenceChunk, SearchRequest, SearchResponse
-from app.schemas.knowledge import Citation, AnswerRequest, AnswerResponse
+from pydantic import ValidationError
 
 
 def test_evidence_chunk_serialization():

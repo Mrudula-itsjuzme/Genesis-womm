@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.middleware import RequestTracingMiddleware
+from app.api.routes.ingest_proposal import router as proposal_router
 from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.retrieval import router as retrieval_router
 from app.config import settings
@@ -49,6 +50,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 app.include_router(retrieval_router)
 app.include_router(knowledge_router)
+app.include_router(proposal_router)
+
 
 
 @app.get("/health")
