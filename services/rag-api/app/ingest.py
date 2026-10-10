@@ -2,13 +2,14 @@ import json
 import logging
 from pathlib import Path
 
-import bs4
 import httpx
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from app.chunking.structure import StructureChunker
-from app.parsing.pdf import ParsedPage, PDFParser
+from app.parsing.html import HTMLParser, clean_text
+from app.parsing.pdf import PDFParser
+from app.retrieval.chroma import ChromaStore
 from app.schemas.retrieval import EvidenceChunk
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 CHUNKS_FILE = DATA_DIR / "corpus_chunks.jsonl"
 EMBEDDINGS_FILE = DATA_DIR / "dense_embeddings.npy"
+CHROMA_DIR = DATA_DIR / "chroma_db"
 
 # Authoritative RAG policy sources approved in SOURCE_REGISTRY.md
 APPROVED_SOURCES: list[dict[str, str]] = [
@@ -40,13 +42,25 @@ APPROVED_SOURCES: list[dict[str, str]] = [
         "url": "https://www.amrita.edu/campus/coimbatore/infrastructure/",
         "format": "html",
     },
+    {
+        "source_id": "icts_services",
+        "title": "ICTS Infrastructure and Technical Services",
+        "url": "https://intranet.cb.amrita.edu/infrastructure/icts",
+        "format": "html",
+    },
+    {
+        "source_id": "icts_support_contacts",
+        "title": "ICTS Support and Helpdesk Routing",
+        "url": "https://intranet.cb.amrita.edu/infrastructure/icts/support-contacts",
+        "format": "html",
+    },
 ]
 
 
 def fetch_pdf_and_chunk(
     source_id: str, title: str, url: str, client: httpx.Client | None = None
 ) -> list[EvidenceChunk]:
-    """Fetch PDF, preserve page numbers, and chunk with StructureChunker."""
+    """Fetch PDF, clean text, preserve page numbers, and chunk with StructureChunker."""
     print(f"Fetching PDF: {title} ({url})")
     http_client = client or httpx.Client(timeout=20.0, follow_redirects=True)
     try:
@@ -59,6 +73,8 @@ def fetch_pdf_and_chunk(
 
     parser = PDFParser()
     pages = parser.parse_bytes(pdf_bytes)
+    for p in pages:
+        p.text = clean_text(p.text)
     print(f"  Parsed {len(pages)} pages from PDF.")
 
     chunker = StructureChunker(target_chunk_size=180, chunk_overlap=30)
@@ -70,7 +86,7 @@ def fetch_pdf_and_chunk(
 def fetch_html_and_chunk(
     source_id: str, title: str, url: str, client: httpx.Client | None = None
 ) -> list[EvidenceChunk]:
-    """Fetch HTML page, extract clean text, and chunk with StructureChunker."""
+    """Fetch HTML page, extract clean structured text, and chunk with StructureChunker."""
     print(f"Fetching HTML: {title} ({url})")
     http_client = client or httpx.Client(timeout=20.0, follow_redirects=True)
     try:
@@ -81,15 +97,12 @@ def fetch_html_and_chunk(
         if client is None:
             http_client.close()
 
-    soup = bs4.BeautifulSoup(html_text, "html.parser")
-    for tag in soup(["script", "style", "nav", "header", "footer", "noscript"]):
-        tag.decompose()
-
-    clean_text = soup.get_text(separator="\n", strip=True)
-    page = ParsedPage(page_number=1, text=clean_text, section_breadcrumb=title)
+    html_parser = HTMLParser()
+    pages = html_parser.parse_html(html_text, default_title=title)
+    print(f"  Extracted {len(pages)} structured sections from HTML.")
 
     chunker = StructureChunker(target_chunk_size=180, chunk_overlap=30)
-    chunks = chunker.chunk_pages([page], document_id=source_id, title=title, source_url=url)
+    chunks = chunker.chunk_pages(pages, document_id=source_id, title=title, source_url=url)
     print(f"  Generated {len(chunks)} chunks for {source_id}.")
     return chunks
 
@@ -98,7 +111,7 @@ def build_and_save_corpus(
     sources: list[dict[str, str]] | None = None,
     model_name: str = "BAAI/bge-base-en-v1.5",
 ) -> tuple[list[EvidenceChunk], np.ndarray]:
-    """Scrapes approved sources, creates calibrated chunks, computes dense embeddings, and saves to disk."""
+    """Scrapes approved sources, creates calibrated chunks, computes 768d embeddings, and saves to ChromaDB & disk."""
     target_sources = sources or APPROVED_SOURCES
     all_chunks: list[EvidenceChunk] = []
 
@@ -117,7 +130,7 @@ def build_and_save_corpus(
     if not all_chunks:
         return [], np.empty((0, 768), dtype=np.float32)
 
-    # Compute dense embeddings using local sentence-transformers
+    # Compute dense embeddings using local sentence-transformers (768 dimensions)
     print(f"Computing local dense embeddings with {model_name}...")
     model = SentenceTransformer(model_name)
     texts = [f"{c.section}: {c.excerpt}" if c.section else c.excerpt for c in all_chunks]
@@ -132,6 +145,15 @@ def build_and_save_corpus(
     # Persist embeddings to NPY
     np.save(EMBEDDINGS_FILE, embeddings)
     print(f"Saved embeddings to {EMBEDDINGS_FILE}")
+
+    # Persist into local ChromaDB
+    print(f"Upserting chunks into ChromaDB at {CHROMA_DIR}...")
+    try:
+        chroma = ChromaStore(persist_directory=CHROMA_DIR)
+        chroma.upsert_chunks(all_chunks, embeddings)
+        print(f"Successfully upserted {chroma.count()} chunks into local ChromaDB!")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Warning: ChromaDB upsert skipped: {exc}")
 
     # Optional PostgreSQL database sync if available
     _sync_to_database_if_available(all_chunks, embeddings)
