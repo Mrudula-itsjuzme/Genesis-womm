@@ -1,0 +1,9 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Plan a robotics demo day on 20 October from 10:00 to 12:00 in Seminar Hall A."
+    }
+  ],
+  "event_id": null
+}
