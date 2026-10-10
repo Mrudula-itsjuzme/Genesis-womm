@@ -100,7 +100,7 @@ paths:
       security:
       - delegationBearer: []
       - internalKey: []
-      x-implementation-status: stub
+      x-implementation-status: implemented
   /v1/agent/plan-event:
     post:
       tags:
@@ -160,7 +160,7 @@ paths:
       security:
       - delegationBearer: []
       - internalKey: []
-      x-implementation-status: stub
+      x-implementation-status: implemented
   /v1/agent/analyze-change:
     post:
       tags:
@@ -220,7 +220,7 @@ paths:
       security:
       - delegationBearer: []
       - internalKey: []
-      x-implementation-status: stub
+      x-implementation-status: implemented
 components:
   schemas:
     AccessLevel:
@@ -568,6 +568,8 @@ components:
       - STALE_REVISION
       - IDEMPOTENCY_MISMATCH
       - INVALID_TRANSITION
+      - DUPLICATE_OVERRIDE
+      - EVIDENCE_REQUIRED
       - DEPENDENCY_UNAVAILABLE
       - AGENT_OUTPUT_INVALID
       - NOT_IMPLEMENTED

@@ -39,6 +39,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     )
     app.state.settings = settings
     app.state.readiness = container.readiness
+    app.state.engine = container.engine
 
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)

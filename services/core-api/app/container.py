@@ -1,23 +1,45 @@
 """Composition root: the only place that wires adapters to use cases."""
 
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
+from uuid import UUID, uuid4
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine
+from sqlalchemy.orm import sessionmaker
 
+from app.clients.tokens import PyJwtTokenService
+from app.domain.scheduling import Policy
+from app.domain.time import SystemClock
 from app.repositories.health import SqlReadinessProbe
+from app.repositories.unit_of_work import SqlUnitOfWork
+from app.services.conflict_checks import ConflictCheckService
+from app.services.event_reads import EventReadService
 from app.services.readiness import ReadinessService
+from app.services.resource_reads import ResourceReadService
+from app.services.schedule_write import ScheduleWriteService
+from app.services.sessions import SessionService
 from app.settings import Settings
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
+
+
+class UuidSource:
+    def new_id(self) -> UUID:
+        return uuid4()
 
 
 @dataclass
 class Container:
     readiness: ReadinessService
     engine: Engine | None = None
+    sessions: SessionService | None = None
+    schedule_write: ScheduleWriteService | None = None
+    event_reads: EventReadService | None = None
+    resource_reads: ResourceReadService | None = None
+    conflict_checks: ConflictCheckService | None = None
 
     def dispose(self) -> None:
         if self.engine is not None:
@@ -41,4 +63,30 @@ def build_container(settings: Settings) -> Container:
         connect_args={"connect_timeout": 3},
     )
     readiness = ReadinessService(SqlReadinessProbe(engine), expected_migration_head())
-    return Container(readiness=readiness, engine=engine)
+    database_sessions = sessionmaker(bind=engine, expire_on_commit=False)
+    sessions = SessionService(
+        lambda: SqlUnitOfWork(database_sessions),
+        PyJwtTokenService(settings.session_signing_key.get_secret_value()),
+    )
+    schedule_write = ScheduleWriteService(
+        lambda: SqlUnitOfWork(database_sessions),
+        clock=SystemClock(),
+        ids=UuidSource(),
+        policy=Policy(campus_gap=timedelta(minutes=settings.campus_gap_minutes)),
+    )
+    conflict_checks = ConflictCheckService(
+        lambda: SqlUnitOfWork(database_sessions),
+        clock=SystemClock(),
+        policy=Policy(campus_gap=timedelta(minutes=settings.campus_gap_minutes)),
+    )
+    event_reads = EventReadService(lambda: SqlUnitOfWork(database_sessions))
+    resource_reads = ResourceReadService(lambda: SqlUnitOfWork(database_sessions))
+    return Container(
+        readiness=readiness,
+        engine=engine,
+        sessions=sessions,
+        schedule_write=schedule_write,
+        event_reads=event_reads,
+        resource_reads=resource_reads,
+        conflict_checks=conflict_checks,
+    )

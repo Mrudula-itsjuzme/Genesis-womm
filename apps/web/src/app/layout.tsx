@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
 import TopNav from "@/components/TopNav";
 
 const geistSans = Geist({
@@ -25,10 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-row">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto min-h-screen bg-stone-50">
-          <TopNav />
+      <body className="min-h-screen flex flex-col bg-[#F5EEE9] text-gray-900 font-sans">
+        <TopNav />
+        <main className="flex-1">
           {children}
         </main>
       </body>

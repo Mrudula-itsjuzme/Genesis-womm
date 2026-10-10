@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query
 
-from app.api.deps import session_bearer
+from app.api.deps import require_session_actor
 from app.api.errors import STUB_OPENAPI, not_implemented, stub_errors
 from app.domain.enums import AgentActionStatus, ErrorCode
 from app.schemas.agent import (
@@ -14,7 +14,7 @@ from app.schemas.agent import (
     ChatResponse,
 )
 
-router = APIRouter(prefix="/api/v1", tags=["agent"], dependencies=[Depends(session_bearer)])
+router = APIRouter(prefix="/api/v1", tags=["agent"], dependencies=[Depends(require_session_actor)])
 
 IdempotencyKey = Annotated[
     str | None,

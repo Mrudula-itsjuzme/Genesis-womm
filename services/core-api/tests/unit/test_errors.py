@@ -1,4 +1,5 @@
 import json
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
@@ -15,6 +16,7 @@ from app.api.errors import (
 from app.api.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
 from app.domain.enums import ErrorCode
 from app.schemas.common import ErrorEnvelope
+from app.services.errors import IdempotencyMismatchError, NotFoundError
 
 
 class Payload(BaseModel):
@@ -55,6 +57,14 @@ def make_app() -> FastAPI:
     def documented() -> dict[str, str]:
         return {}
 
+    @app.get("/missing")
+    def missing() -> None:
+        raise NotFoundError("event", uuid4())
+
+    @app.get("/retry-mismatch")
+    def retry_mismatch() -> None:
+        raise IdempotencyMismatchError("key reused")
+
     return app
 
 
@@ -84,6 +94,21 @@ def test_stale_revision_is_409_and_distinct_from_conflict(client: TestClient) ->
     response = client.get("/stale")
     assert response.status_code == 409
     assert response.json()["code"] == "STALE_REVISION"
+
+
+@pytest.mark.parametrize(
+    ("path", "status", "code"),
+    [
+        ("/missing", 404, ErrorCode.NOT_FOUND),
+        ("/retry-mismatch", 422, ErrorCode.IDEMPOTENCY_MISMATCH),
+    ],
+)
+def test_service_refusals_use_the_standard_envelope(
+    client: TestClient, path: str, status: int, code: ErrorCode
+) -> None:
+    response = client.get(path)
+    assert response.status_code == status
+    assert response.json()["code"] == code
 
 
 def test_validation_errors_are_422_without_echoing_input(client: TestClient) -> None:

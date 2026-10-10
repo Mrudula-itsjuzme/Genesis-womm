@@ -10,6 +10,7 @@ from app.domain.enums import (
     ConflictConstraint,
     ConflictType,
     EventStatus,
+    OverrideScope,
     Severity,
 )
 from app.domain.time import InvalidIntervalError, ensure_interval
@@ -162,3 +163,39 @@ class ConflictCheckOut(BaseModel):
     has_blocking: bool = Field(description="True when any conflict has severity 'blocking'.")
     conflicts: list[Conflict]
     checked_at: CampusDatetime
+
+
+class EvidenceData(BaseModel):
+    kind: str
+    reference: str
+    captured_at: CampusDatetime
+    issuer: str | None = None
+
+
+class TransitionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_status: EventStatus
+    expected_revision: int
+    evidence: EvidenceData | None = None
+
+
+class OverrideRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    scope: OverrideScope
+    event_a_id: UUID
+    event_b_id: UUID
+    reason: str
+    evidence: EvidenceData | None = None
+
+
+class OverrideOut(BaseModel):
+    id: UUID
+    scope: OverrideScope
+    event_a_id: UUID
+    event_b_id: UUID
+    reason: str
+    authorizer_id: UUID
+    evidence_id: UUID | None
+    created_at: CampusDatetime

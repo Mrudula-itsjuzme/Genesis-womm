@@ -196,6 +196,11 @@ def transition_commitment(
     )
 
 
+def event_action_for(target: EventStatus) -> Action | None:
+    """The action an actor needs to move an event into ``target``, or None if no user can."""
+    return _EVENT_ACTION.get(target)
+
+
 # ---- system moves ---------------------------------------------------------------------
 
 

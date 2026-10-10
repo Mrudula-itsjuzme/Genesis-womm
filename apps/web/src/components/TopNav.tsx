@@ -1,57 +1,73 @@
-import React from 'react';
-import { Search, Bell, Plus, User, ChevronDown } from 'lucide-react';
+'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Bell, Search, ChevronDown } from 'lucide-react';
 
 export default function TopNav() {
+  const pathname = usePathname();
+
+  const links = [
+    { href: '/', label: 'Home' },
+    { href: '/plan', label: 'Plan Event' },
+    { href: '/calendar', label: 'Calendar' },
+    { href: '/venues', label: 'Venues' },
+    { href: '/policy', label: 'Ask CampusCue' },
+    { href: '/resources', label: 'Resources' },
+  ];
+
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 lg:px-8">
-      
-      {/* Left: Search Bar */}
-      <div className="flex flex-1 max-w-2xl">
-        <div className="relative w-full">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
-          </div>
-          <input
-            type="search"
-            name="search"
-            id="search"
-            className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-rose-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-800 transition-colors"
-            placeholder="Search events, venues, or policies"
-          />
+    <nav className="fixed top-0 left-0 right-0 h-16 bg-[#F5EEE9]/95 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 border-b border-[#F5E6DF] print:hidden">
+      {/* Logo Area */}
+      <div className="flex items-center gap-3 w-64">
+        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm p-1 border border-rose-100">
+          <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/87/Amrita_Vishwa_Vidyapeetham_Emblem.svg/1200px-Amrita_Vishwa_Vidyapeetham_Emblem.svg.png" alt="Amrita Logo" className="w-full h-full object-contain" />
+        </div>
+        <div className="flex flex-col justify-center">
+          <span className="text-[#7a1b32] font-serif font-bold text-lg leading-none tracking-wide">AMRITA</span>
+          <span className="text-[#7a1b32] text-[8px] font-semibold tracking-widest leading-none mt-0.5 uppercase">Vishwa Vidyapeetham</span>
         </div>
       </div>
 
-      {/* Right: Actions & Profile */}
-      <div className="flex items-center gap-x-6 ml-4">
-        
-        {/* New Event Button */}
-        <button
-          type="button"
-          className="inline-flex items-center gap-x-2 rounded-lg bg-rose-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-800 transition-colors"
-        >
-          New Event
-          <Plus className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-        </button>
-        
-        {/* Notification Bell */}
-        <button type="button" className="relative p-1 text-gray-500 hover:text-gray-700">
-          <span className="sr-only">View notifications</span>
-          <Bell className="h-6 w-6" aria-hidden="true" />
-          <span className="absolute top-1 right-1.5 block h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" />
-        </button>
-
-        {/* User Profile */}
-        <button className="flex items-center gap-x-3 hover:bg-gray-50 p-1.5 rounded-lg transition-colors">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-800">
-            <User className="h-5 w-5" />
-          </div>
-          <div className="hidden md:flex md:items-center md:gap-x-1">
-            <span className="text-sm font-medium text-gray-700">Arjun Admin</span>
-            <ChevronDown className="h-4 w-4 text-gray-500" aria-hidden="true" />
-          </div>
-        </button>
-
+      {/* Center Links */}
+      <div className="hidden md:flex items-center space-x-1">
+        {links.map(link => {
+          const isActive = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`px-5 py-2 text-sm font-semibold relative transition-colors ${isActive ? 'text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              {link.label}
+              {isActive && (
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-[#7a1b32] rounded-full" />
+              )}
+            </Link>
+          );
+        })}
       </div>
-    </header>
+
+      {/* Right Actions */}
+      <div className="flex items-center gap-3 w-64 justify-end">
+        <button className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-white rounded-full transition-colors border border-transparent hover:border-[#F5E6DF]">
+          <Search className="w-4 h-4" />
+        </button>
+        <button className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-white rounded-full transition-colors relative border border-transparent hover:border-[#F5E6DF]">
+          <Bell className="w-4 h-4" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#F5EEE9]"></span>
+        </button>
+        <div className="h-6 w-px bg-[#F5E6DF] mx-1"></div>
+        <div className="flex items-center gap-2 cursor-pointer group hover:bg-white px-2 py-1.5 rounded-full transition-colors border border-transparent hover:border-[#F5E6DF]">
+          <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center">
+            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80" alt="Profile" className="w-full h-full object-cover" />
+          </div>
+          <div className="hidden lg:flex flex-col">
+            <span className="text-xs font-bold text-gray-900 leading-tight">Hi, Mrudula!</span>
+            <span className="text-[10px] text-gray-500 font-medium leading-none mt-0.5">WOMM</span>
+          </div>
+          <ChevronDown className="w-3 h-3 text-gray-400 ml-1" />
+        </div>
+      </div>
+    </nav>
   );
 }

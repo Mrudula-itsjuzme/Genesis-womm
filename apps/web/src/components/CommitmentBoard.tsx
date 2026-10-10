@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CheckCircle, AlertTriangle, HelpCircle, ArrowRightCircle, CircleDashed } from 'lucide-react';
+import { Clock, CheckCircle, AlertTriangle, ArrowRightCircle, CircleDashed } from 'lucide-react';
 
 export default function CommitmentBoard() {
   const commitments = [
@@ -15,38 +15,38 @@ export default function CommitmentBoard() {
     switch (status) {
       case 'Confirmed':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-100 shadow-sm">
             <CheckCircle className="w-3.5 h-3.5" /> Confirmed
           </span>
         );
       case 'Requested':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-100 shadow-sm">
             <ArrowRightCircle className="w-3.5 h-3.5" /> Requested
           </span>
         );
       case 'Pending':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 border border-amber-100 shadow-sm">
             <Clock className="w-3.5 h-3.5" /> Pending
           </span>
         );
       case 'Acknowledged':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 border border-indigo-100 shadow-sm">
             <CheckCircle className="w-3.5 h-3.5" /> Acknowledged
           </span>
         );
       case 'Needs Revalidation':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-800 border border-rose-200 shadow-sm">
             <AlertTriangle className="w-3.5 h-3.5" /> Needs Revalidation
           </span>
         );
       case 'Not Started':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-600 border border-stone-200 shadow-sm">
             <CircleDashed className="w-3.5 h-3.5" /> Not Started
           </span>
         );
@@ -54,29 +54,29 @@ export default function CommitmentBoard() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">Commitment Board</h3>
+    <div className="bg-[#FAF9F8] rounded-2xl shadow-sm border border-stone-200/50 overflow-hidden">
+      <div className="px-6 py-5 border-b border-stone-200/50 bg-white/50">
+        <h3 className="text-lg font-bold text-gray-900">Commitment Board</h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-stone-200/50">
+          <thead className="bg-stone-50/50">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source / Office</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+              <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Item</th>
+              <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Source / Office</th>
+              <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Updated</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-stone-100">
             {commitments.map((commitment, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{commitment.item}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{commitment.source}</td>
+              <tr key={idx} className="hover:bg-stone-50/50 transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{commitment.item}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">{commitment.source}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(commitment.status)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{commitment.lastUpdated}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400">{commitment.lastUpdated}</td>
               </tr>
             ))}
           </tbody>

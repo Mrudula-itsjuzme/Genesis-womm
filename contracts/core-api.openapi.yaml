@@ -39,6 +39,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/auth/demo-login:
+    post:
+      tags:
+      - authentication
+      summary: Create a session for a seeded demo user
+      description: Demo-only seeded-directory login. Production SSO replaces this endpoint's identity
+        verification without changing authorization rules.
+      operationId: demo_login_api_v1_auth_demo_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoLoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/events:
     post:
       tags:
@@ -98,7 +131,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
     get:
       tags:
       - events
@@ -199,7 +231,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/events/{event_id}:
     get:
       tags:
@@ -253,7 +284,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/events/{event_id}/conflict-check:
     post:
       tags:
@@ -317,7 +347,83 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
+  /api/v1/events/{event_id}/transitions:
+    post:
+      tags:
+      - events
+      summary: Move an event along its lifecycle
+      description: Only a confirmation can be blocked by a conflict.
+      operationId: transition_event_route_api_v1_events__event_id__transitions_post
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          description: Makes a retried POST safe.
+          title: Idempotency-Key
+        description: Makes a retried POST safe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: CONFLICT_DETECTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/resources:
     get:
       tags:
@@ -375,25 +481,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '403':
-          description: FORBIDDEN
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '422':
           description: VALIDATION_ERROR
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/resources/{resource_id}:
     get:
       tags:
@@ -423,8 +516,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '403':
-          description: FORBIDDEN
+        '404':
+          description: NOT_FOUND
           content:
             application/json:
               schema:
@@ -435,19 +528,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '404':
-          description: NOT_FOUND
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/agent/chat:
     post:
       tags:
@@ -891,6 +971,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
       x-implementation-status: stub
+  /api/v1/overrides:
+    post:
+      tags:
+      - overrides
+      summary: Create a new schedule conflict override
+      description: Waive one constraint for one pair of events. Campus admins only.
+      operationId: create_override_api_v1_overrides_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OverrideRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OverrideOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN / FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: DUPLICATE_OVERRIDE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - sessionBearer: []
 components:
   schemas:
     AgentAction:
@@ -1402,6 +1534,18 @@ components:
       - DEPENDENCY_CONFLICT
       - UNKNOWN_AVAILABILITY
       title: ConflictType
+    DemoLoginRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: Email
+      additionalProperties: false
+      type: object
+      required:
+      - email
+      title: DemoLoginRequest
     ErrorCode:
       type: string
       enum:
@@ -1414,6 +1558,8 @@ components:
       - STALE_REVISION
       - IDEMPOTENCY_MISMATCH
       - INVALID_TRANSITION
+      - DUPLICATE_OVERRIDE
+      - EVIDENCE_REQUIRED
       - DEPENDENCY_UNAVAILABLE
       - AGENT_OUTPUT_INVALID
       - NOT_IMPLEMENTED
@@ -1631,6 +1777,29 @@ components:
       - CANCELLED
       title: EventStatus
       description: Event lifecycle. Only CONFIRMED means an authorized actor verified it with evidence.
+    EvidenceData:
+      properties:
+        kind:
+          type: string
+          title: Kind
+        reference:
+          type: string
+          title: Reference
+        captured_at:
+          type: string
+          format: date-time
+          title: Captured At
+        issuer:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Issuer
+      type: object
+      required:
+      - kind
+      - reference
+      - captured_at
+      title: EvidenceData
     FreshnessState:
       type: string
       enum:
@@ -1661,6 +1830,100 @@ components:
       - version
       title: HealthOut
       description: Process liveness. Says nothing about dependencies.
+    MembershipOut:
+      properties:
+        club_id:
+          type: string
+          format: uuid
+          title: Club Id
+        club_name:
+          type: string
+          title: Club Name
+        role:
+          $ref: '#/components/schemas/Role'
+      type: object
+      required:
+      - club_id
+      - club_name
+      - role
+      title: MembershipOut
+    OverrideOut:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        scope:
+          $ref: '#/components/schemas/OverrideScope'
+        event_a_id:
+          type: string
+          format: uuid
+          title: Event A Id
+        event_b_id:
+          type: string
+          format: uuid
+          title: Event B Id
+        reason:
+          type: string
+          title: Reason
+        authorizer_id:
+          type: string
+          format: uuid
+          title: Authorizer Id
+        evidence_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Evidence Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - scope
+      - event_a_id
+      - event_b_id
+      - reason
+      - authorizer_id
+      - evidence_id
+      - created_at
+      title: OverrideOut
+    OverrideRequest:
+      properties:
+        scope:
+          $ref: '#/components/schemas/OverrideScope'
+        event_a_id:
+          type: string
+          format: uuid
+          title: Event A Id
+        event_b_id:
+          type: string
+          format: uuid
+          title: Event B Id
+        reason:
+          type: string
+          title: Reason
+        evidence:
+          anyOf:
+          - $ref: '#/components/schemas/EvidenceData'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - scope
+      - event_a_id
+      - event_b_id
+      - reason
+      title: OverrideRequest
+    OverrideScope:
+      type: string
+      enum:
+      - CAMPUS_GAP
+      - VENUE_OVERLAP
+      title: OverrideScope
     ReadyOut:
       properties:
         status:
@@ -1795,6 +2058,37 @@ components:
       - synthetic
       title: ResourceOut
       description: A sourced campus resource. Provenance travels with it; availability is never inferred.
+    Role:
+      type: string
+      enum:
+      - ORGANIZER
+      - CLUB_ADMIN
+      - CAMPUS_ADMIN
+      - STUDENT
+      title: Role
+    SessionOut:
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+          title: Access Token
+        token_type:
+          type: string
+          const: bearer
+          title: Token Type
+          default: bearer
+        expires_at:
+          type: string
+          format: date-time
+          title: Expires At
+        user:
+          $ref: '#/components/schemas/UserOut'
+      type: object
+      required:
+      - access_token
+      - expires_at
+      - user
+      title: SessionOut
     Severity:
       type: string
       enum:
@@ -1839,6 +2133,56 @@ components:
       - latency_ms
       - request_id
       title: ToolTraceEntry
+    TransitionRequest:
+      properties:
+        target_status:
+          $ref: '#/components/schemas/EventStatus'
+        expected_revision:
+          type: integer
+          title: Expected Revision
+        evidence:
+          anyOf:
+          - $ref: '#/components/schemas/EvidenceData'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - target_status
+      - expected_revision
+      title: TransitionRequest
+    UserOut:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        email:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: Email
+        display_name:
+          type: string
+          title: Display Name
+        campus_admin:
+          type: boolean
+          title: Campus Admin
+        memberships:
+          items:
+            $ref: '#/components/schemas/MembershipOut'
+          type: array
+          title: Memberships
+        synthetic:
+          type: boolean
+          title: Synthetic
+      type: object
+      required:
+      - id
+      - email
+      - display_name
+      - campus_admin
+      - synthetic
+      title: UserOut
   securitySchemes:
     sessionBearer:
       type: http

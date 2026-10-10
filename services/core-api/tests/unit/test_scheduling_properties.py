@@ -301,3 +301,19 @@ def test_output_is_ordered_blocking_then_warning_then_info_with_availability_rul
     unknown = [c for c in result if c.type is ConflictType.UNKNOWN_AVAILABILITY]
     wanted = candidate.resource_id is not None and state is not AvailabilityState.CONFIRMED
     assert len(unknown) == (1 if wanted else 0)
+
+
+@PROPERTY
+@given(event(1, club=CLUB_A), st.lists(event(2, club=CLUB_A), max_size=6))
+def test_events_beyond_the_gap_never_change_the_result(
+    candidate: ScheduledEvent, others: list[ScheduledEvent]
+) -> None:
+    # The write path only loads events whose time falls inside the candidate's interval widened
+    # by the campus gap. That must be exact: it cannot drop anything the engine would report.
+    near = [
+        other
+        for other in others
+        if other.start_at < candidate.end_at + GAP and other.end_at > candidate.start_at - GAP
+    ]
+    everything = evaluate(candidate, others, [], POLICY, AvailabilityState.UNKNOWN)
+    assert evaluate(candidate, near, [], POLICY, AvailabilityState.UNKNOWN) == everything

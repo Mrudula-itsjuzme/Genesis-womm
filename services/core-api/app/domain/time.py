@@ -20,6 +20,13 @@ class Clock(Protocol):
     def now(self) -> datetime: ...
 
 
+class SystemClock:
+    """UTC wall clock for the composed application."""
+
+    def now(self) -> datetime:
+        return datetime.now(UTC)  # noqa: TID251 - this adapter is the injected clock source
+
+
 class FixedClock:
     """Deterministic clock for tests and frozen demo data."""
 
