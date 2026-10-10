@@ -104,7 +104,7 @@ export default function UpcomingEvents() {
       ? "10:00 AM"
       : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   };
-  
+
   const formatEndTime = (iso: string) => {
     const d = new Date(iso);
     return isNaN(d.getTime())
@@ -127,10 +127,10 @@ export default function UpcomingEvents() {
       {events.map((evt, idx) => (
         <div
           key={evt.id}
-          className={`flex items-center justify-between py-4 group hover:bg-stone-50/50 -mx-2 px-2 rounded-xl transition-colors ${idx !== events.length - 1 ? 'border-b border-stone-100 border-dashed' : ''}`}
+          className={`flex min-w-0 flex-col gap-3 py-4 transition-colors hover:bg-stone-50/50 sm:flex-row sm:items-center sm:justify-between sm:gap-0 ${idx !== events.length - 1 ? 'border-b border-stone-100 border-dashed' : ''}`}
         >
-          <div className="flex items-center gap-6 w-[40%]">
-            <div className="flex flex-col items-center justify-center w-10">
+          <div className="flex min-w-0 items-center gap-3 sm:w-[40%] sm:gap-6">
+            <div className="flex w-10 shrink-0 flex-col items-center justify-center">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#7a1b32]">
                 {formatMonth(evt.start_at)}
               </span>
@@ -138,8 +138,8 @@ export default function UpcomingEvents() {
                 {formatDay(evt.start_at)}
               </span>
             </div>
-            <div>
-              <h4 className="font-bold text-gray-900 text-sm tracking-tight">
+            <div className="min-w-0">
+              <h4 className="break-words font-bold text-gray-900 text-sm tracking-tight">
                 {evt.title}
               </h4>
               <p className="text-[11px] text-gray-500 font-semibold flex items-center mt-1 uppercase tracking-wider">
@@ -149,21 +149,21 @@ export default function UpcomingEvents() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 flex-1 justify-between">
-            <p className="text-[11px] font-semibold text-gray-500 flex items-center uppercase tracking-wider w-36">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:flex-1 sm:flex-nowrap sm:gap-4">
+            <p className="flex min-w-0 items-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 sm:w-36">
               <Clock className="w-3.5 h-3.5 mr-1.5 text-gray-400" />{" "}
               {formatTime(evt.start_at)} - {formatEndTime(evt.end_at || evt.start_at)}
             </p>
-            
-            <div className="w-24 flex justify-end">
+
+            <div className="flex shrink-0 justify-end sm:w-24">
               <span
                 className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[evt.status] || statusStyles.DRAFT}`}
               >
                 {evt.status === 'DRAFT' ? 'PLANNING' : evt.status}
               </span>
             </div>
-            
-            <div className="w-6 flex justify-end">
+
+            <div className="hidden w-6 shrink-0 justify-end sm:flex">
               <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-gray-600 transition-colors" />
             </div>
           </div>

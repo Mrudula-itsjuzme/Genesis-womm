@@ -1,109 +1,91 @@
-'use client';
+import { ExternalLink, FileText, Landmark, CalendarDays, Users, Wifi, BookOpenCheck } from 'lucide-react';
 
-import React, { useState } from 'react';
-import { ResourceCard, ResourceProps } from '@/components/ResourceCard';
-import { PolicyAssistant } from '@/components/PolicyAssistant';
-
-const MOCK_RESOURCES: ResourceProps[] = [
+const sourceGroups = [
   {
-    id: '1',
-    name: 'Acharya Hall',
-    type: 'Halls',
-    capacity: 250,
-    location: 'Main Block, 2nd Floor',
-    source: 'Campus Master List',
-    responsibleOffice: 'Dean of Administration',
-    availabilityStatus: 'unknown',
-    description: 'Medium capacity auditorium suitable for departmental events and guest lectures. Features built-in projector and PA system.'
+    title: 'Policies & event procedures',
+    icon: BookOpenCheck,
+    sources: [
+      { name: 'OSA Student Affairs Handbook', url: 'https://webfiles.amrita.edu/2025/05/student-affairs-handbook-cbr.pdf', caption: 'Student event procedures, club processes, facility request material, and activity reporting examples.' },
+      { name: 'Student Affairs and Welfare', url: 'https://intranet.cb.amrita.edu/students-affairs-welfare', caption: 'Published student-affairs and club-oversight guidance. Check the page for current instructions.' },
+    ],
   },
   {
-    id: '2',
-    name: 'Sudhamani Hall',
-    type: 'Halls',
-    capacity: 1500,
-    location: 'Academic Block 3',
-    source: 'Facilities DB',
-    responsibleOffice: 'Registrar Office',
-    availabilityStatus: 'unverified',
-    description: 'Main campus auditorium for large-scale intercollege events, major cultural fests, and graduations.'
+    title: 'Campus events & venues',
+    icon: Landmark,
+    sources: [
+      { name: 'Coimbatore campus events', url: 'https://intranet.cb.amrita.edu/events', caption: 'Published campus event notices. Venue names show past event locations, not current availability.' },
+      { name: 'Coimbatore infrastructure directory', url: 'https://www.amrita.edu/campus/coimbatore/infrastructure/', caption: 'Listed in the source registry, but currently redirects outside the university domain. Verify the destination before relying on it.' },
+    ],
   },
   {
-    id: '3',
-    name: 'ICTS Audiovisual Support',
-    type: 'ICTS / IT Services',
-    source: 'ICTS Portal',
-    responsibleOffice: 'IT Services',
-    availabilityStatus: 'available',
-    description: 'Provides technical support, sound engineering, and extra projection equipment for events. Must be booked 7 days in advance.'
+    title: 'Academic calendars',
+    icon: CalendarDays,
+    sources: [
+      { name: 'Academic calendar and timetable links', url: 'https://intranet.cb.amrita.edu/academics/calendar', caption: 'Academic-year calendar PDFs and links to student class timetable resources.' },
+      { name: 'Official campus calendar feed', url: 'https://outlook.office365.com/owa/calendar/c5368a2f38a14425b7bfe0806e6a7242@amrita.edu/c90d8c3dd3654d4fa7af29ce6c6319907829757625615220928/calendar.ics', caption: 'Published calendar feed. It is not an authoritative venue-booking feed.' },
+    ],
   },
   {
-    id: '4',
-    name: 'Open Air Theatre',
-    type: 'Facilities',
-    capacity: 800,
-    location: 'Near Student Center',
-    source: 'Campus Master List',
-    responsibleOffice: 'Student Affairs',
-    availabilityStatus: 'available',
-    description: 'Outdoor seating venue suitable for evening cultural events and informal gatherings.'
-  }
+    title: 'ICTS services & contacts',
+    icon: Wifi,
+    sources: [
+      { name: 'ICTS infrastructure and services', url: 'https://intranet.cb.amrita.edu/infrastructure/icts', caption: 'Computing labs, network services, audiovisual support, and campus ICT infrastructure.' },
+      { name: 'ICTS support contacts', url: 'https://intranet.cb.amrita.edu/infrastructure/icts/support-contacts', caption: 'Published service request routes, including audiovisual and computer-lab scheduling contacts.' },
+    ],
+  },
+  {
+    title: 'Clubs & student activities',
+    icon: Users,
+    sources: [
+      { name: 'Coimbatore student clubs', url: 'https://www.amrita.edu/campus/coimbatore/students-club/', caption: 'Club discovery and activity context. Historical or undated information may need verification.' },
+      { name: 'School of Computing student corner', url: 'https://www.amrita.edu/school/computing/coimbatore/student-corner/', caption: 'Computing-school clubs and student activities.' },
+      { name: 'Life at Amrita', url: 'https://www.amrita.edu/life-at-amrita/', caption: 'General campus life and club information; not every item is Coimbatore-specific.' },
+    ],
+  },
 ];
 
-const TABS = ['All', 'Halls', 'ICTS / IT Services', 'Facilities', 'Event Support'];
-
 export default function ResourcesPage() {
-  const [activeTab, setActiveTab] = useState('All');
-
-  const filteredResources = activeTab === 'All' 
-    ? MOCK_RESOURCES 
-    : MOCK_RESOURCES.filter(r => r.type === activeTab);
-
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-[#F5EEE9]">
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <div className="p-8 lg:p-12 max-w-7xl mx-auto w-full">
-          <div className="mb-10">
-            <h1 className="text-3xl font-serif font-bold text-[#7a1b32] mb-6">Resource Explorer</h1>
-            
-            {/* Tabs */}
-            <div className="border-b border-rose-100/50">
-              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                {TABS.map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`
-                      whitespace-nowrap border-b-2 py-4 px-1 text-sm font-bold uppercase tracking-wider transition-colors
-                      ${activeTab === tab
-                        ? 'border-[#7a1b32] text-[#7a1b32]'
-                        : 'border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-600'
-                      }
-                    `}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
+    <div className="mt-16 min-h-[calc(100vh-4rem)] bg-[#F5EEE9] px-5 py-7 sm:px-8 lg:px-10">
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-8 border-b border-rose-200/70 pb-6">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7a1b32]">Campus reference library</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">Resources</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+            Official documents and campus websites, grouped by what they contain. Sources do not confirm approvals, bookings, or live availability.
+          </p>
+        </header>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6 pb-12">
-            {filteredResources.map(resource => (
-              <ResourceCard key={resource.id} resource={resource} />
-            ))}
-            {filteredResources.length === 0 && (
-              <div className="col-span-full py-12 text-center text-gray-500 font-medium">
-                No resources found for this category.
-              </div>
-            )}
-          </div>
+        <div className="space-y-8">
+          {sourceGroups.map((group) => {
+            const Icon = group.icon;
+            return (
+              <section key={group.title} aria-label={group.title}>
+                <div className="mb-3 flex items-center gap-2 text-[#7a1b32]">
+                  <Icon className="h-4 w-4" />
+                  <h2 className="text-sm font-bold uppercase tracking-[0.14em]">{group.title}</h2>
+                </div>
+                <div className="divide-y divide-stone-200 border-y border-stone-200 bg-white">
+                  {group.sources.map((source) => (
+                    <article key={source.url} className="flex min-w-0 flex-col gap-2 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-5">
+                      <div className="min-w-0">
+                        <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                          <FileText className="h-4 w-4 shrink-0 text-[#7a1b32]" />
+                          {source.name}
+                        </h3>
+                        <p className="mt-1 pl-6 text-sm leading-6 text-gray-600">{source.caption}</p>
+                      </div>
+                      <a href={source.url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 pl-6 text-xs font-bold text-[#7a1b32] underline decoration-rose-200 underline-offset-2 hover:text-[#541224] sm:pl-0">
+                        Open source <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span className="sr-only"> (opens in a new tab)</span>
+                      </a>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
-      </div>
-
-      {/* Policy Assistant Sidebar */}
-      <div className="w-[450px] flex-shrink-0 shadow-[0_0_40px_rgb(0,0,0,0.05)] z-10 hidden lg:block border-l border-white/50 bg-white/50 backdrop-blur-xl">
-        <PolicyAssistant />
       </div>
     </div>
   );
