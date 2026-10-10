@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text
 from pgvector.sqlalchemy import Vector
+from sqlalchemy import Column, Integer, String, Text
+
 from .database import Base
+
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
