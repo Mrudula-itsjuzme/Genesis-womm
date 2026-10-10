@@ -1,6 +1,8 @@
-import React from 'react';
+'use client';
+import React, { useState } from 'react';
 
 const CalendarGrid = () => {
+  const [activeTab, setActiveTab] = useState('Month');
   const events = [
     { title: 'Tech Talk', day: 1, type: 'approved' },
     { title: 'Cultural Fest', day: 2, type: 'approved' },
@@ -14,9 +16,19 @@ const CalendarGrid = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Tentative Calendar</h1>
         <div className="flex space-x-2 bg-white rounded-lg p-1 border border-gray-200">
-          <button className="px-4 py-1.5 text-sm font-medium bg-gray-100 text-gray-800 rounded-md">Month</button>
-          <button className="px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-md">Week</button>
-          <button className="px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-md">List</button>
+          {['Month', 'Week', 'List'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md ${
+                activeTab === tab
+                  ? 'bg-gray-100 text-gray-800'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
       </div>
 
