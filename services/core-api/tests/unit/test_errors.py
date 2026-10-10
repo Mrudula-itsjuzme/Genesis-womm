@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -14,14 +15,35 @@ from app.api.errors import (
     not_implemented,
 )
 from app.api.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
-from app.domain.enums import ErrorCode
+from app.domain.enums import ConflictConstraint, ConflictType, ErrorCode, Severity
+from app.domain.intervals import Interval
+from app.domain.scheduling import Conflict as DomainConflict
 from app.schemas.common import ErrorEnvelope
-from app.services.errors import IdempotencyMismatchError, NotFoundError
+from app.schemas.events import Conflict as WireConflict
+from app.services.errors import (
+    ConflictDetectedError,
+    IdempotencyMismatchError,
+    InvalidRequestError,
+    NotFoundError,
+)
 
 
 class Payload(BaseModel):
     name: str
     age: int
+
+
+def blocking_conflict() -> DomainConflict:
+    start = datetime(2026, 10, 20, 4, 30, tzinfo=UTC)
+    return DomainConflict(
+        type=ConflictType.VENUE_OVERLAP,
+        severity=Severity.BLOCKING,
+        constraint=ConflictConstraint.VENUE_OVERLAP,
+        event_ids=(uuid4(), uuid4()),
+        window=Interval(start, start.replace(hour=5)),
+        message="Both events are confirmed for the same venue and their times overlap.",
+        override_required=True,
+    )
 
 
 def make_app() -> FastAPI:
@@ -60,6 +82,14 @@ def make_app() -> FastAPI:
     @app.get("/missing")
     def missing() -> None:
         raise NotFoundError("event", uuid4())
+
+    @app.get("/blocked")
+    def blocked() -> None:
+        raise ConflictDetectedError([blocking_conflict()])
+
+    @app.get("/invalid")
+    def invalid() -> None:
+        raise InvalidRequestError("end_at must be after start_at")
 
     @app.get("/retry-mismatch")
     def retry_mismatch() -> None:
@@ -168,3 +198,29 @@ def test_openapi_documents_error_responses_with_the_envelope_schema(client: Test
         "$ref": "#/components/schemas/ErrorEnvelope"
     }
     assert "code" in json.dumps(schema["components"]["schemas"]["ErrorEnvelope"])
+
+
+def test_a_blocked_confirmation_carries_the_conflicts_in_details(client: TestClient) -> None:
+    response = client.get("/blocked")
+
+    assert response.status_code == 409
+    envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
+    assert envelope.code is ErrorCode.CONFLICT_DETECTED
+    assert len(envelope.details) == 1
+    shown = WireConflict.model_validate(envelope.details[0])
+    assert (shown.type, shown.severity, shown.override_required) == (
+        ConflictType.VENUE_OVERLAP,
+        Severity.BLOCKING,
+        True,
+    )
+    assert len(shown.event_ids) == 2
+
+
+def test_a_bad_request_the_service_rejects_is_a_422_validation_error(client: TestClient) -> None:
+    response = client.get("/invalid")
+
+    assert response.status_code == 422
+    envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
+    assert envelope.code is ErrorCode.VALIDATION_ERROR
+    assert "end_at must be after start_at" in envelope.message
+    assert envelope.details == []

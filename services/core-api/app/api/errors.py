@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.middleware import REQUEST_ID_HEADER
+from app.api.presenters import conflict_out
 from app.domain.enums import ErrorCode
 from app.domain.lifecycle import EvidenceRequiredError, InvalidTransitionError, NotAuthorizedError
 from app.schemas.common import ErrorEnvelope
@@ -22,6 +23,7 @@ from app.services.errors import (
     ConflictDetectedError,
     DuplicateOverrideError,
     IdempotencyMismatchError,
+    InvalidRequestError,
     NotFoundError,
     StaleRevisionError,
 )
@@ -138,13 +140,19 @@ async def _handle_domain_refusal(request: Request, exc: Exception) -> JSONRespon
         ConflictDetectedError: ErrorCode.CONFLICT_DETECTED,
         DuplicateOverrideError: ErrorCode.DUPLICATE_OVERRIDE,
         IdempotencyMismatchError: ErrorCode.IDEMPOTENCY_MISMATCH,
+        InvalidRequestError: ErrorCode.VALIDATION_ERROR,
         StaleRevisionError: ErrorCode.STALE_REVISION,
         NotFoundError: ErrorCode.NOT_FOUND,
         NotAuthorizedError: ErrorCode.FORBIDDEN,
         InvalidTransitionError: ErrorCode.INVALID_TRANSITION,
         EvidenceRequiredError: ErrorCode.EVIDENCE_REQUIRED,
     }[type(exc)]
-    return error_response(request, code, str(exc))
+    details = (
+        [conflict_out(c).model_dump(mode="json") for c in exc.conflicts]
+        if isinstance(exc, ConflictDetectedError)
+        else []
+    )
+    return error_response(request, code, str(exc), details)
 
 
 async def _handle_validation_error(request: Request, exc: Exception) -> JSONResponse:
@@ -180,6 +188,7 @@ def install_error_handlers(app: FastAPI) -> None:
         ConflictDetectedError,
         DuplicateOverrideError,
         IdempotencyMismatchError,
+        InvalidRequestError,
         StaleRevisionError,
         NotFoundError,
         NotAuthorizedError,
