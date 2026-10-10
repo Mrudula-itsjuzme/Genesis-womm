@@ -1,6 +1,6 @@
 from typing import Any
 
-from app.providers.llm import LlmPort, LlmResponse
+from app.ports.llm import LlmPort, LlmResponse
 from app.schemas.chat import ChatMessage
 
 

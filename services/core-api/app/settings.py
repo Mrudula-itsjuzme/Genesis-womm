@@ -46,7 +46,6 @@ class Settings(BaseSettings):
     minio_archive_bucket: str = "campuscue-proposals-archive-dev"
     minio_use_ssl: bool = False
 
-
     @field_validator("database_url")
     @classmethod
     def _psycopg_driver(cls, value: str) -> str:

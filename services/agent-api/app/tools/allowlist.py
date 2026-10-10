@@ -151,6 +151,4 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
 ]
 
 # Fast lookup set for the dispatch guard.
-ALLOWED_TOOL_NAMES: frozenset[str] = frozenset(
-    t["function"]["name"] for t in TOOL_SCHEMAS
-)
+ALLOWED_TOOL_NAMES: frozenset[str] = frozenset(t["function"]["name"] for t in TOOL_SCHEMAS)

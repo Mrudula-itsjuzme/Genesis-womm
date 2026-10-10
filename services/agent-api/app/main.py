@@ -40,6 +40,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.state.settings = settings
     app.state.readiness = container.readiness
     app.state.engine = container.engine
+    app.state.internal_api_key = settings.internal_api_key.get_secret_value()
 
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)

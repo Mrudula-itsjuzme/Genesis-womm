@@ -1,9 +1,10 @@
 """Request dependencies and the declared security schemes.
 
-The three schemes document the contract for clients today. They are not enforced yet:
-the authorization slice (Plan 01) adds actor resolution behind these same declarations.
+The schemes declare the contract in OpenAPI and the `require_*` dependencies enforce it:
+sessions for `/api/v1`, and for the Agent facade the internal key plus a delegation bearer.
 """
 
+import hmac
 from datetime import UTC, datetime
 from typing import Annotated, cast
 
@@ -14,7 +15,9 @@ from app.api.errors import ApiError
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
 from app.domain.time import Clock
+from app.services.agent_actions import AgentActionService
 from app.services.conflict_checks import ConflictCheckService
+from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
 from app.services.minio_client import MinIOProposalStorage
 from app.services.readiness import ReadinessService
@@ -97,6 +100,20 @@ def get_conflict_check_service(request: Request) -> ConflictCheckService:
     return cast(ConflictCheckService, service)
 
 
+def get_delegation_service(request: Request) -> DelegationService:
+    service = getattr(request.app.state, "delegation", None)
+    if service is None:
+        raise RuntimeError("delegation service is not configured")
+    return cast(DelegationService, service)
+
+
+def get_agent_action_service(request: Request) -> AgentActionService:
+    service = getattr(request.app.state, "agent_actions", None)
+    if service is None:
+        raise RuntimeError("agent action service is not configured")
+    return cast(AgentActionService, service)
+
+
 def get_resource_read_service(request: Request) -> ResourceReadService:
     service = getattr(request.app.state, "resource_reads", None)
     if service is None:
@@ -118,3 +135,27 @@ def require_session_actor(
         campus_admin=user.campus_admin,
         memberships={membership.club_id: membership.role for membership in user.memberships},
     )
+
+
+def require_internal_key(
+    provided: Annotated[str | None, Depends(internal_key)], request: Request
+) -> None:
+    """Prove the caller is the Agent service. Runs before any token is looked at."""
+    expected = getattr(request.app.state, "internal_api_key", None)
+    if expected is None:
+        raise RuntimeError("internal api key is not configured")
+    if expected == "":
+        return  # settings allow an empty key only when APP_ENV is local
+    if provided is None or not hmac.compare_digest(provided.encode(), expected.encode()):
+        raise ApiError(ErrorCode.UNAUTHENTICATED, "Valid credentials are required.")
+
+
+def require_delegated_actor(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(delegation_bearer)],
+    delegation: Annotated[DelegationService, Depends(get_delegation_service)],
+) -> Actor:
+    """The user the Agent speaks for, loaded from the database and flagged as delegated."""
+    actor = None if credentials is None else delegation.resolve(credentials.credentials)
+    if actor is None:
+        raise ApiError(ErrorCode.UNAUTHENTICATED, "Valid credentials are required.")
+    return actor

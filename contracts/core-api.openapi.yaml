@@ -593,6 +593,7 @@ paths:
       tags:
       - agent
       summary: List the caller's agent proposals
+      description: Only proposals filed for the signed-in person, newest first.
       operationId: list_agent_actions_api_v1_agent_actions_get
       security:
       - sessionBearer: []
@@ -656,20 +657,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /api/v1/agent-actions/{action_id}/confirm:
     post:
       tags:
       - agent
       summary: Execute an agent proposal as the signed-in human
-      description: The only way a proposal takes effect. Core re-validates conflicts and the event revision
-        inside the transaction, so a stale proposal returns 409.
+      description: 'The only way a proposal takes effect, and only for the person it was filed for. Core
+        does the work as that person through the normal write path, so their current role is re-checked.
+        Confirming is idempotent per proposal: a repeat returns the same result and never creates a second
+        event, so the Idempotency-Key header is accepted for uniformity but not needed. Only event drafts
+        can be confirmed today.'
       operationId: confirm_agent_action_api_v1_agent_actions__action_id__confirm_post
       security:
       - sessionBearer: []
@@ -711,36 +708,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: VALIDATION_ERROR / IDEMPOTENCY_MISMATCH
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: NOT_FOUND
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '409':
-          description: CONFLICT_DETECTED / STALE_REVISION / INVALID_TRANSITION
+        '422':
+          description: VALIDATION_ERROR
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
+        '409':
+          description: INVALID_TRANSITION
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/agent-actions/{action_id}/reject:
     post:
       tags:
       - agent
       summary: Dismiss an agent proposal
+      description: Only the person it was filed for. Rejecting twice returns the same answer.
       operationId: reject_agent_action_api_v1_agent_actions__action_id__reject_post
       security:
       - sessionBearer: []
@@ -771,20 +762,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
           content:
             application/json:
               schema:
@@ -795,12 +780,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
   /internal/v1/agent-tools/check_event_conflicts:
     post:
       tags:
       - 'internal: agent facade'
       summary: Run the conflict engine for a saved event or an unsaved candidate
+      description: 'Name either `event_id` (a saved event) or `club_id` with `start_at` and `end_at` (a
+        candidate). For a candidate `event_id` is null in the result and the nil UUID stands for it in
+        each conflict''s `event_ids`. Advisory: writes re-check inside the transaction.'
       operationId: check_event_conflicts_internal_v1_agent_tools_check_event_conflicts_post
       requestBody:
         content:
@@ -827,28 +814,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: NOT_FOUND
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
       security:
-      - delegationBearer: []
       - internalKey: []
-      x-implementation-status: stub
+      - delegationBearer: []
   /internal/v1/agent-tools/events/{event_id}:
     get:
       tags:
@@ -856,8 +836,8 @@ paths:
       summary: Read one event as the delegated user
       operationId: get_event_details_internal_v1_agent_tools_events__event_id__get
       security:
-      - delegationBearer: []
       - internalKey: []
+      - delegationBearer: []
       parameters:
       - name: event_id
         in: path
@@ -885,36 +865,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: NOT_FOUND
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /internal/v1/agent-actions:
     post:
       tags:
       - 'internal: agent facade'
       summary: File a proposal for a human to confirm
-      description: The Agent's only write. Creates a PROPOSED action; it can never confirm an event, create
-        an override or send a message.
+      description: The Agent's only write. Creates a PROPOSED action for the delegated user, with the
+        conflicts a dry run found stored alongside it. It can never confirm an event, create an override
+        or send a message; the person confirms it with their own session. A retry with the same Idempotency-Key
+        returns the same proposal.
       operationId: file_agent_action_internal_v1_agent_actions_post
       security:
-      - delegationBearer: []
       - internalKey: []
+      - delegationBearer: []
       parameters:
       - name: Idempotency-Key
         in: header
@@ -952,25 +927,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: VALIDATION_ERROR / IDEMPOTENCY_MISMATCH
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: NOT_FOUND
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      x-implementation-status: stub
+        '422':
+          description: VALIDATION_ERROR / IDEMPOTENCY_MISMATCH
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/overrides:
     post:
       tags:
@@ -2188,12 +2156,12 @@ components:
       type: http
       description: Core-issued session JWT for a signed-in user (demo-login outside production).
       scheme: bearer
-    delegationBearer:
-      type: http
-      description: Short-lived delegation JWT that Core mints for one Agent turn. Only /internal/v1.
-      scheme: bearer
     internalKey:
       type: apiKey
       description: Shared service-to-service key. Required outside APP_ENV=local.
       in: header
       name: X-Internal-Key
+    delegationBearer:
+      type: http
+      description: Short-lived delegation JWT that Core mints for one Agent turn. Only /internal/v1.
+      scheme: bearer

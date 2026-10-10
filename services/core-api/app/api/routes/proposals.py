@@ -35,7 +35,6 @@ _proposals_db: dict[UUID, Proposal] = {}
     summary="Upload an event proposal PDF",
     description="Uploads proposal binary to MinIO under event scope with SUBMITTED status.",
     responses=stub_errors(ErrorCode.VALIDATION_ERROR),
-
 )
 async def upload_proposal(
     club_id: UUID,
@@ -108,7 +107,6 @@ async def upload_proposal(
     response_model=ProposalDownloadUrlOut,
     summary="Get presigned download URL for proposal",
     responses=stub_errors(ErrorCode.NOT_FOUND),
-
 )
 def get_proposal_download_url(
     proposal_id: UUID,
@@ -131,7 +129,6 @@ def get_proposal_download_url(
     response_model=ProposalOut,
     summary="Review proposal and trigger RAG ingestion on approval",
     responses=stub_errors(ErrorCode.NOT_FOUND, ErrorCode.INVALID_TRANSITION),
-
 )
 def patch_proposal_status(
     proposal_id: UUID,
@@ -181,7 +178,6 @@ def patch_proposal_status(
     response_model=ProposalOut,
     summary="Get proposal details",
     responses=stub_errors(ErrorCode.NOT_FOUND),
-
 )
 def get_proposal(proposal_id: UUID) -> ProposalOut:
     proposal = _proposals_db.get(proposal_id)

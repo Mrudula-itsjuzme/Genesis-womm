@@ -11,7 +11,7 @@ from app.api.deps import (
     require_session_actor,
 )
 from app.api.errors import stub_errors
-from app.api.presenters import conflict_out, event_out
+from app.api.presenters import conflict_check_out, conflict_out, event_out
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode, EventStatus
 from app.schemas.events import (
@@ -165,14 +165,7 @@ def check_event_conflicts(
             resource_id_was_provided=provided,
             as_status=payload.as_status,
         )
-    return ConflictCheckOut(
-        event_id=result.event.id,
-        evaluated_as=result.event.status,
-        advisory=True,
-        has_blocking=any(c.severity == "blocking" for c in result.conflicts),
-        conflicts=[conflict_out(c) for c in result.conflicts],
-        checked_at=result.checked_at,
-    )
+    return conflict_check_out(result)
 
 
 @router.post(

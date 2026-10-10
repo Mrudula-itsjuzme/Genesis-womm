@@ -1,18 +1,17 @@
 """Composition root: the only place that wires adapters to use cases."""
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
 import httpx
 
 from app.clients.core_api import HttpCoreClient
 from app.clients.rag_api import HttpRagClient
+from app.clients.system import SystemClock
 from app.orchestration.engine import OrchestrationEngine
 from app.orchestration.readiness import ReadinessService
-from app.ports.clock import FixedClock
+from app.ports.llm import LlmPort
 from app.providers.fakes import FakeLlmProvider
 from app.providers.groq import GroqProvider
-from app.providers.llm import LlmPort
 from app.settings import Settings
 
 
@@ -59,13 +58,12 @@ def build_container(settings: Settings) -> Container:
 
     core_client = HttpCoreClient(core_http)
     rag_client = HttpRagClient(rag_http)
-    clock = FixedClock(datetime.now(UTC))
 
     engine = OrchestrationEngine(
         llm=llm,
         core=core_client,
         rag=rag_client,
-        clock=clock,
+        clock=SystemClock(),
         max_tool_calls=settings.max_tool_calls,
         tool_timeout_s=settings.tool_timeout_s,
         max_tool_bytes=settings.max_tool_bytes,

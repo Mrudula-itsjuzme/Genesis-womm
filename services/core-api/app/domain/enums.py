@@ -146,4 +146,3 @@ class ProposalStatus(StrEnum):
     REVISION_REQUESTED = "REVISION_REQUESTED"
     CHUNKED = "CHUNKED"
     ARCHIVED = "ARCHIVED"
-

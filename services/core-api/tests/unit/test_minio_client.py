@@ -9,7 +9,9 @@ from app.services.minio_client import MinIOProposalStorage
 @pytest.fixture
 def mock_s3_client() -> MagicMock:
     client = MagicMock()
-    client.generate_presigned_url.return_value = "https://minio.local/campuscue-proposals-dev/proposals/test.pdf?sig=123"
+    client.generate_presigned_url.return_value = (
+        "https://minio.local/campuscue-proposals-dev/proposals/test.pdf?sig=123"
+    )
     return client
 
 
@@ -73,7 +75,6 @@ def test_upload_proposal_rejects_non_pdf(storage: MinIOProposalStorage) -> None:
 
     with pytest.raises(ValueError, match="must be a PDF starting with %PDF-"):
         storage.upload_proposal(
-
             club_id=club_id,
             event_id=event_id,
             proposal_id=proposal_id,

@@ -25,7 +25,6 @@ class Proposal(Base):
         default=ProposalStatus.SUBMITTED,
     )
 
-
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     minio_bucket: Mapped[str] = mapped_column(String(128), nullable=False)
     minio_key: Mapped[str] = mapped_column(String(512), nullable=False)
@@ -44,7 +43,6 @@ class Proposal(Base):
 
     def __init__(
         self,
-
         event_id: UUID,
         club_id: UUID,
         submitted_by: UUID,
@@ -80,4 +78,3 @@ class Proposal(Base):
         self.review_note = review_note
         self.rag_ingested_at = rag_ingested_at
         self.rag_deleted_at = rag_deleted_at
-

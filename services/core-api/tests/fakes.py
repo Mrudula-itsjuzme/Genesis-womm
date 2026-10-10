@@ -44,9 +44,15 @@ from typing import Self  # noqa: E402
 from uuid import UUID  # noqa: E402
 
 from app.domain.authz import Actor  # noqa: E402
-from app.domain.enums import AvailabilityState, EventStatus, OverrideScope  # noqa: E402
+from app.domain.enums import (  # noqa: E402
+    AgentActionStatus,
+    AvailabilityState,
+    EventStatus,
+    OverrideScope,
+)
 from app.services.errors import StaleRevisionError  # noqa: E402
 from app.services.ports import (  # noqa: E402
+    AgentActionRecord,
     AuditRecord,
     EventRecord,
     EvidenceData,
@@ -94,6 +100,7 @@ class State:
     revisions: list[RevisionRow] = field(default_factory=list)
     audit: list[AuditRecord] = field(default_factory=list)
     keys: dict[tuple[UUID, str], StoredResponse] = field(default_factory=dict)
+    agent_actions: dict[UUID, AgentActionRecord] = field(default_factory=dict)
 
     def copy(self) -> "State":
         # Records are frozen, so copying the containers is enough.
@@ -277,6 +284,67 @@ class _Idempotency:
         self._work.keys[(actor_id, key)] = stored
 
 
+class _AgentActions:
+    """The in-memory twin of ``SqlAgentActionStore``, including the one-shot decision."""
+
+    def __init__(self, db: InMemoryDatabase, work: State) -> None:
+        self._db, self._work = db, work
+
+    def get(self, action_id: UUID) -> AgentActionRecord | None:
+        self._db.log.append("read:agent_action")
+        return self._work.agent_actions.get(action_id)
+
+    def list_for(
+        self,
+        requested_by: UUID,
+        *,
+        status: AgentActionStatus | None,
+        event_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[AgentActionRecord], int]:
+        self._db.log.append("read:agent_actions")
+        matching = [
+            record
+            for record in self._work.agent_actions.values()
+            if record.requested_by == requested_by
+            and (status is None or record.status is status)
+            and (event_id is None or record.target_event_id == event_id)
+        ]
+        matching.sort(key=lambda r: (r.created_at, r.id), reverse=True)
+        return matching[offset : offset + limit], len(matching)
+
+    def add(self, record: AgentActionRecord) -> None:
+        self._db.fail_if("agent_actions.add")
+        self._db.log.append("write:agent_action")
+        self._work.agent_actions[record.id] = record
+
+    def decide(
+        self,
+        action_id: UUID,
+        *,
+        status: AgentActionStatus,
+        decided_by: UUID,
+        decided_at: datetime,
+        result_entity_type: str | None,
+        result_entity_id: UUID | None,
+    ) -> bool:
+        self._db.fail_if("agent_actions.decide")
+        record = self._work.agent_actions.get(action_id)
+        if record is None or record.status is not AgentActionStatus.PROPOSED:
+            return False
+        self._db.log.append("write:agent_action_decision")
+        self._work.agent_actions[action_id] = record.but(
+            status=status,
+            decided_by=decided_by,
+            decided_at=decided_at,
+            result_entity_type=result_entity_type,
+            result_entity_id=result_entity_id,
+            updated_at=decided_at,
+        )
+        return True
+
+
 class _Revisions:
     def __init__(self, db: InMemoryDatabase, work: State) -> None:
         self._db, self._work = db, work
@@ -332,6 +400,7 @@ class FakeUnitOfWork:
         self.audit = _Audit(db, self._work)
         self.evidence = _Evidence(db, self._work)
         self.idempotency = _Idempotency(db, self._work)
+        self.agent_actions = _AgentActions(db, self._work)
         self.schedule = _ScheduleWriters(db, self._work, events)
 
     def __enter__(self) -> Self:

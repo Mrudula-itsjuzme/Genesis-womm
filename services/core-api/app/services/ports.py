@@ -8,11 +8,13 @@ live in ``schedule_store``, which only ``ScheduleWriteService`` may import (spin
 from dataclasses import dataclass, replace
 from datetime import datetime
 from types import TracebackType
-from typing import Any, Protocol, Self
+from typing import Any, Literal, Protocol, Self
 from uuid import UUID
 
 from app.domain.authz import Actor
 from app.domain.enums import (
+    AgentActionStatus,
+    AgentActionType,
     AvailabilityState,
     EventStatus,
     FreshnessState,
@@ -20,7 +22,7 @@ from app.domain.enums import (
     ResourceKind,
     Role,
 )
-from app.domain.scheduling import Override, ScheduledEvent
+from app.domain.scheduling import Conflict, Override, ScheduledEvent
 
 
 @dataclass(frozen=True)
@@ -104,6 +106,31 @@ class OverrideRecord:
 
 
 @dataclass(frozen=True)
+class AgentActionRecord:
+    """A proposal the Agent filed for ``requested_by`` to confirm (spine AD-9)."""
+
+    id: UUID
+    type: AgentActionType
+    status: AgentActionStatus
+    summary: str
+    requested_by: UUID
+    club_id: UUID
+    target_event_id: UUID | None
+    expected_revision: int | None
+    payload: dict[str, Any]
+    conflicts: tuple[Conflict, ...]  # the dry run stored when the proposal was filed
+    decided_by: UUID | None
+    decided_at: datetime | None
+    result_entity_type: str | None
+    result_entity_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+    def but(self, **changes: Any) -> "AgentActionRecord":
+        return replace(self, **changes)
+
+
+@dataclass(frozen=True)
 class AuditRecord:
     id: UUID
     actor_id: UUID | None
@@ -130,6 +157,12 @@ class IdSource(Protocol):
 
 class TokenService(Protocol):
     def issue(self, user_id: UUID) -> tuple[str, datetime]: ...
+
+    def verify(self, token: str) -> UUID: ...
+
+
+class DelegationTokenService(Protocol):
+    def issue(self, user_id: UUID, request_id: str) -> tuple[str, datetime]: ...
 
     def verify(self, token: str) -> UUID: ...
 
@@ -238,6 +271,41 @@ class DirectoryUnitOfWork(Protocol):
     ) -> None: ...
 
 
+class AgentActionStore(Protocol):
+    def get(self, action_id: UUID) -> AgentActionRecord | None: ...
+
+    def list_for(
+        self,
+        requested_by: UUID,
+        *,
+        status: AgentActionStatus | None,
+        event_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[AgentActionRecord], int]:
+        """One person's proposals, newest first, with the total that matched."""
+        ...
+
+    def add(self, record: AgentActionRecord) -> None: ...
+
+    def decide(
+        self,
+        action_id: UUID,
+        *,
+        status: AgentActionStatus,
+        decided_by: UUID,
+        decided_at: datetime,
+        result_entity_type: str | None,
+        result_entity_id: UUID | None,
+    ) -> bool:
+        """Move a PROPOSED action to its decision. False when it was no longer PROPOSED.
+
+        This is a compare-and-set in one statement, so two people (or two retries) deciding
+        the same proposal at once cannot both win.
+        """
+        ...
+
+
 class AuditWriter(Protocol):
     def add(self, record: AuditRecord) -> None: ...
 
@@ -292,3 +360,51 @@ class UnitOfWork(Protocol):
     ) -> None: ...
 
     def commit(self) -> None: ...
+
+
+class AgentActionUnitOfWork(Protocol):
+    """One transaction for filing, listing, confirming and rejecting proposals."""
+
+    @property
+    def agent_actions(self) -> AgentActionStore: ...
+
+    @property
+    def events(self) -> EventReader: ...
+
+    @property
+    def clubs(self) -> ClubReader: ...
+
+    @property
+    def audit(self) -> AuditWriter: ...
+
+    @property
+    def idempotency(self) -> IdempotencyStore: ...
+
+    def __enter__(self) -> Self: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None: ...
+
+    def commit(self) -> None: ...
+
+
+@dataclass(frozen=True)
+class ChatTurn:
+    """What a person said to the planning assistant: bounded history, newest last."""
+
+    messages: tuple[tuple[Literal["user", "assistant"], str], ...]
+    event_id: UUID | None = None
+
+
+class AgentGateway(Protocol):
+    def chat(self, turn: ChatTurn, *, delegation_token: str, request_id: str) -> dict[str, Any]:
+        """Relay one turn to the Agent and return its reply as decoded JSON.
+
+        Raises ``AgentUnavailableError`` when it cannot be reached or does not answer in time,
+        and ``AgentOutputInvalidError`` when it answers with something that is not a reply.
+        """
+        ...

@@ -98,8 +98,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
       security:
-      - delegationBearer: []
       - internalKey: []
+      - delegationBearer: []
       x-implementation-status: implemented
   /v1/agent/plan-event:
     post:
@@ -158,8 +158,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
       security:
-      - delegationBearer: []
       - internalKey: []
+      - delegationBearer: []
       x-implementation-status: implemented
   /v1/agent/analyze-change:
     post:
@@ -218,8 +218,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
       security:
-      - delegationBearer: []
       - internalKey: []
+      - delegationBearer: []
       x-implementation-status: implemented
 components:
   schemas:
@@ -715,13 +715,13 @@ components:
       - request_id
       title: ToolTraceEntry
   securitySchemes:
-    delegationBearer:
-      type: http
-      description: Short-lived delegation JWT minted by Core for this turn. The Agent forwards it to Core
-        unmodified and never decodes it.
-      scheme: bearer
     internalKey:
       type: apiKey
       description: Shared service-to-service key. Required outside APP_ENV=local.
       in: header
       name: X-Internal-Key
+    delegationBearer:
+      type: http
+      description: Short-lived delegation JWT minted by Core for this turn. The Agent forwards it to Core
+        unmodified and never decodes it.
+      scheme: bearer

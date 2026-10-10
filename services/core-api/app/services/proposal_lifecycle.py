@@ -31,7 +31,6 @@ class ProposalLifecycleManager:
             self._http_client = httpx.Client(timeout=15.0)
         return self._http_client
 
-
     def approve_proposal(
         self,
         proposal: Proposal,
@@ -40,9 +39,7 @@ class ProposalLifecycleManager:
     ) -> Proposal:
         """Transitions proposal to APPROVED and records reviewer details."""
         if proposal.status not in (ProposalStatus.SUBMITTED, ProposalStatus.UNDER_REVIEW):
-            raise ValueError(
-                f"Cannot approve proposal in '{proposal.status}' state"
-            )
+            raise ValueError(f"Cannot approve proposal in '{proposal.status}' state")
         proposal.status = ProposalStatus.APPROVED
         proposal.reviewed_by = reviewer_id
         proposal.reviewed_at = self.clock.now()
@@ -57,9 +54,7 @@ class ProposalLifecycleManager:
     ) -> Proposal:
         """Transitions proposal to REJECTED."""
         if proposal.status not in (ProposalStatus.SUBMITTED, ProposalStatus.UNDER_REVIEW):
-            raise ValueError(
-                f"Cannot reject proposal in '{proposal.status}' state"
-            )
+            raise ValueError(f"Cannot reject proposal in '{proposal.status}' state")
         proposal.status = ProposalStatus.REJECTED
         proposal.reviewed_by = reviewer_id
         proposal.reviewed_at = self.clock.now()
@@ -74,9 +69,7 @@ class ProposalLifecycleManager:
     ) -> Proposal:
         """Transitions proposal to REVISION_REQUESTED."""
         if proposal.status not in (ProposalStatus.SUBMITTED, ProposalStatus.UNDER_REVIEW):
-            raise ValueError(
-                f"Cannot request revision for proposal in '{proposal.status}' state"
-            )
+            raise ValueError(f"Cannot request revision for proposal in '{proposal.status}' state")
         proposal.status = ProposalStatus.REVISION_REQUESTED
         proposal.reviewed_by = reviewer_id
         proposal.reviewed_at = self.clock.now()
@@ -154,4 +147,3 @@ class ProposalLifecycleManager:
 
         proposal.status = ProposalStatus.ARCHIVED
         return True
-

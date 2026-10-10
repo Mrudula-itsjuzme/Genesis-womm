@@ -80,7 +80,6 @@ class MinIOProposalStorage:
         if not file_bytes.startswith(b"%PDF-"):
             raise ValueError("Invalid format: Proposal file must be a PDF starting with %PDF-")
 
-
         key = self.build_object_key(club_id, event_id, proposal_id, revision)
         file_size = len(file_bytes)
         file_hash = sha256(file_bytes).hexdigest()

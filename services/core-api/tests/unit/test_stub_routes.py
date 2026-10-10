@@ -8,9 +8,11 @@ from fastapi.testclient import TestClient
 
 from app.api.middleware import REQUEST_ID_HEADER
 from app.container import Container
+from app.domain.authz import Actor
 from app.domain.enums import AvailabilityState, EventStatus, FreshnessState, ResourceKind
 from app.main import create_app
 from app.schemas.common import ErrorEnvelope
+from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService, EventView
 from app.services.ports import EventRecord, ResourceRecord, UserIdentity
 from app.services.readiness import ReadinessService
@@ -21,7 +23,6 @@ from tests.fakes import FakeReadinessProbe, make_settings
 
 EVENT = str(uuid4())
 RESOURCE = str(uuid4())
-ACTION = str(uuid4())
 CLUB = str(uuid4())
 
 VALID_EVENT: dict[str, Any] = {
@@ -31,10 +32,21 @@ VALID_EVENT: dict[str, Any] = {
     "end_at": "2026-10-20T11:00:00+05:30",
 }
 VALID_CHAT: dict[str, Any] = {"messages": [{"role": "user", "content": "Plan a demo day"}]}
-VALID_ACTION: dict[str, Any] = {
-    "type": "CREATE_FOLLOWUP_DRAFT",
-    "summary": "Ask ICTS to revalidate",
-}
+
+
+INTERNAL_KEY = "i" * 40
+AGENT_HEADERS = {"X-Internal-Key": INTERNAL_KEY, "Authorization": "Bearer agent-token"}
+SESSION_HEADERS = {"Authorization": "Bearer demo-token"}
+
+
+def headers_for(path: str) -> dict[str, str]:
+    """The credentials the route family needs: the facade takes a key plus a delegation."""
+    return AGENT_HEADERS if path.startswith("/internal/v1") else SESSION_HEADERS
+
+
+class FakeDelegationService:
+    def resolve(self, token: str) -> Actor | None:
+        return Actor(user_id=uuid4(), via_agent=True) if token == "agent-token" else None
 
 
 class FakeSessionService:
@@ -138,12 +150,6 @@ class FakeResourceReadService:
 # (method, path, json body or None)
 STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
     ("POST", "/api/v1/agent/chat", VALID_CHAT),
-    ("GET", "/api/v1/agent-actions", None),
-    ("POST", f"/api/v1/agent-actions/{ACTION}/confirm", None),
-    ("POST", f"/api/v1/agent-actions/{ACTION}/reject", None),
-    ("POST", "/internal/v1/agent-tools/check_event_conflicts", {"event_id": EVENT}),
-    ("GET", f"/internal/v1/agent-tools/events/{EVENT}", None),
-    ("POST", "/internal/v1/agent-actions", VALID_ACTION),
 ]
 
 
@@ -168,6 +174,8 @@ def client() -> TestClient:
         schedule_write=cast(Any, FakeScheduleWriteService()),
         event_reads=cast(EventReadService, FakeEventReadService()),
         resource_reads=cast(ResourceReadService, FakeResourceReadService()),
+        delegation=cast(DelegationService, FakeDelegationService()),
+        internal_api_key=INTERNAL_KEY,
     )
     return TestClient(create_app(make_settings(), container), raise_server_exceptions=False)
 
@@ -186,7 +194,7 @@ def test_stub_returns_the_501_envelope(
         method,
         path,
         json=body,
-        headers={REQUEST_ID_HEADER: "stub-1", "Authorization": "Bearer demo-token"},
+        headers={REQUEST_ID_HEADER: "stub-1", **headers_for(path)},
     )
     assert response.status_code == 501, response.text
     envelope = ErrorEnvelope.model_validate(response.json())
@@ -200,7 +208,6 @@ def test_stub_returns_the_501_envelope(
         ("POST", "/api/v1/events", {**VALID_EVENT, "start_at": "2026-10-20T09:00:00"}),
         ("POST", "/api/v1/events", {**VALID_EVENT, "status": "CONFIRMED"}),
         ("POST", "/api/v1/agent/chat", {"messages": []}),
-        ("POST", "/internal/v1/agent-actions", {**VALID_ACTION, "type": "CONFIRM_EVENT"}),
         ("GET", "/api/v1/events/not-a-uuid", None),
         ("GET", "/api/v1/events?limit=500", None),
     ],
@@ -208,9 +215,7 @@ def test_stub_returns_the_501_envelope(
 def test_validation_runs_before_the_stub(
     client: TestClient, method: str, path: str, body: dict[str, Any] | None
 ) -> None:
-    response = client.request(
-        method, path, json=body, headers={"Authorization": "Bearer demo-token"}
-    )
+    response = client.request(method, path, json=body, headers=headers_for(path))
     assert response.status_code == 422, response.text
     assert response.json()["code"] == "VALIDATION_ERROR"
 
@@ -268,17 +273,28 @@ def _operations(openapi: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]
 
 def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) -> None:
     for method, path, op in _operations(openapi):
-        if path in {"/health", "/ready"} or "/proposals" in path or (method, path) in {
-            ("POST", "/api/v1/auth/demo-login"),
-            ("POST", "/api/v1/events"),
-            ("GET", "/api/v1/events"),
-            ("GET", "/api/v1/events/{event_id}"),
-            ("POST", "/api/v1/events/{event_id}/conflict-check"),
-            ("POST", "/api/v1/events/{event_id}/transitions"),
-            ("POST", "/api/v1/overrides"),
-            ("GET", "/api/v1/resources"),
-            ("GET", "/api/v1/resources/{resource_id}"),
-        }:
+        if (
+            path in {"/health", "/ready"}
+            or "/proposals" in path
+            or (method, path)
+            in {
+                ("POST", "/api/v1/auth/demo-login"),
+                ("POST", "/api/v1/events"),
+                ("GET", "/api/v1/events"),
+                ("GET", "/api/v1/events/{event_id}"),
+                ("POST", "/api/v1/events/{event_id}/conflict-check"),
+                ("POST", "/api/v1/events/{event_id}/transitions"),
+                ("POST", "/api/v1/overrides"),
+                ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
+                ("GET", "/internal/v1/agent-tools/events/{event_id}"),
+                ("POST", "/internal/v1/agent-actions"),
+                ("GET", "/api/v1/agent-actions"),
+                ("POST", "/api/v1/agent-actions/{action_id}/confirm"),
+                ("POST", "/api/v1/agent-actions/{action_id}/reject"),
+                ("GET", "/api/v1/resources"),
+                ("GET", "/api/v1/resources/{resource_id}"),
+            }
+        ):
             assert "x-implementation-status" not in op
         else:
             assert op.get("x-implementation-status") == "stub", f"{method} {path}"
@@ -299,12 +315,17 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("POST", "/api/v1/events/{event_id}/conflict-check"),
             ("POST", "/api/v1/events/{event_id}/transitions"),
             ("POST", "/api/v1/overrides"),
+            ("POST", "/internal/v1/agent-tools/check_event_conflicts"),
+            ("GET", "/internal/v1/agent-tools/events/{event_id}"),
+            ("POST", "/internal/v1/agent-actions"),
+            ("GET", "/api/v1/agent-actions"),
+            ("POST", "/api/v1/agent-actions/{action_id}/confirm"),
+            ("POST", "/api/v1/agent-actions/{action_id}/reject"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }
     }
     assert len(documented) == len(STUBS)
-
 
 
 def test_validation_errors_are_documented_with_the_envelope_not_fastapis_default(
