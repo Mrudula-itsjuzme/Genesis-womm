@@ -11,7 +11,7 @@ External systems and sources:
 - Student-selected Google Calendar, using read-only access only when the student connects it.
 - Mock attendance and timetable providers for the MVP. An institutional academic-record API is not assumed.
 - Human organizers and authorized administrators.
-- Optional LLM/embedding/reranking providers.
+- Groq for generation, local dense-embedding model, SPLADE sparse-retrieval model, and a deterministic mock provider for tests.
 
 ## 2. Logical architecture
 
@@ -82,7 +82,7 @@ The frontend has separate organizer and student views. The student event feed in
 - Agent → tools: allowlisted typed operations; no arbitrary shell/SQL/network tool.
 - RAG document text → model: untrusted content. Text cannot override system/tool policy.
 - Official confirmation: trusted only when actor/source authorization and evidence checks pass.
-- External LLM/embedding provider: data egress boundary; avoid sending private data unless explicitly approved.
+- Groq is an external generation boundary. Send only approved content and retain a deterministic local mock path for tests and demos.
 - Student academic data: private boundary. The Core API returns academic-risk results only to the authenticated student and does not send calendar titles, timetable entries, attendance values, or risk details to organizers, Agent, or RAG.
 
 ## 4.1 Student registration-risk flow
@@ -110,18 +110,18 @@ The agent must not apply a change based on stale event data. Mutations should in
 - Event intervals use `[start, end)` semantics.
 - Start must be strictly before end.
 - Same-venue confirmed intervals may not overlap unless an explicitly authorized `VENUE_OVERLAP` override is recorded.
-- The configured campus-wide gap is 120 minutes between consecutive events; exactly 120 minutes passes.
+- The default campus-wide gap is 120 minutes between consecutive events; exactly 120 minutes passes. Core treats a violation as blocking unless an authorized administrator records a scoped `CAMPUS_GAP` override.
 - The gap rule's institutional validity must be verified. Until then, describe it as a CampusCue planning rule, not official university policy.
-- A `CAMPUS_GAP` override never implicitly overrides a `VENUE_OVERLAP` conflict.
+- A `CAMPUS_GAP` override never implicitly overrides a `VENUE_OVERLAP` conflict and must retain the administrator, reason, timestamp, and evidence reference where applicable.
 - Conflict validation must be repeated inside the write transaction.
 - Empty event results never establish that a venue is available.
 
 ## 7. RAG pipeline
-Authorized sources → parse with page/section metadata → structure-aware chunks → sparse retrieval + dense retrieval → RRF fusion → optional reranking → access-filtered context selection → grounded answer → citations and abstention flag.
+Authorized sources -> parse with page/section metadata -> structure-aware chunks -> SPLADE sparse retrieval + local dense retrieval -> RRF fusion -> optional reranking -> access-filtered context selection -> Groq grounded answer -> citations and abstention flag.
 
 Suggested first implementation:
-- PostgreSQL full-text search for sparse retrieval.
-- `pgvector` for dense retrieval.
+- SPLADE for sparse retrieval.
+- Local embeddings stored in `pgvector` for dense retrieval.
 - RRF for fusion.
 - Cross-encoder reranking only after a baseline is measured.
 - A reviewed 30–50-question evaluation set.

@@ -100,7 +100,9 @@ All demo events and statuses must be explicitly labeled synthetic.
 - Core API: Python + FastAPI for MVP simplicity; Go is acceptable if explicitly selected before implementation.
 - Agent API: Python + FastAPI.
 - RAG API: Python + FastAPI.
-- Database: PostgreSQL. Use `pgvector` for embeddings and PostgreSQL full-text search as the first hybrid retrieval baseline.
+- Database: PostgreSQL with `pgvector` for locally generated dense embeddings.
+- LLM provider: Groq for agent and grounded-answer generation. Keep a deterministic mock provider for tests and demo fallback.
+- Sparse retrieval: SPLADE. Fuse SPLADE and local dense-embedding results with Reciprocal Rank Fusion.
 - Migrations: Alembic if using SQLAlchemy.
 - Containers: Docker and Docker Compose.
 - Contracts: OpenAPI plus Pydantic request/response schemas; keep contract fixtures in `contracts/`.
@@ -125,7 +127,7 @@ Expose Agent/RAG ports to host only when needed for development. In an integrate
 
 ## 5. Scheduling policy and conflict semantics
 
-The product's stated default is a **campus-wide minimum two-hour gap between consecutive events**, even across different venues, plus a venue-level no-overlap rule. This is a policy assumption that must be confirmed with stakeholders before being treated as campus policy. Implement it as configuration and label it as a CampusCue planning rule until verified.
+The product enforces a **campus-wide minimum two-hour gap between consecutive events** by default, even across different venues, plus a venue-level no-overlap rule. The gap is a CampusCue planning rule until institutional validation establishes otherwise. An authorized administrator may record a scoped `CAMPUS_GAP` override for a justified exception; all other users receive the conflict and cannot bypass it.
 
 ### Interval semantics
 Use half-open intervals `[start_at, end_at)`. Require `start_at < end_at`. Normalize instants to UTC for persistence and retain the campus timezone (`Asia/Kolkata`) for display/input interpretation.
@@ -138,7 +140,7 @@ Exactly 120 minutes is allowed. A 119-minute gap is a violation. Overlapping int
 
 ### Conflict classes
 - `VENUE_OVERLAP`: overlapping event intervals at the same venue. Hard conflict unless an authorized venue-overlap override exists.
-- `CAMPUS_GAP_VIOLATION`: less than two hours between consecutive events under the campus-wide planning rule.
+- `CAMPUS_GAP_VIOLATION`: less than two hours between consecutive events under the default campus-wide planning rule. Blocking unless an authorized `CAMPUS_GAP` override exists.
 - `TENTATIVE_OVERLAP`: conflicting proposal/interest that is not a confirmed reservation; normally a warning, not a booking claim.
 - `DEPENDENCY_CONFLICT`: a shared support resource, audience, organizer, equipment, volunteer group, or other dependency is incompatible.
 - `UNKNOWN_AVAILABILITY`: no authoritative source is available to establish real-time venue availability.
@@ -149,7 +151,7 @@ Suggested event lifecycle: `DRAFT → PROPOSED → SUBMITTED → CONFIRMED → C
 Suggested commitment lifecycle: `DRAFT → REQUESTED → ACKNOWLEDGED → CONDITIONALLY_CONFIRMED → CONFIRMED → NEEDS_REVALIDATION → CLOSED`. Transitions must be validated by Core API. Acknowledgment is not confirmation.
 
 ### Overrides
-Overrides are explicit, scoped, authorized and audited. Model at least:
+Overrides are explicit, scoped, authorized and audited. Only an authorized administrator may create one. Model at least:
 - `override_scope`: `CAMPUS_GAP` or `VENUE_OVERLAP`
 - affected event IDs / interval
 - reason
@@ -157,7 +159,7 @@ Overrides are explicit, scoped, authorized and audited. Model at least:
 - creation timestamp
 - evidence reference where required
 
-A campus-gap override must not silently permit a venue double-booking. An override bypasses only the named constraint. The AI agent cannot create or authorize an override. The core authorization layer must reject unauthorized attempts.
+A campus-gap override must not silently permit a venue double-booking. An override bypasses only the named constraint. The AI agent cannot create or authorize an override. The core authorization layer must reject unauthorized attempts and audit the approved exception.
 
 ### Concurrency
 Conflict checks must run in the same transaction as the write that creates or confirms a booking. A prior frontend/agent check is advisory and cannot guarantee the write remains valid. Use PostgreSQL range queries and, where appropriate, an exclusion constraint for confirmed same-venue overlaps. The campus-wide gap check requires transaction-safe enforcement/locking to prevent concurrent conflicting writes.
@@ -221,8 +223,8 @@ Do not expose an unrestricted `book_event` tool. Official confirmation is a dist
 ### Retrieval pipeline
 1. Normalize query without destroying exact identifiers.
 2. Apply access-level filters.
-3. Retrieve sparse candidates using BM25 or PostgreSQL full-text search.
-4. Retrieve dense candidates using embeddings and `pgvector`.
+3. Retrieve sparse candidates using SPLADE.
+4. Retrieve dense candidates using local embeddings and `pgvector`.
 5. Fuse rankings with Reciprocal Rank Fusion (RRF).
 6. Optionally rerank top candidates with a cross-encoder.
 7. Select context under a token budget, preserving source metadata.
@@ -423,7 +425,7 @@ Resolve before implementing the corresponding feature:
 2. Define which event states block new proposals versus produce warnings.
 3. Define roles and who may record an official confirmation.
 4. Select React/Vite versus Next.js and Core API language.
-5. Select the embedding model and LLM provider based on latency, cost, and environment.
+5. Select and benchmark the local embedding model and SPLADE checkpoint against campus terminology. Groq is the selected generation provider; retain the mock provider for tests and fallback.
 6. Confirm allowed source documents, resource data, and document access classes.
 7. Confirm official report formats and resource verification workflow.
 8. Decide whether tentative cross-club event visibility is opt-in and which fields are public to participating clubs.
