@@ -24,16 +24,16 @@ This directory contains versioned service contracts and example payloads. OpenAP
 ```json
 {
   "type": "CAMPUS_GAP_VIOLATION",
-  "severity": "warning",
+  "severity": "blocking",
   "event_ids": ["uuid-a", "uuid-b"],
   "start_at": "2026-10-20T09:00:00+05:30",
   "end_at": "2026-10-20T11:00:00+05:30",
   "message": "The events are less than 120 minutes apart.",
-  "override_required": false
+  "override_required": true
 }
 ```
 
-`severity` is policy-dependent and must be documented. A confirmed same-venue overlap should normally be blocking; a tentative cross-club overlap is generally a warning.
+`severity` is policy-dependent and must be documented. A `CAMPUS_GAP_VIOLATION` is blocking by default and requires an authorized administrator's scoped `CAMPUS_GAP` override. A confirmed same-venue overlap should normally be blocking; a tentative cross-club overlap is generally a warning. A campus-gap override does not bypass a venue-overlap conflict.
 
 ## Commitment
 ```json

@@ -51,6 +51,7 @@ The product's focus is event operational memory: what is planned, what is eviden
 
 ## Constraints
 - Never infer venue availability from an empty calendar.
+- Enforce the default two-hour campus-wide planning gap. Only an authorized administrator may record a scoped exception, and that exception never bypasses a venue-overlap rule.
 - Never infer official approval from organizer-reported status.
 - Never let the LLM own scheduling truth or authorization.
 - Never invent report facts, source citations, attendance, photos, speakers, reimbursements, or acknowledgments.
