@@ -203,6 +203,13 @@ class _Resources:
     def availability_of(self, resource_id: UUID) -> AvailabilityState | None:
         return self._work.resources.get(resource_id)
 
+    def availability_of_many(self, resource_ids: set[UUID]) -> dict[UUID, AvailabilityState]:
+        return {
+            resource_id: availability
+            for resource_id in resource_ids
+            if (availability := self._work.resources.get(resource_id)) is not None
+        }
+
     def get(self, resource_id: UUID) -> ResourceRecord | None:
         return None
 

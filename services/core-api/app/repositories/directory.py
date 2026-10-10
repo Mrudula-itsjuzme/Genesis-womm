@@ -34,6 +34,14 @@ class SqlResourceReader:
         )
         return None if state is None else AvailabilityState(state)
 
+    def availability_of_many(self, resource_ids: set[UUID]) -> dict[UUID, AvailabilityState]:
+        if not resource_ids:
+            return {}
+        rows = self._session.execute(
+            select(Resource.id, Resource.availability_state).where(Resource.id.in_(resource_ids))
+        )
+        return {resource_id: AvailabilityState(state) for resource_id, state in rows}
+
     @staticmethod
     def _record(row: Resource) -> ResourceRecord:
         return ResourceRecord(
