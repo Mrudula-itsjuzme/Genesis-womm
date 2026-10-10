@@ -10,9 +10,9 @@ from app.clients.rag_api import HttpRagClient
 from app.orchestration.engine import OrchestrationEngine
 from app.orchestration.readiness import ReadinessService
 from app.ports.clock import FixedClock
+from app.ports.llm import LlmPort
 from app.providers.fakes import FakeLlmProvider
 from app.providers.groq import GroqProvider
-from app.providers.llm import LlmPort
 from app.settings import Settings
 
 

@@ -24,8 +24,8 @@ from app.main import create_app
 from app.orchestration.engine import OrchestrationEngine
 from app.orchestration.readiness import ReadinessService
 from app.ports.clock import FixedClock
+from app.ports.llm import LlmResponse, ToolCall
 from app.providers.fakes import FakeLlmProvider
-from app.providers.llm import LlmResponse, ToolCall
 from app.schemas.rag import EvidenceChunk
 from app.settings import Settings
 
@@ -41,8 +41,13 @@ def _make_client(llm_responses: list[LlmResponse] | None = None) -> TestClient:
     rag = FakeRagClient(corpus=[])
     llm = FakeLlmProvider(responses=llm_responses or [])
     engine = OrchestrationEngine(
-        llm=llm, core=core, rag=rag, clock=clock,
-        max_tool_calls=6, tool_timeout_s=5.0, max_tool_bytes=16_384,
+        llm=llm,
+        core=core,
+        rag=rag,
+        clock=clock,
+        max_tool_calls=6,
+        tool_timeout_s=5.0,
+        max_tool_bytes=16_384,
     )
     container = Container(
         readiness=ReadinessService(provider="fake", has_credential=False),
@@ -65,6 +70,7 @@ def openapi(client: TestClient) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Happy-path: all three routes return 200 + valid ChatResponse
 # ---------------------------------------------------------------------------
+
 
 def test_chat_returns_200(client: TestClient) -> None:
     response = client.post(
@@ -110,6 +116,7 @@ def test_analyze_change_returns_200(client: TestClient) -> None:
 # Validation still fires on bad inputs (before the route body)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     ("path", "body"),
     [
@@ -120,9 +127,7 @@ def test_analyze_change_returns_200(client: TestClient) -> None:
         ("/v1/agent/analyze-change", {"event_id": "nope", "change_description": "x"}),
     ],
 )
-def test_validation_rejects_bad_inputs(
-    client: TestClient, path: str, body: dict[str, Any]
-) -> None:
+def test_validation_rejects_bad_inputs(client: TestClient, path: str, body: dict[str, Any]) -> None:
     response = client.post(path, json=body)
     assert response.status_code == 422, response.text
     assert response.json()["code"] == "VALIDATION_ERROR"
@@ -131,6 +136,7 @@ def test_validation_rejects_bad_inputs(
 # ---------------------------------------------------------------------------
 # OpenAPI guards: security, forbidden fields, action type enum
 # ---------------------------------------------------------------------------
+
 
 def test_agent_routes_are_documented_as_implemented(openapi: dict[str, Any]) -> None:
     operations = {
@@ -170,6 +176,7 @@ def test_no_agent_action_type_can_confirm_override_or_send(openapi: dict[str, An
 # ---------------------------------------------------------------------------
 # Engine integration: tool trace appears in the response
 # ---------------------------------------------------------------------------
+
 
 def test_tool_call_appears_in_trace() -> None:
     """Engine dispatches check_event_conflicts; trace entry is in the response."""

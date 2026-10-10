@@ -27,8 +27,8 @@ from app.ports.errors import (
     NotFoundError,
     StaleRevisionError,
 )
+from app.ports.llm import LlmPort, LlmResponse, ToolCall
 from app.ports.rag import RagPort
-from app.providers.llm import LlmPort, LlmResponse, ToolCall
 from app.schemas.chat import (
     ChatMessage,
     ChatResponse,
@@ -81,9 +81,7 @@ class OrchestrationEngine:
         tool_calls_used = 0
 
         while True:
-            response: LlmResponse = await self._llm.complete(
-                mutable, TOOL_SCHEMAS, system_prompt
-            )
+            response: LlmResponse = await self._llm.complete(mutable, TOOL_SCHEMAS, system_prompt)
 
             # No tool calls → done
             if not response.tool_calls:
@@ -120,14 +118,10 @@ class OrchestrationEngine:
             # Dispatch each tool call
             for tc in response.tool_calls:
                 tool_calls_used += 1
-                result_text, _outcome, new_citations = await self._dispatch(
-                    tc, ctx, trace
-                )
+                result_text, _outcome, new_citations = await self._dispatch(tc, ctx, trace)
                 citations.extend(new_citations)
                 # Append tool result as user message (standard ReAct pattern)
-                mutable.append(
-                    ChatMessage(role="user", content=f"[Tool {tc.name}]: {result_text}")
-                )
+                mutable.append(ChatMessage(role="user", content=f"[Tool {tc.name}]: {result_text}"))
 
     # ------------------------------------------------------------------
     # Tool dispatch
@@ -198,9 +192,7 @@ class OrchestrationEngine:
         )
         return result, outcome, new_citations
 
-    async def _call_tool(
-        self, tc: ToolCall, ctx: CallContext
-    ) -> tuple[str, list[Citation]]:
+    async def _call_tool(self, tc: ToolCall, ctx: CallContext) -> tuple[str, list[Citation]]:
         args = tc.arguments
 
         if tc.name == "check_event_conflicts":
