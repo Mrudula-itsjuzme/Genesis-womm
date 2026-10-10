@@ -5,7 +5,7 @@ import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Phone,
 
 export default function Dashboard() {
   return (
-    <div className="min-h-screen font-sans bg-[#FDF8F5]">
+    <div className="min-h-screen font-sans bg-[#F5EEE9]">
       {/* Hero Section */}
       <section className="relative w-full h-[400px] overflow-hidden flex flex-col justify-center px-8 md:px-16 lg:px-24 rounded-b-[40px]">
         {/* Background Image Placeholder */}
@@ -75,7 +75,7 @@ export default function Dashboard() {
           </Link>
 
           {/* Card 2 */}
-          <Link href="/venues" className="block bg-[#FFF4ED] border border-white/60 rounded-3xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
+          <Link href="/venues" className="block bg-white border border-white/60 rounded-3xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
             <div className="relative z-10 h-full flex flex-col justify-between group">
               <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center mb-2 border border-rose-50">
                 <MapPin className="w-6 h-6 text-[#7a1b32]" />
@@ -91,7 +91,7 @@ export default function Dashboard() {
           </Link>
 
           {/* Card 3 */}
-          <Link href="/policy" className="block bg-[#FFF4ED] border border-white/60 rounded-3xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
+          <Link href="/policy" className="block bg-white border border-white/60 rounded-3xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
             <div className="relative z-10 h-full flex flex-col justify-between group">
               <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center mb-2 border border-rose-50">
                 <FileText className="w-6 h-6 text-[#7a1b32]" />
@@ -107,7 +107,7 @@ export default function Dashboard() {
           </Link>
 
           {/* Card 4 */}
-          <Link href="/changes" className="block bg-[#FFF4ED] border border-white/60 rounded-3xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
+          <Link href="/changes" className="block bg-white border border-white/60 rounded-3xl p-6 text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all h-44 relative overflow-hidden cursor-pointer z-30">
             <div className="absolute right-0 top-0 bottom-0 w-1/2">
               <div 
                 className="absolute inset-0 z-0 mix-blend-multiply opacity-20"
@@ -139,7 +139,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-[13fr_6fr_5fr] gap-6 items-start">
           
           {/* My Upcoming Events List */}
-          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-none p-6">
+          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-none p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900 tracking-tight">My Upcoming Events</h3>
               <button className="text-xs font-bold text-[#7a1b32] hover:text-rose-900 flex items-center transition-colors uppercase tracking-wider">
@@ -151,7 +151,7 @@ export default function Dashboard() {
           </div>
 
           {/* Campus Calendar */}
-          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-none p-6">
+          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-none p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-gray-900 text-lg tracking-tight">Campus Calendar</h3>
               <button className="bg-[#7a1b32] hover:bg-[#5a1122] text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors shadow-sm uppercase tracking-wide">
@@ -204,7 +204,7 @@ export default function Dashboard() {
           </div>
 
           {/* Quick Links */}
-          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-none p-6">
+          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-none p-6">
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2 text-lg tracking-tight">
               <span className="w-7 h-7 rounded-full bg-rose-50 text-[#7a1b32] flex items-center justify-center">
                 <Book className="w-3.5 h-3.5" />
@@ -272,7 +272,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-3xl p-6 relative overflow-hidden h-56 flex items-center shadow-sm border-none">
              <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')" }}></div>
              <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/80 to-transparent z-0" />
-             <div className="absolute inset-0 bg-gradient-to-l from-[#FDF8F5]/95 via-[#FDF8F5]/80 to-transparent z-0" />
+             <div className="absolute inset-0 bg-gradient-to-l from-[#F5EEE9]/95 via-[#F5EEE9]/80 to-transparent z-0" />
              <div className="relative z-10 flex-1 flex flex-col justify-center items-end pr-4 mt-12">
                <p className="text-[#7a1b32] font-serif text-xl leading-snug text-right max-w-[150px] drop-shadow-sm font-bold">
                  Events build the campus we remember.
