@@ -1,23 +1,5 @@
-import { BarChart2 } from 'lucide-react';
 import ChangeImpactList from '@/components/ChangeImpactList';
-
-export default function ChangesPage() {
-    return (
-        <div className="mt-16 min-h-[calc(100vh-4rem)] bg-[#F5EEE9] px-5 py-7 sm:px-8 lg:px-10">
-            <div className="mx-auto max-w-6xl">
-                <header className="mb-7 border-b border-rose-200/70 pb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-[#7a1b32]">
-                            <BarChart2 className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Change Impact</h1>
-                            <p className="mt-0.5 text-sm text-gray-600">Preview how a date, time, or venue change affects the shared schedule.</p>
-                        </div>
-                    </div>
-                </header>
-                <ChangeImpactList />
-            </div>
-        </div>
-    );
+export default async function ChangesPage({ searchParams }: { searchParams: Promise<{ eventId?: string }> }) {
+  const { eventId } = await searchParams;
+  return <section className="mx-auto max-w-6xl p-4 md:p-8"><h1 className="text-3xl font-bold text-[#7a1b32]">Event details and change preview</h1><p className="my-4">Inspect live records, review scheduling advice, and progress the authorized event lifecycle.</p><ChangeImpactList initialEventId={eventId} /></section>;
 }
