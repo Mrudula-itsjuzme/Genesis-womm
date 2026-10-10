@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.errors import install_error_handlers
 from app.api.middleware import RequestIdMiddleware
-from app.api.routes import agent, auth, events, health, internal, resources
+from app.api.routes import agent, auth, events, health, internal, overrides, resources
 from app.container import Container, build_container
 from app.logging import configure_logging
 from app.settings import Settings, load_settings
@@ -42,10 +42,18 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.state.schedule_write = container.schedule_write
     app.state.event_reads = container.event_reads
     app.state.resource_reads = container.resource_reads
+    app.state.conflict_checks = container.conflict_checks
 
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
     app.include_router(health.router)
-    for router in (auth.router, events.router, resources.router, agent.router, internal.router):
+    for router in (
+        auth.router,
+        events.router,
+        resources.router,
+        agent.router,
+        internal.router,
+        overrides.router,
+    ):
         app.include_router(router)
     return app

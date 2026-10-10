@@ -137,7 +137,6 @@ class FakeResourceReadService:
 
 # (method, path, json body or None)
 STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
-    ("POST", f"/api/v1/events/{EVENT}/conflict-check", {}),
     ("POST", "/api/v1/agent/chat", VALID_CHAT),
     ("GET", "/api/v1/agent-actions", None),
     ("POST", f"/api/v1/agent-actions/{ACTION}/confirm", None),
@@ -274,6 +273,9 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
             ("POST", "/api/v1/events"),
             ("GET", "/api/v1/events"),
             ("GET", "/api/v1/events/{event_id}"),
+            ("POST", "/api/v1/events/{event_id}/conflict-check"),
+            ("POST", "/api/v1/events/{event_id}/transitions"),
+            ("POST", "/api/v1/overrides"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }:
@@ -294,6 +296,9 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("POST", "/api/v1/events"),
             ("GET", "/api/v1/events"),
             ("GET", "/api/v1/events/{event_id}"),
+            ("POST", "/api/v1/events/{event_id}/conflict-check"),
+            ("POST", "/api/v1/events/{event_id}/transitions"),
+            ("POST", "/api/v1/overrides"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
         }

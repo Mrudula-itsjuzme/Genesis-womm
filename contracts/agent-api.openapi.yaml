@@ -100,7 +100,7 @@ paths:
       security:
       - delegationBearer: []
       - internalKey: []
-      x-implementation-status: stub
+      x-implementation-status: implemented
   /v1/agent/plan-event:
     post:
       tags:
@@ -160,7 +160,7 @@ paths:
       security:
       - delegationBearer: []
       - internalKey: []
-      x-implementation-status: stub
+      x-implementation-status: implemented
   /v1/agent/analyze-change:
     post:
       tags:
@@ -220,7 +220,7 @@ paths:
       security:
       - delegationBearer: []
       - internalKey: []
-      x-implementation-status: stub
+      x-implementation-status: implemented
 components:
   schemas:
     AccessLevel:

@@ -12,6 +12,7 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from app.api.errors import ApiError
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
+from app.services.conflict_checks import ConflictCheckService
 from app.services.event_reads import EventReadService
 from app.services.readiness import ReadinessService
 from app.services.resource_reads import ResourceReadService
@@ -59,6 +60,13 @@ def get_event_read_service(request: Request) -> EventReadService:
     if service is None:
         raise RuntimeError("event read service is not configured")
     return cast(EventReadService, service)
+
+
+def get_conflict_check_service(request: Request) -> ConflictCheckService:
+    service = getattr(request.app.state, "conflict_checks", None)
+    if service is None:
+        raise RuntimeError("conflict check service is not configured")
+    return cast(ConflictCheckService, service)
 
 
 def get_resource_read_service(request: Request) -> ResourceReadService:
