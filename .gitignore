@@ -29,3 +29,14 @@ build/
 .DS_Store
 scratch/
 *.log
+
+# Machine learning models and checkpoints (use scripts/download_models.py)
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.h5
+*.tflite
+models/
+checkpoints/
