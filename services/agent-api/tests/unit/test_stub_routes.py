@@ -53,7 +53,13 @@ def _make_client(llm_responses: list[LlmResponse] | None = None) -> TestClient:
         readiness=ReadinessService(provider="fake", has_credential=False),
         engine=engine,
     )
-    return TestClient(create_app(settings, container), raise_server_exceptions=True)
+    # The default settings are the local ones (no internal key), so a turn needs only the
+    # delegation token Core would have minted.
+    return TestClient(
+        create_app(settings, container),
+        raise_server_exceptions=True,
+        headers={"Authorization": "Bearer test-delegation-token"},
+    )
 
 
 @pytest.fixture(scope="module")
@@ -276,7 +282,7 @@ def test_policy_search_returns_citations() -> None:
     response = client.post(
         "/v1/agent/chat",
         json={"messages": [{"role": "user", "content": "What is the submission deadline?"}]},
-        headers={REQUEST_ID_HEADER: "req-cite-1"},
+        headers={REQUEST_ID_HEADER: "req-cite-1", "Authorization": "Bearer test-delegation-token"},
     )
     assert response.status_code == 200, response.text
     body = response.json()

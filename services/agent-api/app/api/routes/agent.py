@@ -5,16 +5,15 @@ via workflow functions. The engine enforces the tool allowlist, max-call count,
 per-tool timeouts, and trace collection on every turn.
 
 Security model (spine AD-10):
-- delegation_bearer: Core's delegation JWT is forwarded to Core unmodified.
-- internal_key: verified at the dependency level outside APP_ENV=local.
+- internal_key: proves the caller is Core; checked before anything else.
+- delegation_bearer: required, and forwarded to Core unmodified. The Agent never decodes it.
 """
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials
 
-from app.api.deps import delegation_bearer, internal_key
+from app.api.deps import require_delegation_token, require_internal_key
 from app.api.errors import ApiError, stub_errors
 from app.orchestration.engine import OrchestrationEngine
 from app.orchestration.workflows import run_analyze_change, run_chat, run_plan_event
@@ -29,7 +28,7 @@ from app.schemas.enums import ErrorCode
 router = APIRouter(
     prefix="/v1/agent",
     tags=["agent"],
-    dependencies=[Depends(delegation_bearer), Depends(internal_key)],
+    dependencies=[Depends(require_internal_key)],
 )
 
 _ERRORS = stub_errors(ErrorCode.DEPENDENCY_UNAVAILABLE, ErrorCode.AGENT_OUTPUT_INVALID)
@@ -44,14 +43,8 @@ def _engine(request: Request) -> OrchestrationEngine:
     return engine
 
 
-def _call_context(request: Request) -> CallContext:
-    # Extract bearer token forwarded by Core; fall back to empty string in local/test env.
-    credentials = request.scope.get("_delegation_bearer")
-    token: str = credentials.credentials if credentials else ""
-    return CallContext(
-        request_id=request.state.request_id,
-        delegation_token=token,
-    )
+def _call_context(request: Request, token: str) -> CallContext:
+    return CallContext(request_id=request.state.request_id, delegation_token=token)
 
 
 def _map_port_error(exc: Exception) -> ApiError:
@@ -76,11 +69,10 @@ def _map_port_error(exc: Exception) -> ApiError:
 async def chat(
     payload: AgentTurnRequest,
     request: Request,
-    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(delegation_bearer)] = None,
+    token: Annotated[str, Depends(require_delegation_token)],
 ) -> ChatResponse:
-    request.scope["_delegation_bearer"] = bearer
     engine = _engine(request)
-    ctx = _call_context(request)
+    ctx = _call_context(request, token)
     try:
         return await run_chat(payload, engine, ctx)
     except (DependencyUnavailableError, ContractViolationError) as exc:
@@ -98,11 +90,10 @@ async def chat(
 async def plan_event(
     payload: PlanEventRequest,
     request: Request,
-    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(delegation_bearer)] = None,
+    token: Annotated[str, Depends(require_delegation_token)],
 ) -> ChatResponse:
-    request.scope["_delegation_bearer"] = bearer
     engine = _engine(request)
-    ctx = _call_context(request)
+    ctx = _call_context(request, token)
     try:
         return await run_plan_event(payload, engine, ctx)
     except (DependencyUnavailableError, ContractViolationError) as exc:
@@ -120,11 +111,10 @@ async def plan_event(
 async def analyze_change(
     payload: AnalyzeChangeRequest,
     request: Request,
-    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(delegation_bearer)] = None,
+    token: Annotated[str, Depends(require_delegation_token)],
 ) -> ChatResponse:
-    request.scope["_delegation_bearer"] = bearer
     engine = _engine(request)
-    ctx = _call_context(request)
+    ctx = _call_context(request, token)
     try:
         return await run_analyze_change(payload, engine, ctx)
     except (DependencyUnavailableError, ContractViolationError) as exc:
