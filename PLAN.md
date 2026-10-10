@@ -49,6 +49,7 @@ All demo events and statuses must be explicitly labeled synthetic.
 - Deterministic scheduling rules, including the configurable two-hour gap policy.
 - Resource catalog with source, verification date, responsible office, restrictions, and availability state.
 - RAG ingestion and hybrid dense + sparse retrieval with page citations.
+- Separate, allowlisted source ingestion: reviewed policy/procedure documents go to RAG; events, calendars, facilities, services, and clubs go to PostgreSQL with provenance and freshness state.
 - Agent service with bounded typed tools.
 - Commitment status and evidence references.
 - One working venue/time change-impact scenario.
@@ -219,6 +220,9 @@ Do not expose an unrestricted `book_event` tool. Official confirmation is a dist
 - Chunk along headings/clauses first; start testing around 400–700 tokens with modest overlap.
 - Track parse failures and document supersession.
 - Do not ingest private organizer exports or unapproved sensitive material.
+- Use `SOURCE_REGISTRY.md` as the initial Amrita Coimbatore allowlist. The OSA handbook is the first policy document; the Student Affairs page requires content review before RAG activation.
+- Do not send event pages, calendar feeds, facility directories, ICTS pages, or club pages into the policy RAG corpus merely because they are scraped. Extract their operational fields into PostgreSQL through source-specific HTML or ICS parsers.
+- A public event calendar is discovery context, not a live venue-availability or booking feed. Retain `UNKNOWN` availability unless authorized evidence establishes otherwise.
 
 ### Retrieval pipeline
 1. Normalize query without destroying exact identifiers.

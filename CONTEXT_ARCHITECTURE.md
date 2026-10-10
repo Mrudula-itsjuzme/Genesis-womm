@@ -7,6 +7,7 @@ CampusCue coordinates organizer workflows around events. It can store proposals 
 External systems and sources:
 - OSA Student Affairs Handbook and other approved policy documents.
 - Campus event pages and verified facility/service information.
+- The allowlisted Amrita Coimbatore sources in `SOURCE_REGISTRY.md`, split between a reviewed policy corpus and structured campus catalog records.
 - Official booking or calendar system, only if access is authorized and integration is approved.
 - Student-selected Google Calendar, using read-only access only when the student connects it.
 - Mock attendance and timetable providers for the MVP. An institutional academic-record API is not assumed.
@@ -116,8 +117,19 @@ The agent must not apply a change based on stale event data. Mutations should in
 - Conflict validation must be repeated inside the write transaction.
 - Empty event results never establish that a venue is available.
 
-## 7. RAG pipeline
-Authorized sources -> parse with page/section metadata -> structure-aware chunks -> SPLADE sparse retrieval + local dense retrieval -> RRF fusion -> optional reranking -> access-filtered context selection -> Groq grounded answer -> citations and abstention flag.
+## 7. Source ingestion boundary
+
+CampusCue has two distinct ingestion paths:
+
+1. **Policy RAG path:** reviewed procedural documents, beginning with the OSA handbook, are parsed with page and section metadata and entered into the RAG corpus for evidence-cited answers.
+2. **Structured catalog path:** published event pages, academic calendar HTML and ICS entries, facilities, ICTS services, support routes, and club records are normalized into PostgreSQL for product views and deterministic use.
+
+Both paths use the registered source URL, collection and verification timestamps, content hash when available, parser version, extraction result, and freshness or review state. Neither path can establish live venue availability from an empty or public calendar. The structured path keeps `UNKNOWN`, tentative, and verified booking states separate.
+
+The fetch layer follows source-specific access rules and rate limits. It does not bypass campus authentication. HTML and ICS parsers extract only the fields in `SOURCE_REGISTRY.md`; pages that are historical, undated, or campus-ambiguous require review before presentation as current operational information.
+
+## 8. RAG pipeline
+Authorized policy sources -> parse with page/section metadata -> structure-aware chunks -> SPLADE sparse retrieval + local dense retrieval -> RRF fusion -> optional reranking -> access-filtered context selection -> Groq grounded answer -> citations and abstention flag.
 
 Suggested first implementation:
 - SPLADE for sparse retrieval.
@@ -126,7 +138,7 @@ Suggested first implementation:
 - Cross-encoder reranking only after a baseline is measured.
 - A reviewed 30–50-question evaluation set.
 
-## 8. Deployment
+## 9. Deployment
 Docker Compose can run:
 - `web` on host port 3000;
 - `core-api` on 8000;
@@ -136,15 +148,16 @@ Docker Compose can run:
 
 For development, ports 8001 and 8002 may be published to localhost for direct testing. In integrated or production environments, keep Agent and RAG on a private network. Never expose administrative ingestion or internal tools without authentication.
 
-## 9. Failure behavior
+## 10. Failure behavior
 - Agent unavailable: core event CRUD and scheduling remain usable; policy/agent features show unavailable state.
 - RAG unavailable: agent must not invent policy answers; return an explicit dependency error or ask the user to retry.
 - LLM unavailable: deterministic APIs still work; retrieval-only search can still work if embedding/search dependencies are available.
 - Missing/unclear source: RAG returns insufficient evidence.
+- Structured-source failure: retain the last successful source timestamp, mark the catalog data stale or unavailable, and never infer availability from the failure.
 - Conflict checker unavailable: do not confirm or commit a schedule mutation that requires validation.
 - Stale revision: reject mutation with a conflict response and require refresh/review.
 - Unknown venue availability: present as unknown, not free.
 - Academic data unavailable: registration remains possible and the student sees that no academic-risk check could be completed.
 
-## 10. Observability
+## 11. Observability
 Propagate `request_id`/correlation ID across Core, Agent and RAG. Log request metadata, tool name, latency, outcome, model/index version and error category. Do not log secrets, private conversation exports, full sensitive document bodies, or unrestricted user prompts by default.
