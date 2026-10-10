@@ -1,181 +1,246 @@
+"""How a proposal moves through review and into (and out of) RAG (Implementation Plan 07).
+
+The manager works on a plain record and talks to object storage and RAG only through ports, so
+these run with simple fakes and no network.
+"""
+
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
-from uuid import uuid4
+from typing import Any
+from uuid import UUID, uuid4
 
 import pytest
 
 from app.domain.enums import ProposalStatus
+from app.domain.lifecycle import InvalidTransitionError
 from app.domain.time import FixedClock
-from app.models.proposal import Proposal
-from app.services.minio_client import MinIOProposalStorage
+from app.services.ports import ProposalRecord
 from app.services.proposal_lifecycle import ProposalLifecycleManager
 
-FIXED_TIME = datetime(2026, 10, 11, 12, 0, 0, tzinfo=UTC)
+NOW = datetime(2026, 10, 11, 12, 0, 0, tzinfo=UTC)
+REVIEWER = uuid4()
+S = ProposalStatus
+
+
+@dataclass
+class FakeStorage:
+    presigned: str = "https://minio.local/presigned-pdf-url"
+    presign_calls: list[tuple[str, str, int]] = field(default_factory=list)
+    archived: list[tuple[str, str]] = field(default_factory=list)
+
+    def upload_proposal(self, *args: Any, **kwargs: Any) -> tuple[str, str, int, str]:
+        raise AssertionError("the lifecycle never uploads")
+
+    def generate_presigned_download_url(
+        self, bucket: str, object_key: str, expires_in_seconds: int = 900
+    ) -> str:
+        self.presign_calls.append((bucket, object_key, expires_in_seconds))
+        return self.presigned
+
+    def archive_proposal(self, source_bucket: str, source_key: str) -> str:
+        self.archived.append((source_bucket, source_key))
+        return f"archive/{source_key}"
+
+
+@dataclass
+class FakeRag:
+    accepts: bool = True
+    forgets: bool = True
+    ingested: list[Mapping[str, Any]] = field(default_factory=list)
+    deleted: list[tuple[UUID, UUID]] = field(default_factory=list)
+
+    def ingest(self, payload: Mapping[str, Any]) -> bool:
+        self.ingested.append(payload)
+        return self.accepts
+
+    def delete(self, proposal_id: UUID, event_id: UUID) -> bool:
+        self.deleted.append((proposal_id, event_id))
+        return self.forgets
+
+
+@dataclass
+class Rig:
+    manager: ProposalLifecycleManager
+    storage: FakeStorage
+    rag: FakeRag
 
 
 @pytest.fixture
-def mock_storage() -> MagicMock:
-    storage = MagicMock(spec=MinIOProposalStorage)
-    storage.generate_presigned_download_url.return_value = "https://minio.local/presigned-pdf-url"
-    storage.archive_proposal.return_value = "proposals-archive/club/event/prop/v1.pdf"
-    return storage
-
-
-@pytest.fixture
-def mock_http_client() -> MagicMock:
-    client = MagicMock()
-    return client
-
-
-@pytest.fixture
-def fixed_clock() -> FixedClock:
-    return FixedClock(FIXED_TIME)
-
-
-@pytest.fixture
-def lifecycle_mgr(
-    mock_storage: MagicMock, mock_http_client: MagicMock, fixed_clock: FixedClock
-) -> ProposalLifecycleManager:
-    return ProposalLifecycleManager(
-        minio_storage=mock_storage,
-        clock=fixed_clock,
-        rag_api_url="http://rag-api:8002",
-        http_client=mock_http_client,
+def rig() -> Rig:
+    storage, rag = FakeStorage(), FakeRag()
+    return Rig(
+        ProposalLifecycleManager(storage=storage, rag=rag, clock=FixedClock(NOW)), storage, rag
     )
 
 
-@pytest.fixture
-def sample_proposal() -> Proposal:
-    return Proposal(
+def proposal(status: ProposalStatus = S.SUBMITTED, **changes: object) -> ProposalRecord:
+    base = ProposalRecord(
+        id=uuid4(),
         event_id=uuid4(),
         club_id=uuid4(),
         submitted_by=uuid4(),
         title="Sample Tech Symposium",
         minio_bucket="campuscue-proposals-dev",
         minio_key="proposals/c1/e1/p1/v1.pdf",
-        status=ProposalStatus.SUBMITTED,
+        submitted_at=NOW - timedelta(days=2),
+        status=status,
+    )
+    for name, value in changes.items():
+        setattr(base, name, value)
+    return base
+
+
+# ---- review decisions ------------------------------------------------------------------
+
+DECISIONS = [
+    ("approve_proposal", S.APPROVED),
+    ("reject_proposal", S.REJECTED),
+    ("request_revision", S.REVISION_REQUESTED),
+]
+
+
+@pytest.mark.parametrize(("method", "outcome"), DECISIONS)
+@pytest.mark.parametrize("start", [S.SUBMITTED, S.UNDER_REVIEW])
+def test_a_reviewer_decides_a_proposal_that_is_awaiting_review(
+    rig: Rig, method: str, outcome: ProposalStatus, start: ProposalStatus
+) -> None:
+    record = proposal(start)
+
+    decided = getattr(rig.manager, method)(record, reviewer_id=REVIEWER, review_note="Because.")
+
+    assert decided is record
+    assert decided.status is outcome
+    assert (decided.reviewed_by, decided.reviewed_at, decided.review_note) == (
+        REVIEWER,
+        NOW,
+        "Because.",
     )
 
 
-def test_approve_proposal(
-    lifecycle_mgr: ProposalLifecycleManager, sample_proposal: Proposal
+@pytest.mark.parametrize(("method", "outcome"), DECISIONS)
+@pytest.mark.parametrize(
+    "start", [S.DRAFT, S.APPROVED, S.REJECTED, S.REVISION_REQUESTED, S.CHUNKED, S.ARCHIVED]
+)
+def test_a_proposal_that_is_not_awaiting_review_cannot_be_decided(
+    rig: Rig, method: str, outcome: ProposalStatus, start: ProposalStatus
 ) -> None:
-    reviewer = uuid4()
-    updated = lifecycle_mgr.approve_proposal(
-        sample_proposal, reviewer_id=reviewer, review_note="Looks great!"
-    )
-    assert updated.status == ProposalStatus.APPROVED
-    assert updated.reviewed_by == reviewer
-    assert updated.review_note == "Looks great!"
-    assert updated.reviewed_at == FIXED_TIME
+    record = proposal(start)
+    before = replace(record)
+
+    with pytest.raises(InvalidTransitionError) as refused:
+        getattr(rig.manager, method)(record, reviewer_id=REVIEWER)
+
+    assert (refused.value.current, refused.value.target) == (start, outcome)
+    assert record == before, "a refused decision must leave the proposal untouched"
 
 
-def test_reject_proposal(
-    lifecycle_mgr: ProposalLifecycleManager, sample_proposal: Proposal
-) -> None:
-    reviewer = uuid4()
-    updated = lifecycle_mgr.reject_proposal(
-        sample_proposal, reviewer_id=reviewer, review_note="Budget exceeds limit"
-    )
-    assert updated.status == ProposalStatus.REJECTED
-    assert updated.reviewed_by == reviewer
+# ---- handing an approved proposal to RAG -----------------------------------------------
 
 
-def test_request_revision(
-    lifecycle_mgr: ProposalLifecycleManager, sample_proposal: Proposal
-) -> None:
-    reviewer = uuid4()
-    updated = lifecycle_mgr.request_revision(
-        sample_proposal, reviewer_id=reviewer, review_note="Add safety plan"
-    )
-    assert updated.status == ProposalStatus.REVISION_REQUESTED
-    assert updated.reviewed_by == reviewer
+def test_an_approved_proposal_is_handed_to_rag_with_a_short_lived_link(rig: Rig) -> None:
+    record = proposal(S.APPROVED, reviewed_by=REVIEWER)
+
+    assert rig.manager.dispatch_rag_ingest(record) is True
+
+    assert rig.storage.presign_calls == [(record.minio_bucket, record.minio_key, 900)]
+    [payload] = rig.rag.ingested
+    assert payload == {
+        "proposal_id": str(record.id),
+        "event_id": str(record.event_id),
+        "club_id": str(record.club_id),
+        "revision": record.revision,
+        "presigned_url": "https://minio.local/presigned-pdf-url",
+        "title": record.title,
+        "submitted_by": str(record.submitted_by),
+        "approved_by": str(REVIEWER),
+    }
+    assert (record.status, record.rag_ingested_at) == (S.CHUNKED, NOW)
 
 
-def test_dispatch_rag_ingest_success(
-    lifecycle_mgr: ProposalLifecycleManager,
-    sample_proposal: Proposal,
-    mock_http_client: MagicMock,
-    mock_storage: MagicMock,
-) -> None:
-    sample_proposal.status = ProposalStatus.APPROVED
-    sample_proposal.reviewed_by = uuid4()
+def test_a_proposal_rag_refused_stays_approved_so_it_can_be_retried(rig: Rig) -> None:
+    rig.rag.accepts = False
+    record = proposal(S.APPROVED, reviewed_by=REVIEWER)
 
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {"status": "success", "chunks_ingested": 12}
-    mock_http_client.post.return_value = mock_resp
+    assert rig.manager.dispatch_rag_ingest(record) is False
 
-    result = lifecycle_mgr.dispatch_rag_ingest(sample_proposal)
-    assert result is True
-    assert sample_proposal.status == ProposalStatus.CHUNKED
-    assert sample_proposal.rag_ingested_at == FIXED_TIME
-
-    mock_storage.generate_presigned_download_url.assert_called_once()
-    mock_http_client.post.assert_called_once()
-    call_args = mock_http_client.post.call_args
-    assert call_args.args[0] == "http://rag-api:8002/v1/ingest/proposal"
-    assert call_args.kwargs["json"]["presigned_url"] == "https://minio.local/presigned-pdf-url"
+    assert (record.status, record.rag_ingested_at) == (S.APPROVED, None)
 
 
-def test_dispatch_rag_ingest_fails_if_not_approved(
-    lifecycle_mgr: ProposalLifecycleManager,
-    sample_proposal: Proposal,
-) -> None:
-    sample_proposal.status = ProposalStatus.SUBMITTED
+@pytest.mark.parametrize("start", [S.DRAFT, S.SUBMITTED, S.REJECTED, S.CHUNKED, S.ARCHIVED])
+def test_only_an_approved_proposal_can_be_handed_to_rag(rig: Rig, start: ProposalStatus) -> None:
     with pytest.raises(ValueError, match="Only APPROVED proposals can be ingested"):
-        lifecycle_mgr.dispatch_rag_ingest(sample_proposal)
+        rig.manager.dispatch_rag_ingest(proposal(start))
+
+    assert rig.rag.ingested == []
+    assert rig.storage.presign_calls == []
 
 
-def test_24h_cleanup_eligibility_boundary(lifecycle_mgr: ProposalLifecycleManager) -> None:
-    now = FIXED_TIME
-
-    # Exactly 23 hours 59 minutes ago -> not eligible
-    concluded_23h = now - timedelta(hours=23, minutes=59)
-    assert lifecycle_mgr.is_eligible_for_24h_cleanup(concluded_23h, now=now) is False
-
-    # Exactly 24 hours ago -> eligible
-    concluded_24h = now - timedelta(hours=24)
-    assert lifecycle_mgr.is_eligible_for_24h_cleanup(concluded_24h, now=now) is True
-
-    # 48 hours ago -> eligible
-    concluded_48h = now - timedelta(hours=48)
-    assert lifecycle_mgr.is_eligible_for_24h_cleanup(concluded_48h, now=now) is True
-
-    # None concluded_at -> not eligible
-    assert lifecycle_mgr.is_eligible_for_24h_cleanup(None, now=now) is False
+# ---- the 24 hour clean-up --------------------------------------------------------------
 
 
-def test_execute_lifecycle_cleanup(
-    lifecycle_mgr: ProposalLifecycleManager,
-    sample_proposal: Proposal,
-    mock_http_client: MagicMock,
-    mock_storage: MagicMock,
+def test_cleanup_waits_a_full_day_after_the_event_concluded(rig: Rig) -> None:
+    eligible = rig.manager.is_eligible_for_24h_cleanup
+
+    assert eligible(NOW - timedelta(hours=23, minutes=59), now=NOW) is False
+    assert eligible(NOW - timedelta(hours=24), now=NOW) is True
+    assert eligible(NOW - timedelta(hours=48), now=NOW) is True
+    assert eligible(None, now=NOW) is False
+
+
+def test_cleanup_uses_the_clock_when_no_time_is_given(rig: Rig) -> None:
+    assert rig.manager.is_eligible_for_24h_cleanup(NOW - timedelta(hours=24)) is True
+    assert rig.manager.is_eligible_for_24h_cleanup(NOW - timedelta(hours=23)) is False
+
+
+def test_cleanup_makes_rag_forget_the_proposal_then_archives_the_file(rig: Rig) -> None:
+    record = proposal(S.CHUNKED, rag_ingested_at=NOW - timedelta(days=1))
+
+    done = rig.manager.execute_lifecycle_cleanup(
+        record, event_concluded_at=NOW - timedelta(hours=25), now=NOW
+    )
+
+    assert done is True
+    assert rig.rag.deleted == [(record.id, record.event_id)]
+    assert rig.storage.archived == [(record.minio_bucket, record.minio_key)]
+    assert (record.status, record.rag_deleted_at) == (S.ARCHIVED, NOW)
+
+
+def test_cleanup_that_is_too_early_does_nothing(rig: Rig) -> None:
+    record = proposal(S.CHUNKED)
+
+    done = rig.manager.execute_lifecycle_cleanup(
+        record, event_concluded_at=NOW - timedelta(hours=23), now=NOW
+    )
+
+    assert done is False
+    assert (rig.rag.deleted, rig.storage.archived, record.status) == ([], [], S.CHUNKED)
+
+
+def test_the_file_is_kept_when_rag_cannot_forget_the_proposal(rig: Rig) -> None:
+    rig.rag.forgets = False
+    record = proposal(S.CHUNKED)
+
+    done = rig.manager.execute_lifecycle_cleanup(
+        record, event_concluded_at=NOW - timedelta(hours=48), now=NOW
+    )
+
+    assert done is False
+    assert rig.storage.archived == [], "never archive the file while RAG still serves it"
+    assert (record.status, record.rag_deleted_at) == (S.CHUNKED, None)
+
+
+@pytest.mark.parametrize("start", [S.APPROVED, S.REJECTED, S.SUBMITTED])
+def test_a_proposal_rag_never_held_is_archived_without_asking_rag(
+    rig: Rig, start: ProposalStatus
 ) -> None:
-    now = FIXED_TIME
-    concluded_at = now - timedelta(hours=25)
+    record = proposal(start)
 
-    sample_proposal.status = ProposalStatus.CHUNKED
-
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_http_client.request.return_value = mock_resp
-
-    result = lifecycle_mgr.execute_lifecycle_cleanup(
-        sample_proposal, event_concluded_at=concluded_at, now=now
+    done = rig.manager.execute_lifecycle_cleanup(
+        record, event_concluded_at=NOW - timedelta(hours=48), now=NOW
     )
-    assert result is True
-    assert sample_proposal.status == ProposalStatus.ARCHIVED
-    assert sample_proposal.rag_deleted_at == FIXED_TIME
 
-    # Check RAG delete call
-    mock_http_client.request.assert_called_once_with(
-        "DELETE",
-        f"http://rag-api:8002/v1/ingest/proposal/{sample_proposal.id}",
-        json={"event_id": str(sample_proposal.event_id)},
-    )
-    # Check MinIO archive call
-    mock_storage.archive_proposal.assert_called_once_with(
-        source_bucket=sample_proposal.minio_bucket,
-        source_key=sample_proposal.minio_key,
-    )
+    assert done is True
+    assert rig.rag.deleted == []
+    assert rig.storage.archived == [(record.minio_bucket, record.minio_key)]
+    assert (record.status, record.rag_deleted_at) == (S.ARCHIVED, None)

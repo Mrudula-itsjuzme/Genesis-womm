@@ -1,80 +1,59 @@
-"""SQLAlchemy model for event proposals stored in MinIO and indexed into RAG upon approval."""
+"""An event's proposal document and its review (Implementation Plan 07, spine AD-20).
 
-from datetime import UTC, datetime
-from uuid import UUID, uuid4
+The PDF lives in object storage; this row points at it and records who submitted it, who
+reviewed it and when RAG took or dropped it. The database refuses a decided proposal that names
+no reviewer, and a RAG-ingested one that does not say when.
+"""
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, Text
-from sqlalchemy import Enum as SQLEnum
+from datetime import datetime
+from uuid import UUID
+
+from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.domain.enums import ProposalStatus
 from app.models.base import Base
+from app.models.directory import Timestamp, in_values
 
 
-class Proposal(Base):
+class ProposalRow(Base):
     __tablename__ = "proposals"
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    event_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
-    club_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
-    submitted_by: Mapped[UUID] = mapped_column(nullable=False)
-    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    status: Mapped[ProposalStatus] = mapped_column(
-        SQLEnum(ProposalStatus, native_enum=False, name="proposal_status"),
-        nullable=False,
-        default=ProposalStatus.SUBMITTED,
+    __table_args__ = (
+        CheckConstraint(in_values("status", ProposalStatus), name="status"),
+        CheckConstraint("revision >= 1", name="revision_positive"),
+        CheckConstraint("length(trim(title)) > 0", name="title_not_blank"),
+        CheckConstraint(
+            "file_size_bytes IS NULL OR file_size_bytes >= 0", name="size_non_negative"
+        ),
+        CheckConstraint("sha256_hash IS NULL OR length(sha256_hash) = 64", name="sha256_length"),
+        CheckConstraint(
+            "status NOT IN ('APPROVED', 'REJECTED', 'REVISION_REQUESTED', 'CHUNKED') "
+            "OR (reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL)",
+            name="decided_has_reviewer",
+        ),
+        CheckConstraint(
+            "status <> 'CHUNKED' OR rag_ingested_at IS NOT NULL",
+            name="chunked_has_ingest_time",
+        ),
+        Index("ix_proposals_event_id", "event_id"),
+        Index("ix_proposals_club_id", "club_id"),
+        Index("ix_proposals_status", "status"),
     )
 
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    minio_bucket: Mapped[str] = mapped_column(String(128), nullable=False)
-    minio_key: Mapped[str] = mapped_column(String(512), nullable=False)
-    file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    sha256_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    submitted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False,
-    )
-    reviewed_by: Mapped[UUID | None] = mapped_column(nullable=True)
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    rag_ingested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    rag_deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    def __init__(
-        self,
-        event_id: UUID,
-        club_id: UUID,
-        submitted_by: UUID,
-        title: str,
-        minio_bucket: str,
-        minio_key: str,
-        id: UUID | None = None,
-        revision: int = 1,
-        status: ProposalStatus = ProposalStatus.SUBMITTED,
-        file_size_bytes: int | None = None,
-        sha256_hash: str | None = None,
-        submitted_at: datetime | None = None,
-        reviewed_by: UUID | None = None,
-        reviewed_at: datetime | None = None,
-        review_note: str | None = None,
-        rag_ingested_at: datetime | None = None,
-        rag_deleted_at: datetime | None = None,
-    ) -> None:
-        self.id = id or uuid4()
-        self.event_id = event_id
-        self.club_id = club_id
-        self.submitted_by = submitted_by
-        self.title = title
-        self.minio_bucket = minio_bucket
-        self.minio_key = minio_key
-        self.revision = revision
-        self.status = status
-        self.file_size_bytes = file_size_bytes
-        self.sha256_hash = sha256_hash
-        self.submitted_at = submitted_at or datetime.now(UTC)
-        self.reviewed_by = reviewed_by
-        self.reviewed_at = reviewed_at
-        self.review_note = review_note
-        self.rag_ingested_at = rag_ingested_at
-        self.rag_deleted_at = rag_deleted_at
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    event_id: Mapped[UUID] = mapped_column(ForeignKey("events.id"))
+    club_id: Mapped[UUID] = mapped_column(ForeignKey("clubs.id"))
+    submitted_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    revision: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20))
+    title: Mapped[str] = mapped_column(String(255))
+    minio_bucket: Mapped[str] = mapped_column(String(128))
+    minio_key: Mapped[str] = mapped_column(String(512))
+    file_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    sha256_hash: Mapped[str | None] = mapped_column(String(64))
+    submitted_at: Mapped[datetime] = mapped_column(Timestamp)
+    reviewed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(Timestamp)
+    review_note: Mapped[str | None] = mapped_column(Text)
+    rag_ingested_at: Mapped[datetime | None] = mapped_column(Timestamp)
+    rag_deleted_at: Mapped[datetime | None] = mapped_column(Timestamp)

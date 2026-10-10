@@ -27,6 +27,7 @@ from app.services.errors import (
     IdempotencyMismatchError,
     InvalidRequestError,
     NotFoundError,
+    StorageUnavailableError,
 )
 
 
@@ -96,6 +97,10 @@ def make_app() -> FastAPI:
     @app.get("/agent-garbled")
     def agent_garbled() -> None:
         raise AgentOutputInvalidError("reply was {'secret': 'internals'}")
+
+    @app.get("/storage-down")
+    def storage_down() -> None:
+        raise StorageUnavailableError("S3 endpoint http://minio-internal:9000 access key AKIA123")
 
     @app.get("/invalid")
     def invalid() -> None:
@@ -253,3 +258,14 @@ def test_an_unusable_assistant_reply_is_a_502_that_hides_what_it_said(client: Te
     envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
     assert envelope.code is ErrorCode.AGENT_OUTPUT_INVALID
     assert "internals" not in response.text
+
+
+def test_unavailable_storage_is_a_503_that_hides_the_endpoint_and_keys(client: TestClient) -> None:
+    response = client.get("/storage-down")
+
+    assert response.status_code == 503
+    envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
+    assert envelope.code is ErrorCode.DEPENDENCY_UNAVAILABLE
+    assert "minio-internal" not in response.text
+    assert "AKIA123" not in response.text
+    assert "storage" in envelope.message.lower()

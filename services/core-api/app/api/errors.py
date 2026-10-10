@@ -28,6 +28,7 @@ from app.services.errors import (
     InvalidRequestError,
     NotFoundError,
     StaleRevisionError,
+    StorageUnavailableError,
 )
 
 log = structlog.get_logger("errors")
@@ -150,6 +151,7 @@ async def _handle_domain_refusal(request: Request, exc: Exception) -> JSONRespon
         InvalidRequestError: ErrorCode.VALIDATION_ERROR,
         AgentUnavailableError: ErrorCode.DEPENDENCY_UNAVAILABLE,
         AgentOutputInvalidError: ErrorCode.AGENT_OUTPUT_INVALID,
+        StorageUnavailableError: ErrorCode.DEPENDENCY_UNAVAILABLE,
         StaleRevisionError: ErrorCode.STALE_REVISION,
         NotFoundError: ErrorCode.NOT_FOUND,
         NotAuthorizedError: ErrorCode.FORBIDDEN,
@@ -161,6 +163,9 @@ async def _handle_domain_refusal(request: Request, exc: Exception) -> JSONRespon
         if isinstance(exc, ConflictDetectedError)
         else []
     )
+    if isinstance(exc, StorageUnavailableError):
+        log.warning("storage_failure", request_id=_request_id(request), detail=str(exc))
+        return error_response(request, code, "Document storage is unavailable right now.")
     if isinstance(exc, AgentUnavailableError | AgentOutputInvalidError):
         # The detail can name hosts or quote the reply: keep it in the log, not the response.
         log.warning("assistant_failure", request_id=_request_id(request), detail=str(exc))
@@ -204,6 +209,7 @@ def install_error_handlers(app: FastAPI) -> None:
         InvalidRequestError,
         AgentUnavailableError,
         AgentOutputInvalidError,
+        StorageUnavailableError,
         StaleRevisionError,
         NotFoundError,
         NotAuthorizedError,

@@ -340,8 +340,14 @@ class ProposalStore(Protocol):
 
     def add(self, record: ProposalRecord) -> None: ...
 
-    def save(self, record: ProposalRecord) -> None:
-        """Persist the review and RAG lifecycle fields of an existing proposal."""
+    def next_revision(self, event_id: UUID) -> int:
+        """The revision number a new upload for this event should take (1 for the first)."""
+        ...
+
+    def save(self, record: ProposalRecord, *, expected_status: ProposalStatus) -> bool:
+        """Persist the review and RAG lifecycle fields, but only if the proposal is still in
+        ``expected_status``. False when someone else moved it first, so two reviewers cannot
+        both win."""
         ...
 
 
@@ -488,6 +494,9 @@ class ProposalUnitOfWork(Protocol):
 
     @property
     def proposals(self) -> ProposalStore: ...
+
+    @property
+    def events(self) -> EventReader: ...
 
     @property
     def audit(self) -> AuditWriter: ...

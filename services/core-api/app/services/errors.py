@@ -60,3 +60,10 @@ class AgentOutputInvalidError(ServiceError):
 
     The message is for logs. It may quote the reply, so it is never sent to a client.
     """
+
+
+class StorageUnavailableError(ServiceError):
+    """Object storage could not be reached or refused the operation.
+
+    The message is for logs. It may name hosts or buckets, so it is never sent to a client.
+    """

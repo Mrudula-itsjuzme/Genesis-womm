@@ -37,7 +37,7 @@ class FakeReadinessProbe:
 # ---- an in-memory database for the write path --------------------------------------------
 
 import copy  # noqa: E402
-from dataclasses import dataclass, field  # noqa: E402
+from dataclasses import dataclass, field, replace  # noqa: E402
 from datetime import datetime  # noqa: E402
 from types import TracebackType  # noqa: E402
 from typing import Self  # noqa: E402
@@ -49,6 +49,7 @@ from app.domain.enums import (  # noqa: E402
     AvailabilityState,
     EventStatus,
     OverrideScope,
+    ProposalStatus,
 )
 from app.services.errors import StaleRevisionError  # noqa: E402
 from app.services.ports import (  # noqa: E402
@@ -57,6 +58,7 @@ from app.services.ports import (  # noqa: E402
     EventRecord,
     EvidenceData,
     OverrideRecord,
+    ProposalRecord,
     ResourceRecord,
     StoredResponse,
     UserIdentity,
@@ -101,6 +103,7 @@ class State:
     audit: list[AuditRecord] = field(default_factory=list)
     keys: dict[tuple[UUID, str], StoredResponse] = field(default_factory=dict)
     agent_actions: dict[UUID, AgentActionRecord] = field(default_factory=dict)
+    proposals: dict[UUID, ProposalRecord] = field(default_factory=dict)
 
     def copy(self) -> "State":
         # Records are frozen, so copying the containers is enough.
@@ -345,6 +348,48 @@ class _AgentActions:
         return True
 
 
+class _Proposals:
+    """The in-memory twin of ``SqlProposalStore``. Records are mutable, so it copies them in and
+    out; otherwise a rolled-back transaction could leak edits into committed state."""
+
+    def __init__(self, db: InMemoryDatabase, work: State) -> None:
+        self._db, self._work = db, work
+
+    def get(self, proposal_id: UUID) -> ProposalRecord | None:
+        self._db.log.append("read:proposal")
+        stored = self._work.proposals.get(proposal_id)
+        return None if stored is None else replace(stored)
+
+    def add(self, record: ProposalRecord) -> None:
+        self._db.fail_if("proposals.add")
+        self._db.log.append("write:proposal")
+        self._work.proposals[record.id] = replace(record)
+
+    def next_revision(self, event_id: UUID) -> int:
+        revisions = [p.revision for p in self._work.proposals.values() if p.event_id == event_id]
+        return max(revisions, default=0) + 1
+
+    def save(self, record: ProposalRecord, *, expected_status: ProposalStatus) -> bool:
+        self._db.fail_if("proposals.save")
+        # Like ``UPDATE ... WHERE status = :expected`` under READ COMMITTED, the comparison sees
+        # what other transactions have committed, not this transaction's snapshot.
+        committed = self._db.state.proposals.get(record.id)
+        current = self._work.proposals.get(record.id)
+        if committed is None or committed.status is not expected_status or current is None:
+            return False
+        self._db.log.append("write:proposal_review")
+        self._work.proposals[record.id] = replace(
+            current,
+            status=record.status,
+            reviewed_by=record.reviewed_by,
+            reviewed_at=record.reviewed_at,
+            review_note=record.review_note,
+            rag_ingested_at=record.rag_ingested_at,
+            rag_deleted_at=record.rag_deleted_at,
+        )
+        return True
+
+
 class _Revisions:
     def __init__(self, db: InMemoryDatabase, work: State) -> None:
         self._db, self._work = db, work
@@ -401,6 +446,7 @@ class FakeUnitOfWork:
         self.evidence = _Evidence(db, self._work)
         self.idempotency = _Idempotency(db, self._work)
         self.agent_actions = _AgentActions(db, self._work)
+        self.proposals = _Proposals(db, self._work)
         self.schedule = _ScheduleWriters(db, self._work, events)
 
     def __enter__(self) -> Self:
