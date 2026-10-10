@@ -2,10 +2,22 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from app.database import Base
+import app.models # ensure models are registered
 
 config = context.config
-fileConfig(config.config_file_name)
-target_metadata = None
+# fileConfig(config.config_file_name) # commented out to avoid KeyError since alembic.ini lacks logging
+
+target_metadata = Base.metadata
+
+# Set db url from env, falling back to localhost
+url = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5433/campuscue")
+config.set_main_option("sqlalchemy.url", url)
 
 def run_migrations_offline():
     url = config.get_main_option("sqlalchemy.url")
