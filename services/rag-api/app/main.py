@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api.routes.retrieval import router as retrieval_router
+from app.api.routes.knowledge import router as knowledge_router
 
 app = FastAPI(
     title="CampusCue RAG API",
@@ -18,6 +19,7 @@ app.add_middleware(
 )
 
 app.include_router(retrieval_router)
+app.include_router(knowledge_router)
 
 
 @app.get("/health")
