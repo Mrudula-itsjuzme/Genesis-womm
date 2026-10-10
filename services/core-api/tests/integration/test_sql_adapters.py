@@ -289,6 +289,19 @@ def test_a_venue_with_evidence_reports_its_stored_availability(session: Session)
     assert SqlResourceReader(session).availability_of(venue) is AvailabilityState.CONFIRMED
 
 
+def test_resources_can_be_filtered_and_paginated(session: Session) -> None:
+    conn = session.connection()
+    first = make_resource(conn, name="Auditorium", kind="VENUE")
+    make_resource(conn, name="Lab One", kind="EQUIPMENT")
+    reader = SqlResourceReader(session)
+
+    items, total = reader.list_resources(kind=None, query="audit", limit=10, offset=0)
+
+    assert total == 1
+    assert [item.id for item in items] == [first]
+    assert reader.get(first) is not None
+
+
 def test_an_actor_is_built_from_the_users_rows(session: Session) -> None:
     conn = session.connection()
     user, admin = make_user(conn), make_user(conn, admin=True)

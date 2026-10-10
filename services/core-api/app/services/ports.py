@@ -12,7 +12,14 @@ from typing import Any, Protocol, Self
 from uuid import UUID
 
 from app.domain.authz import Actor
-from app.domain.enums import AvailabilityState, EventStatus, OverrideScope, Role
+from app.domain.enums import (
+    AvailabilityState,
+    EventStatus,
+    FreshnessState,
+    OverrideScope,
+    ResourceKind,
+    Role,
+)
 from app.domain.scheduling import Override, ScheduledEvent
 
 
@@ -51,6 +58,23 @@ class EventRecord:
 
     def but(self, **changes: Any) -> "EventRecord":
         return replace(self, **changes)
+
+
+@dataclass(frozen=True)
+class ResourceRecord:
+    id: UUID
+    kind: ResourceKind
+    name: str
+    description: str | None
+    location: str | None
+    capacity: int | None
+    availability_state: AvailabilityState
+    freshness_state: FreshnessState
+    source_id: str
+    source_url: str | None
+    collected_at: datetime | None
+    last_checked_at: datetime | None
+    is_synthetic: bool
 
 
 @dataclass(frozen=True)
@@ -166,6 +190,12 @@ class ResourceReader(Protocol):
         A venue starts UNKNOWN. An empty calendar never means it is free.
         """
         ...
+
+    def get(self, resource_id: UUID) -> ResourceRecord | None: ...
+
+    def list_resources(
+        self, *, kind: ResourceKind | None, query: str | None, limit: int, offset: int
+    ) -> tuple[list[ResourceRecord], int]: ...
 
 
 class ClubReader(Protocol):

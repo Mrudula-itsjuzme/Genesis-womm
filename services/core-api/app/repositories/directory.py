@@ -6,13 +6,13 @@ can reach this code as a role.
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.authz import Actor
-from app.domain.enums import AvailabilityState, Role
+from app.domain.enums import AvailabilityState, FreshnessState, ResourceKind, Role
 from app.models.directory import Club, Membership, Resource, User
-from app.services.ports import MembershipIdentity, UserIdentity
+from app.services.ports import MembershipIdentity, ResourceRecord, UserIdentity
 
 
 class SqlClubReader:
@@ -33,6 +33,43 @@ class SqlResourceReader:
             select(Resource.availability_state).where(Resource.id == resource_id)
         )
         return None if state is None else AvailabilityState(state)
+
+    @staticmethod
+    def _record(row: Resource) -> ResourceRecord:
+        return ResourceRecord(
+            id=row.id,
+            kind=ResourceKind(row.kind),
+            name=row.name,
+            description=row.description,
+            location=row.location,
+            capacity=row.capacity,
+            availability_state=AvailabilityState(row.availability_state),
+            freshness_state=FreshnessState(row.freshness_state),
+            source_id=row.source_id,
+            source_url=row.source_url,
+            collected_at=row.collected_at,
+            last_checked_at=row.last_checked_at,
+            is_synthetic=row.is_synthetic,
+        )
+
+    def get(self, resource_id: UUID) -> ResourceRecord | None:
+        row = self._session.get(Resource, resource_id)
+        return None if row is None else self._record(row)
+
+    def list_resources(
+        self, *, kind: ResourceKind | None, query: str | None, limit: int, offset: int
+    ) -> tuple[list[ResourceRecord], int]:
+        filters = []
+        if kind is not None:
+            filters.append(Resource.kind == kind.value)
+        if query:
+            filters.append(Resource.name.ilike(f"%{query.strip()}%"))
+        statement = select(Resource).where(*filters).order_by(Resource.name, Resource.id)
+        total = int(
+            self._session.scalar(select(func.count()).select_from(statement.subquery())) or 0
+        )
+        rows = self._session.scalars(statement.limit(limit).offset(offset)).all()
+        return [self._record(row) for row in rows], total
 
 
 class SqlActorReader:

@@ -51,6 +51,7 @@ from app.services.ports import (  # noqa: E402
     EventRecord,
     EvidenceData,
     OverrideRecord,
+    ResourceRecord,
     StoredResponse,
     UserIdentity,
 )
@@ -191,6 +192,12 @@ class _Resources:
 
     def availability_of(self, resource_id: UUID) -> AvailabilityState | None:
         return self._work.resources.get(resource_id)
+
+    def get(self, resource_id: UUID) -> ResourceRecord | None:
+        return None
+
+    def list_resources(self, **_: Any) -> tuple[list[ResourceRecord], int]:
+        return [], 0
 
 
 class _Overrides:
