@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
@@ -110,6 +110,10 @@ def make_app() -> FastAPI:
     def retry_mismatch() -> None:
         raise IdempotencyMismatchError("key reused")
 
+    @app.get("/throttled")
+    def throttled() -> None:
+        raise HTTPException(status_code=429, detail="Too many requests")
+
     return app
 
 
@@ -180,6 +184,14 @@ def test_wrong_method_is_405_and_keeps_the_allow_header(client: TestClient) -> N
     assert response.status_code == 405
     assert response.json()["code"] == "METHOD_NOT_ALLOWED"
     assert "GET" in response.headers["allow"]
+
+
+def test_http_exception_keeps_its_status_and_uses_the_standard_envelope(client: TestClient) -> None:
+    response = client.get("/throttled")
+
+    assert response.status_code == 429
+    envelope = assert_envelope(response.json(), response.headers[REQUEST_ID_HEADER])
+    assert envelope.code is ErrorCode.VALIDATION_ERROR
 
 
 def test_unhandled_exception_hides_internals(client: TestClient) -> None:
