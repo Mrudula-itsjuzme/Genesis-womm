@@ -99,12 +99,11 @@ All commit messages must strictly adhere to the Conventional Commits specificati
   - NEVER rewrite published history via rebase or reset on shared branches.
   - NEVER run destructive reset commands (`git reset --hard`, `git clean -fd`) without explicit user instruction.
 
-### 6. Protected files and sensitive asset exclusion
+### 6. Sensitive asset exclusion and tracked operational files
 
-- **Protected operational files:** Never stage or commit `AGENTS.md` or `HANDOFF.md` unless the user explicitly commands it. Do not add either file to `.gitignore`.
+- **Tracked operational and project documents:** `AGENTS.md`, `HANDOFF.md`, `PLAN.md`, `PROJECT.md`, `CONTEXT_ARCHITECTURE.md`, `contracts/`, and approved plans under `Implementation_Plans/` are tracked assets and should be committed whenever updated to reflect architectural or operational progress.
 - **Secrets and environment variables:** Never commit `.env`, `.env.*`, API tokens, private keys, database passwords, or personal credentials. Only committed templates like `.env.example` with scrubbed dummy placeholders are allowed.
 - **Ephemeral artifacts:** Never commit scratch scripts, temporary files (`scratch/`), debug transcripts, test dumps, coverage artifacts, or editor config directories (`.idea/`, `.vscode/`).
-- **Tracked project documents:** `PLAN.md`, `PROJECT.md`, `CONTEXT_ARCHITECTURE.md`, `contracts/`, and approved plans under `Implementation_Plans/` are tracked assets and should be committed whenever updated to reflect architectural or operational progress.
 
 ### 7. Local commit rollback and safety procedures
 
@@ -288,7 +287,7 @@ If an edit spans 4 or more files, stop and split the work into smaller sequentia
 5. **DIFF (Hygiene & Scope Inspection):**
    - Run `git diff` scoped specifically to the slice files.
    - Audit the diff line-by-line: eliminate debugging logs, temporary print statements, commented-out code, and unintended whitespace changes.
-   - Confirm no sensitive credentials, secrets, or protected files (`AGENTS.md`, `HANDOFF.md`) are touched.
+   - Confirm no sensitive credentials, secrets, or temporary scratch files are touched.
 
 6. **COMMIT (Atomic Slice Commit):**
    - Commit the slice immediately once verified.
@@ -373,7 +372,7 @@ git status -u
 ```
 - Remove any temporary scratch files, debug dumps, or ad-hoc test scripts created in the working tree.
 - Verify that no environment files (`.env`), private tokens, or binary build artifacts were left untracked in source directories.
-- Confirm that `AGENTS.md` and `HANDOFF.md` are not staged or committed (per Repository Invariant 2).
+- Confirm that operational documentation (`AGENTS.md`, `HANDOFF.md`, plans) is updated and committed alongside code when policies or tasks change.
 
 ### 6.4 Documentation & Tracking Updates
 Synchronize project documentation with the code state:
@@ -1153,7 +1152,7 @@ A batch is complete only when:
 
 ## 14.2 Expected commit point specification
 
-Plans must treat commit checkpoints as first-class architectural specifications. While **Git Invariant 1** mandates that an agent must never execute `git commit` unless explicitly authorized by the user, every plan must pre-define the exact commit structure so that when commit authority is granted (or when a developer commits), work is committed in clean, atomic increments.
+Plans must treat commit checkpoints as first-class architectural specifications. In accordance with the incremental commit cadence, every plan must pre-define the exact commit structure so that work is committed in clean, atomic 2–3 file increments as each verifiable slice is completed.
 
 For every batch, the plan must explicitly document:
 1. **Target files:** The exact relative paths to be created, modified, or deleted (maximum 3 files).
@@ -1342,7 +1341,7 @@ Do not include generic or unsubstantiated claims such as “production-ready” 
 4. **Working tree and repository hygiene:**
    - Verifiable output of `git status --short`.
    - Proof that no untracked scratch files, temporary test logs, or debug artifacts remain in the workspace.
-   - Explicit confirmation that `AGENTS.md` and `HANDOFF.md` remain unstaged and uncommitted (unless explicit user authorization was granted).
+   - Explicit confirmation that operational documents (`AGENTS.md`, `HANDOFF.md`, plans) are kept up to date and tracked.
 5. **Contracts, schemas, and migrations:**
    - Exact specifications of modified OpenAPI contracts, schemas, or database migrations.
    - Backwards-compatibility and downstream dependency impact assessment.
@@ -1364,7 +1363,7 @@ Before declaring any CampusCue task or vertical slice complete, verify every app
 - [ ] **User changes preserved:** Inspected `git status` and existing diffs; did not overwrite or discard user changes.
 - [ ] **Incremental commit protocol (2–3 files):** All changes were committed in small, cohesive batches of 2–3 files. No monolithic commits.
 - [ ] **Pre-commit test verification:** Verified that focused unit/integration tests and linters passed cleanly prior to creating *every individual commit batch*.
-- [ ] **Operational doc preservation:** Verified that `AGENTS.md` and `HANDOFF.md` are preserved and NOT improperly committed or staged without authorization.
+- [ ] **Operational docs tracked:** Confirmed that `AGENTS.md`, `HANDOFF.md`, and project context files are updated and committed alongside relevant changes.
 - [ ] **Clean working tree inspection:** Verified `git status --short`; confirmed no leftover scratch scripts, temporary files, build artifacts, or unintended modifications remain.
 - [ ] **Final diff review:** Inspected `git diff` to ensure zero unintentional whitespace changes, dead code, or stray edits.
 
