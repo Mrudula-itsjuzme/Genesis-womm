@@ -9,6 +9,7 @@ import { allowedTransitions } from '@/lib/lifecycle';
 import type { EventOut, EventStatus } from '@/types/core-api';
 import ConflictSidebar from './ConflictSidebar';
 import RemoteState from './RemoteState';
+import ProposalUpload from './ProposalUpload';
 
 export default function ChangeImpactList({ initialEventId }: { initialEventId?: string }) {
   const { token } = useAuth();
@@ -66,5 +67,6 @@ function EventWorkspace({ event, refresh }: { event: EventOut; refresh: () => vo
       <div className="my-3 flex flex-wrap gap-2">{actions.map(target => <button disabled={busy} key={target} onClick={() => transition(target)} className="rounded-lg border bg-rose-50 px-4 py-2 disabled:opacity-50">Mark {target.toLowerCase()}</button>)}</div>{!actions.length && <p>No status changes are available for this session and event.</p>}
       {failure && <div role="alert"><p>{failure.message}</p>{Boolean(failure.details?.length) && <details><summary>Core validation details</summary><pre className="max-w-full overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(failure.details, null, 2)}</pre></details>}<button className="mt-2 underline" onClick={refresh}>Reload current event</button></div>}
     </section>
+    <ProposalUpload key={token + event.id} eventId={event.id} clubId={event.club_id} />
   </section><ConflictSidebar {...preview} result={preview.data} error={preview.error} /></div>;
 }

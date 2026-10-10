@@ -11,6 +11,7 @@ import type { EventCreate, EventCreatedOut } from '@/types/core-api';
 import ConflictSidebar from '@/components/ConflictSidebar';
 import RemoteState from '@/components/RemoteState';
 import { useToast } from '@/components/Toast';
+import ProposalUpload from '@/components/ProposalUpload';
 
 const input = 'mt-1 block w-full rounded-lg border border-stone-300 bg-white p-3';
 export default function PlanPage() {
@@ -70,6 +71,7 @@ function PlanForm() {
         {error && <p role="alert" className="text-rose-800">{error}</p>}
         {created && <div role="status"><p>Saved {created.event.title} · {created.event.status}</p><Link className="underline" href={'/changes?eventId=' + created.event.id}>Open event and review next steps</Link></div>}
       </form><ConflictSidebar result={created ? { event_id: created.event.id, evaluated_as: created.event.status, has_blocking: created.conflicts.some(c => c.severity === 'blocking'), conflicts: created.conflicts, checked_at: created.event.created_at } : preview.data} loading={preview.loading} error={preview.error} /></div>
+      {created && <ProposalUpload key={token + created.event.id} eventId={created.event.id} clubId={created.event.club_id} />}
     </>}
   </section>;
 }
