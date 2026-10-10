@@ -1,0 +1,58 @@
+[project]
+name = "campuscue-core-api"
+version = "0.1.0"
+description = "CampusCue Core API: operational state, authorization, deterministic scheduling and audit history."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi==0.143.0",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.0",
+    "pydantic-settings==2.15.0",
+    "sqlalchemy==2.1.4",
+    "alembic==1.20.0",
+    "psycopg[binary]==3.3.6",
+    "httpx==0.28.1",
+    "pyjwt==2.15.1",
+    "structlog==26.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "hypothesis==6.168.5",
+    "respx==0.23.1",
+    # Used only by starlette.testclient (it deprecates httpx); runtime HTTP stays on httpx.
+    "httpx2==2.13.1",
+    "testcontainers[postgres]==4.15.0",
+    "ruff==0.17.0",
+    "mypy==2.4.0",
+    "import-linter==2.15",
+    "jsonschema",
+    "openapi-spec-validator",
+    "pyyaml",
+    "types-pyyaml",
+    "types-jsonschema",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: needs a real PostgreSQL (testcontainers)",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["app", "scripts", "tests"]
+exclude = ["migrations"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true

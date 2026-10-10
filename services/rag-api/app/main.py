@@ -59,6 +59,7 @@ def health():
 @app.get("/ready")
 def ready():
     return {
+        "status": "ready",
         "ready": True,
         "embedding_provider": settings.rag_embedding_provider,
         "sparse_provider": settings.rag_sparse_provider,

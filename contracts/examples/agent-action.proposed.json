@@ -1,0 +1,37 @@
+{
+  "action_id": "9a2b6c7d-1e3f-4a5b-8c9d-0000000000d1",
+  "type": "CREATE_EVENT_DRAFT",
+  "summary": "Save Robotics Demo Day as a draft for 20 Oct, 10:00-12:00, Seminar Hall A",
+  "requires_human_review": true,
+  "status": "PROPOSED",
+  "target_event_id": null,
+  "expected_revision": null,
+  "payload": {
+    "club_id": "7b1c4c1e-5d0a-4f4e-9a52-3f2a1c9d0001",
+    "title": "Robotics Demo Day",
+    "description": "Student teams demo this semester's projects.",
+    "start_at": "2026-10-20T10:00:00+05:30",
+    "end_at": "2026-10-20T12:00:00+05:30",
+    "resource_id": "5e0a1c33-2f7d-4d1b-8e64-0000000000c1",
+    "expected_attendance": 80,
+    "audience_tags": [
+      "all-years"
+    ]
+  },
+  "conflicts": [
+    {
+      "type": "UNKNOWN_AVAILABILITY",
+      "severity": "info",
+      "constraint": null,
+      "event_ids": [
+        "3d6f0b9a-8c1e-4b7a-a1d2-0000000000a1"
+      ],
+      "with_event": null,
+      "start_at": "2026-10-20T10:00:00+05:30",
+      "end_at": "2026-10-20T12:00:00+05:30",
+      "message": "No authoritative source confirms this venue is available. An empty calendar does not mean it is available.",
+      "override_required": false
+    }
+  ],
+  "created_at": "2026-10-10T09:31:00+05:30"
+}

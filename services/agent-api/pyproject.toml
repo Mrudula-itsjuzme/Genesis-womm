@@ -1,0 +1,55 @@
+[project]
+name = "campuscue-agent-api"
+version = "0.1.0"
+description = "CampusCue Agent API: bounded tool-calling orchestration that explains deterministic results and proposes actions."
+requires-python = ">=3.12,<3.13"
+# No PyJWT: the Agent forwards the delegation token unmodified and never decodes it.
+# No database drivers: the Agent reaches operational state only through Core's HTTP facade.
+# The Groq SDK arrives with the provider in Plan 03.
+dependencies = [
+    "fastapi==0.143.0",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.0",
+    "pydantic-settings==2.15.0",
+    "httpx==0.28.1",
+    "structlog==26.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "hypothesis==6.168.5",
+    "respx==0.23.1",
+    "ruff==0.17.0",
+    "mypy==2.4.0",
+    "import-linter==2.15",
+    "jsonschema",
+    "openapi-spec-validator",
+    "pyyaml",
+    "types-pyyaml",
+    "types-jsonschema",
+    # Used only by starlette.testclient (it deprecates httpx); runtime HTTP stays on httpx.
+    "httpx2==2.13.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["app", "scripts", "tests"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true

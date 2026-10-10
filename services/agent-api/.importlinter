@@ -1,0 +1,120 @@
+[importlinter]
+root_package = app
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = API drives orchestration, orchestration drives tools, tools use ports
+type = layers
+layers =
+    app.api
+    app.orchestration
+    app.tools
+    app.ports
+
+[importlinter:contract:ports-are-pure]
+name = Ports know only schemas
+type = forbidden
+source_modules =
+    app.ports
+forbidden_modules =
+    app.api
+    app.orchestration
+    app.tools
+    app.providers
+    app.clients
+    fastapi
+    starlette
+    httpx
+    groq
+
+[importlinter:contract:logic-is-adapter-free]
+name = Orchestration and tools never touch adapters or transport
+type = forbidden
+source_modules =
+    app.orchestration
+    app.tools
+forbidden_modules =
+    app.api
+    app.providers
+    app.clients
+    fastapi
+    starlette
+    httpx
+    groq
+
+[importlinter:contract:api-via-orchestration]
+name = The API layer never touches adapters directly
+type = forbidden
+source_modules =
+    app.api
+forbidden_modules =
+    app.providers
+    app.clients
+    httpx
+    groq
+
+[importlinter:contract:adapters-below-api]
+name = Adapters never import the logic or API layers
+type = forbidden
+source_modules =
+    app.providers
+    app.clients
+forbidden_modules =
+    app.api
+    app.orchestration
+    app.tools
+
+[importlinter:contract:settings-at-composition-root]
+name = Only the composition root reads settings
+type = forbidden
+source_modules =
+    app.api
+    app.orchestration
+    app.tools
+    app.ports
+    app.providers
+    app.clients
+    app.schemas
+forbidden_modules =
+    app.settings
+
+[importlinter:contract:composition-root-is-top]
+name = Nothing imports the composition root
+type = forbidden
+source_modules =
+    app.api
+    app.orchestration
+    app.tools
+    app.ports
+    app.providers
+    app.clients
+    app.schemas
+forbidden_modules =
+    app.main
+    app.container
+
+[importlinter:contract:schemas-are-plain-dtos]
+name = Wire schemas depend on nothing else in the app
+type = forbidden
+source_modules =
+    app.schemas
+forbidden_modules =
+    app.api
+    app.orchestration
+    app.tools
+    app.ports
+    app.providers
+    app.clients
+
+[importlinter:contract:no-core-data-and-no-token-decoding]
+name = The Agent has no database access and never decodes tokens
+type = forbidden
+source_modules =
+    app
+forbidden_modules =
+    sqlalchemy
+    alembic
+    psycopg
+    psycopg2
+    asyncpg
+    jwt

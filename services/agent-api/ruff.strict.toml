@@ -1,0 +1,14 @@
+extend = "ruff.toml"
+
+# Orchestration, tools and ports are deterministic given their ports: no ambient time,
+# environment or randomness (spine AD-2, AD-11).
+[lint.flake8-tidy-imports.banned-api]
+"datetime.datetime.now".msg = "Inject a Clock; orchestration and tools never read ambient time."
+"datetime.datetime.utcnow".msg = "Inject a Clock; orchestration and tools never read ambient time."
+"datetime.date.today".msg = "Inject a Clock; orchestration and tools never read ambient time."
+"time.time".msg = "Inject a Clock; orchestration and tools never read ambient time."
+"time.monotonic".msg = "Inject a Clock; orchestration and tools never read ambient time."
+"os.environ".msg = "Read configuration in app.settings and pass values in."
+"os.getenv".msg = "Read configuration in app.settings and pass values in."
+"uuid.uuid4".msg = "Take ids from an injected id source."
+"random.random".msg = "Randomness must be injected so turns stay reproducible."

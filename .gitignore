@@ -1,0 +1,31 @@
+# Secrets and local environment: only .env.example is tracked
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node / web
+node_modules/
+dist/
+build/
+.next/
+
+# Editors, OS and scratch
+.idea/
+.vscode/
+.DS_Store
+scratch/
+*.log

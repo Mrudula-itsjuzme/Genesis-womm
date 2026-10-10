@@ -1,0 +1,13 @@
+target-version = "py312"
+line-length = 100
+src = ["."]
+extend-exclude = ["migrations/versions"]
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "TID", "S", "C4", "PT", "RUF", "N"]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
