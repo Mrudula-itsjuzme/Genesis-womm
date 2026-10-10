@@ -1,9 +1,10 @@
+import json
 from typing import Any
 
 import groq
 from groq import AsyncGroq
 
-from app.providers.llm import LlmPort, LlmResponse, ToolCall
+from app.ports.llm import LlmPort, LlmResponse, ToolCall
 from app.schemas.chat import ChatMessage
 
 
@@ -47,8 +48,6 @@ class GroqProvider(LlmPort):
                 # Groq returns json arguments as a string.
                 # Standard OpenAI-like tool calls return arguments as a string representing JSON.
                 # Our interface might want dicts or just strings.
-                import json
-
                 tool_calls.append(
                     ToolCall(
                         id=tc.id,
