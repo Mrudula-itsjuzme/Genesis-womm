@@ -17,6 +17,7 @@ from app.repositories.health import SqlReadinessProbe
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.event_reads import EventReadService
 from app.services.readiness import ReadinessService
+from app.services.resource_reads import ResourceReadService
 from app.services.schedule_write import ScheduleWriteService
 from app.services.sessions import SessionService
 from app.settings import Settings
@@ -36,6 +37,7 @@ class Container:
     sessions: SessionService | None = None
     schedule_write: ScheduleWriteService | None = None
     event_reads: EventReadService | None = None
+    resource_reads: ResourceReadService | None = None
 
     def dispose(self) -> None:
         if self.engine is not None:
@@ -71,10 +73,12 @@ def build_container(settings: Settings) -> Container:
         policy=Policy(campus_gap=timedelta(minutes=settings.campus_gap_minutes)),
     )
     event_reads = EventReadService(lambda: SqlUnitOfWork(database_sessions))
+    resource_reads = ResourceReadService(lambda: SqlUnitOfWork(database_sessions))
     return Container(
         readiness=readiness,
         engine=engine,
         sessions=sessions,
         schedule_write=schedule_write,
         event_reads=event_reads,
+        resource_reads=resource_reads,
     )

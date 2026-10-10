@@ -41,6 +41,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.state.sessions = container.sessions
     app.state.schedule_write = container.schedule_write
     app.state.event_reads = container.event_reads
+    app.state.resource_reads = container.resource_reads
 
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
