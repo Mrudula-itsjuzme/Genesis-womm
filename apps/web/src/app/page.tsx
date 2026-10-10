@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Phone, HeartPulse, Send, Book, Building, CheckCircle2, HelpCircle, Clock, Sparkles } from 'lucide-react';
+import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Phone, HeartPulse, Send, Book, Sparkles, Clock } from 'lucide-react';
 
 export default function Dashboard() {
   return (
@@ -23,7 +23,7 @@ export default function Dashboard() {
         <div className="relative z-10 text-gray-900 mt-12 max-w-4xl drop-shadow-sm">
           <h2 className="text-xl md:text-2xl font-light mb-1 text-white drop-shadow-md">Good evening,</h2>
           <h1 className="text-5xl md:text-7xl font-serif mb-4 text-white drop-shadow-md">Mrudula</h1>
-          <p className="text-lg md:text-xl font-light mb-10 text-white/90 drop-shadow-md">Let&#39;s make something happen on campus.</p>
+          <p className="text-lg md:text-xl font-light mb-10 text-white/90 drop-shadow-md">Let&apos;s make something happen on campus.</p>
           
           {/* Main Search Bar */}
           <div className="relative max-w-2xl bg-white backdrop-blur-md rounded-full shadow-lg flex items-center px-5 py-3.5 border border-gray-100 transition-all focus-within:ring-4 focus-within:ring-rose-500/20">
@@ -156,7 +156,6 @@ export default function Dashboard() {
               </div>
             </div>
           </Link>
-
         </div>
 
         {/* Dashboard Grid Content */}
@@ -255,49 +254,11 @@ export default function Dashboard() {
                         Planning
                       </span>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-rose-900 transition-colors" />
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Ask CampusCue Banner */}
-            <div className="bg-[#fcf3f3] rounded-2xl p-6 border border-rose-100/50 relative overflow-hidden flex items-center shadow-sm h-48">
-              <div 
-                className="absolute inset-y-0 right-0 w-1/3 mix-blend-multiply opacity-20"
-                style={{ 
-                  backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/2/2c/Amrita_Vishwa_Vidyapeetham_coimbatore_campus.jpg')",
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'left center'
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#fcf3f3] via-[#fcf3f3]/90 to-transparent z-0" />
-              
-              <div className="relative z-10 w-full pr-12">
-                <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="w-6 h-6 text-[#7a1b32]" />
-                  <h3 className="text-2xl font-serif font-bold text-[#7a1b32]">Ask CampusCue</h3>
-                </div>
-                <p className="text-sm text-gray-700 mb-5 font-medium">Get answers from Amrita&#39;s official guidelines, venue details, and past events.</p>
-                
-                <div className="relative max-w-3xl">
-                  <input type="text" placeholder="Ask anything... (e.g. Can we host a food stall? / When is the next free slot at CKB?)" className="w-full bg-white rounded-full pl-6 pr-14 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-200 shadow-sm border border-rose-50 placeholder-gray-400 font-medium" />
-                  <button className="absolute right-1.5 top-1.5 bottom-1.5 w-11 bg-[#7a1b32] rounded-full flex items-center justify-center text-white hover:bg-rose-900 transition-colors shadow-md">
-                    <Send className="w-4 h-4 ml-0.5" />
-                  </button>
-                </div>
-                
-                <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
-                  <span className="whitespace-nowrap px-4 py-1.5 bg-rose-900/5 text-rose-900 rounded-full text-xs font-semibold cursor-pointer hover:bg-rose-900/10 transition-colors border border-rose-900/10 shadow-sm">Can we host a food stall?</span>
-                  <span className="whitespace-nowrap px-4 py-1.5 bg-rose-900/5 text-rose-900 rounded-full text-xs font-semibold cursor-pointer hover:bg-rose-900/10 transition-colors border border-rose-900/10 shadow-sm">Steps to book a venue</span>
-                  <span className="whitespace-nowrap px-4 py-1.5 bg-rose-900/5 text-rose-900 rounded-full text-xs font-semibold cursor-pointer hover:bg-rose-900/10 transition-colors border border-rose-900/10 shadow-sm">What is the refund policy?</span>
-                  <span className="whitespace-nowrap px-4 py-1.5 bg-rose-900/5 text-rose-900 rounded-full text-xs font-semibold cursor-pointer hover:bg-rose-900/10 transition-colors border border-rose-900/10 shadow-sm">Who to contact for technical support?</span>
-                </div>
-              </div>
-            </div>
-
+                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-rose-900 transition-colors" />            </div>
           </div>
+
+        </div>
+      </div>
 
           {/* Right Column */}
           <div className="flex flex-col gap-6">
@@ -391,22 +352,60 @@ export default function Dashboard() {
               </ul>
             </div>
             
-            {/* Promo block */}
-            <div className="bg-[#FAF8F5] rounded-2xl p-6 relative overflow-hidden h-40 flex items-center shadow-lg border border-transparent">
-               <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')" }}></div>
-               <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/70 to-transparent z-0" />
-               <div className="absolute inset-0 bg-gradient-to-l from-white/95 via-white/80 to-transparent z-0" />
-               <div className="relative z-10 flex-1 flex flex-col justify-center items-end pr-4 mt-8">
-                 <p className="text-gray-900 font-serif text-lg leading-snug text-right max-w-[140px] drop-shadow-sm font-medium">
-                   Events build the campus we remember.
-                 </p>
-                 <div className="w-12 h-0.5 bg-[#7a1b32] mt-3 rounded"></div>
-               </div>
-            </div>
+          </div>
+        </div>
 
+        {/* Row 2: Ask CampusCue · Promo */}
+        <div className="grid grid-cols-1 lg:grid-cols-[19fr_10fr] gap-6 items-stretch mt-6">
+          {/* Ask CampusCue Banner */}
+          <div className="bg-[#fcf3f3] rounded-2xl p-6 border border-rose-100/50 relative overflow-hidden flex items-center shadow-sm h-48">
+            <div 
+              className="absolute inset-y-0 right-0 w-1/3 mix-blend-multiply opacity-20"
+              style={{ 
+                backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/2/2c/Amrita_Vishwa_Vidyapeetham_coimbatore_campus.jpg')",
+                backgroundSize: 'cover',
+                backgroundPosition: 'left center'
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#fcf3f3] via-[#fcf3f3]/90 to-transparent z-0" />
+            
+            <div className="relative z-10 w-full pr-12">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-6 h-6 text-[#7a1b32]" />
+                <h3 className="text-2xl font-serif font-bold text-[#7a1b32]">Ask CampusCue</h3>
+              </div>
+              <p className="text-sm text-gray-700 mb-5 font-medium">Get answers from Amrita&apos;s official guidelines, venue details, and past events.</p>
+              
+              <div className="relative max-w-3xl">
+                <input type="text" placeholder="Ask anything... (e.g. Can we host a food stall? / When is the next free slot at CKB?)" className="w-full bg-white rounded-full pl-6 pr-14 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-200 shadow-sm border border-rose-50 placeholder-gray-400 font-medium" />
+                <button className="absolute right-1.5 top-1.5 bottom-1.5 w-11 bg-[#7a1b32] rounded-full flex items-center justify-center text-white hover:bg-rose-900 transition-colors shadow-md">
+                  <Send className="w-4 h-4 ml-0.5" />
+                </button>
+              </div>
+              
+              <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
+                <span className="whitespace-nowrap px-4 py-1.5 bg-rose-900/5 text-rose-900 rounded-full text-xs font-semibold cursor-pointer hover:bg-rose-900/10 transition-colors border border-rose-900/10 shadow-sm">Can we host a food stall?</span>
+                <span className="whitespace-nowrap px-4 py-1.5 bg-rose-900/5 text-rose-900 rounded-full text-xs font-semibold cursor-pointer hover:bg-rose-900/10 transition-colors border border-rose-900/10 shadow-sm">Steps to book a venue</span>
+                <span className="whitespace-nowrap px-4 py-1.5 bg-rose-900/5 text-rose-900 rounded-full text-xs font-semibold cursor-pointer hover:bg-rose-900/10 transition-colors border border-rose-900/10 shadow-sm">What is the refund policy?</span>
+                <span className="whitespace-nowrap px-4 py-1.5 bg-rose-900/5 text-rose-900 rounded-full text-xs font-semibold cursor-pointer hover:bg-rose-900/10 transition-colors border border-rose-900/10 shadow-sm">Who to contact for technical support?</span>
+              </div>
+            </div>
           </div>
 
+          {/* Promo block */}
+          <div className="bg-[#FAF8F5] rounded-2xl p-6 relative overflow-hidden h-48 flex items-center shadow-lg border border-transparent">
+             <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')" }}></div>
+             <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/70 to-transparent z-0" />
+             <div className="absolute inset-0 bg-gradient-to-l from-white/95 via-white/80 to-transparent z-0" />
+             <div className="relative z-10 flex-1 flex flex-col justify-center items-end pr-4 mt-8">
+               <p className="text-gray-900 font-serif text-lg leading-snug text-right max-w-[140px] drop-shadow-sm font-medium">
+                 Events build the campus we remember.
+               </p>
+               <div className="w-12 h-0.5 bg-[#7a1b32] mt-3 rounded"></div>
+             </div>
+          </div>
         </div>
+
       </div>
     </div>
   );
