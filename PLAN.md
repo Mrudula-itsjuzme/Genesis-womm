@@ -7,7 +7,7 @@
 
 ## 1. Product definition
 
-CampusCue is an AI-assisted event operations workspace for university clubs. It helps organizers plan before approvals arrive, discover verified campus resources and procedures, track requests and commitments, identify schedule conflicts, understand downstream change impact, and prepare evidence-based reports.
+CampusCue is an AI-assisted event operations workspace for university clubs. It helps organizers plan before approvals arrive, discover verified campus resources and procedures, track requests and commitments, identify schedule conflicts, understand downstream change impact, prepare evidence-based reports, and publish events for student discovery and registration.
 
 CampusCue is **not** an official venue-booking portal, a replacement for Student Affairs, or a generic club directory. The application must never imply that a venue is available or an event is officially approved unless an authorized source confirms it.
 
@@ -24,6 +24,7 @@ Make the parts of event operations that clubs can prepare, coordinate, and verif
 5. The event's venue or time changes.
 6. CampusCue identifies affected tasks and commitments, flags items requiring revalidation, and drafts follow-ups.
 7. CampusCue creates an editable event report from verified fields and highlights missing information.
+8. A student opens the published event, receives private mock academic-risk warnings, and registers internally or continues to an external registration page.
 
 All demo events and statuses must be explicitly labeled synthetic.
 
@@ -53,6 +54,9 @@ All demo events and statuses must be explicitly labeled synthetic.
 - One working venue/time change-impact scenario.
 - Editable event summary with missing fields visibly flagged.
 - Role-based access for organizers and authorized administrators.
+- Published student event feed with visibility controls.
+- Internal registration and organizer-configured external registration redirect.
+- Student registration-risk check using seeded timetable/exam data and a mock attendance provider. A read-only Google Calendar connection may replace seeded exam data when configured.
 - Synthetic demo seed data, tests, Docker-based local development, and API documentation.
 
 ### If time permits
@@ -66,6 +70,8 @@ All demo events and statuses must be explicitly labeled synthetic.
 - Live venue availability or official booking integration.
 - Authorized campus calendar sync.
 - Institution-verified approval status.
+- Approved institutional attendance API integration.
+- Production Google OAuth verification and incremental calendar synchronization.
 - Search over approved, sanitized prior event playbooks.
 - Automated notification delivery.
 
@@ -75,6 +81,7 @@ All demo events and statuses must be explicitly labeled synthetic.
 - Automatic official approval or approval revocation.
 - Automatic outbound emails/messages.
 - Public exposure of internal event conversations or financial details.
+- Organizer access to a student's calendar events, timetable, attendance values, or private registration-risk warnings.
 - A large distributed microservice ecosystem beyond the three independently deployable application services and supporting database.
 
 ## 4. System architecture
@@ -266,6 +273,11 @@ A similarity score alone is not proof of answer confidence. Citation metadata mu
 - `tasks`
 - `schedule_overrides`
 - `audit_events`
+- `event_publications`
+- `event_registrations`
+- `student_timetables`
+- `student_attendance_snapshots`
+- `student_academic_calendar_events`
 - `documents` / `document_sources` if the Core API needs to display RAG catalog metadata; do not duplicate the RAG chunk index.
 
 ### Initial Core API routes
@@ -280,6 +292,9 @@ A similarity score alone is not proof of answer confidence. Citation metadata mu
 - `GET /api/v1/resources/{resource_id}`
 - `POST /api/v1/agent/chat`
 - `POST /api/v1/reports/event-summary`
+- `GET /api/v1/student/events`
+- `POST /api/v1/events/{event_id}/registration-risk-check`
+- `POST /api/v1/events/{event_id}/registrations`
 - `GET /health`
 - `GET /ready`
 
@@ -320,6 +335,7 @@ Exact routes may evolve during contract design; update the OpenAPI specs and con
 - Treat indexed content as untrusted; retrieved text cannot change tool permissions or system instructions.
 - Log actor, action, entity, outcome, timestamp, request ID and override reason. Avoid logging sensitive body contents.
 - Keep synthetic and real pilot data clearly separated.
+- Treat attendance, timetable, calendar, and registration-risk data as student-private records. The Core API returns only the current student's warnings.
 - Do not claim compliance or institutional approval that has not been established.
 
 ## 12. Testing strategy
@@ -353,6 +369,9 @@ Exact routes may evolve during contract design; update the OpenAPI specs and con
 - Authorized campus-gap override does not bypass venue constraint.
 - Venue change marks affected commitments for revalidation.
 - Event report shows missing attendance/photos/speaker data rather than fabricating it.
+- A student can see only published events and cannot see organizer-only planning records.
+- An event overlapping a seeded class with low mock attendance returns a private warning without blocking registration.
+- An external registration flow records a redirect, not a completed registration.
 
 ## 13. Workstreams and integration
 
@@ -366,7 +385,7 @@ Owns LLM abstraction, orchestration, tool schemas, mock clients, traces, safety 
 Owns ingestion, sparse/dense indexes, hybrid fusion, reranking experiments, citations, source versioning and evaluation.
 
 ### Workstream D: Frontend
-Owns event intake, calendar/list, conflict explanation, resource explorer, policy assistant, impact view, and report editor. It starts against mocks.
+Owns organizer event intake, calendar/list, conflict explanation, resource explorer, policy assistant, impact view, report editor, and the student event discovery and registration experience. It starts against mocks.
 
 ### Integration rule
 All workstreams begin with service skeletons and shared contracts. Each team must have a local mock-based test path. Integrate a vertical slice early; do not wait until all feature branches are “finished.”
@@ -379,8 +398,9 @@ All workstreams begin with service skeletons and shared contracts. Each team mus
 4. **M3: RAG baseline** — ingestion, hybrid retrieval, citations, evaluation set.
 5. **M4: Agent baseline** — bounded tools and mock integration, then real Core/RAG clients.
 6. **M5: Change-impact vertical slice** — change event details, identify dependencies, draft follow-ups.
-7. **M6: Report and UI polish** — editable report and explicit missing fields.
-8. **M7: Demo hardening** — end-to-end tests, synthetic seed data, setup guide, known limitations.
+7. **M6: Student registration vertical slice** — publish an event, show private mock academic-risk checks, and register or redirect.
+8. **M7: Report and UI polish** — editable report and explicit missing fields.
+9. **M8: Demo hardening** — end-to-end tests, synthetic seed data, setup guide, known limitations.
 
 Do not assign dates until the hackathon schedule and team availability are confirmed.
 
@@ -407,6 +427,8 @@ Resolve before implementing the corresponding feature:
 6. Confirm allowed source documents, resource data, and document access classes.
 7. Confirm official report formats and resource verification workflow.
 8. Decide whether tentative cross-club event visibility is opt-in and which fields are public to participating clubs.
+9. Define the student event-publication audience, registration fields, and organizer responsibilities for external registration links.
+10. Confirm the academic-risk warning language and whether any approved attendance threshold exists. Until then, attendance warnings remain advisory.
 
 ## 17. Documentation map
 
