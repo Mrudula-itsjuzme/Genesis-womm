@@ -1,9 +1,10 @@
 """Safe API projections for service records. ORM objects never reach route responses."""
 
-from app.domain.enums import AvailabilityState
+from app.domain.enums import AvailabilityState, Severity
 from app.domain.scheduling import Conflict as DomainConflict
-from app.schemas.events import Conflict, EventOut
+from app.schemas.events import Conflict, ConflictCheckOut, EventOut
 from app.schemas.resources import ResourceOut
+from app.services.conflict_checks import ConflictCheckResult
 from app.services.ports import EventRecord, ResourceRecord
 
 
@@ -55,4 +56,15 @@ def resource_out(record: ResourceRecord) -> ResourceOut:
         collected_at=record.collected_at,
         last_checked_at=record.last_checked_at,
         synthetic=record.is_synthetic,
+    )
+
+
+def conflict_check_out(result: ConflictCheckResult) -> ConflictCheckOut:
+    return ConflictCheckOut(
+        event_id=result.event.id if result.saved else None,
+        evaluated_as=result.event.status,
+        advisory=True,
+        has_blocking=any(c.severity is Severity.BLOCKING for c in result.conflicts),
+        conflicts=[conflict_out(c) for c in result.conflicts],
+        checked_at=result.checked_at,
     )
