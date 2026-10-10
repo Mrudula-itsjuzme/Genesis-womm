@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 from app.api.deps import get_minio_storage
 from app.api.routes import proposals
 from app.domain.enums import ProposalStatus
-
 from app.services.minio_client import MinIOProposalStorage
 
 

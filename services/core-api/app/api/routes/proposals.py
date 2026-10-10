@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.api.deps import get_clock, get_minio_storage, session_bearer
-from app.api.errors import STUB_OPENAPI, stub_errors
+from app.api.errors import stub_errors
 from app.domain.enums import ErrorCode, ProposalStatus
 from app.domain.time import Clock
 from app.models.proposal import Proposal
