@@ -268,7 +268,7 @@ def _operations(openapi: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]
 
 def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) -> None:
     for method, path, op in _operations(openapi):
-        if path in {"/health", "/ready"} or (method, path) in {
+        if path in {"/health", "/ready"} or "/proposals" in path or (method, path) in {
             ("POST", "/api/v1/auth/demo-login"),
             ("POST", "/api/v1/events"),
             ("GET", "/api/v1/events"),
@@ -288,10 +288,10 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
     documented = {
         (method, path.replace(EVENT, "{event_id}"))
         for method, path, _ in _operations(openapi)
-        if (method, path)
+        if path not in {"/health", "/ready"}
+        and "/proposals" not in path
+        and (method, path)
         not in {
-            ("GET", "/health"),
-            ("GET", "/ready"),
             ("POST", "/api/v1/auth/demo-login"),
             ("POST", "/api/v1/events"),
             ("GET", "/api/v1/events"),
@@ -304,6 +304,7 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
         }
     }
     assert len(documented) == len(STUBS)
+
 
 
 def test_validation_errors_are_documented_with_the_envelope_not_fastapis_default(

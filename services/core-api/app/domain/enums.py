@@ -133,3 +133,17 @@ class ErrorCode(StrEnum):
     AGENT_OUTPUT_INVALID = "AGENT_OUTPUT_INVALID"
     NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+
+
+class ProposalStatus(StrEnum):
+    """Proposal lifecycle. Ingestion into RAG requires APPROVED status."""
+
+    DRAFT = "DRAFT"
+    SUBMITTED = "SUBMITTED"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    REVISION_REQUESTED = "REVISION_REQUESTED"
+    CHUNKED = "CHUNKED"
+    ARCHIVED = "ARCHIVED"
+

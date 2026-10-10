@@ -1,0 +1,88 @@
+# Proposal Management Schemas for CampusCue
+$schema: "http://json-schema.org/draft-07/schema#"
+title: ProposalSchemas
+description: Shared schemas for club proposal uploads, reviews, and lifecycle events.
+
+ProposalStatus:
+  type: string
+  enum:
+    - DRAFT
+    - SUBMITTED
+    - UNDER_REVIEW
+    - APPROVED
+    - REJECTED
+    - REVISION_REQUESTED
+    - CHUNKED
+    - ARCHIVED
+  description: Lifecycle status of an event proposal.
+
+ProposalUploadResponse:
+  type: object
+  required:
+    - id
+    - event_id
+    - club_id
+    - revision
+    - status
+    - minio_key
+    - submitted_at
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Unique proposal ID.
+    event_id:
+      type: string
+      format: uuid
+      description: ID of the associated event.
+    club_id:
+      type: string
+      format: uuid
+      description: ID of the submitting club.
+    revision:
+      type: integer
+      minimum: 1
+      description: Revision sequence number.
+    status:
+      $ref: "#/ProposalStatus"
+    minio_key:
+      type: string
+      description: Storage key in the proposals MinIO bucket.
+    file_size_bytes:
+      type: integer
+      description: File size in bytes.
+    submitted_at:
+      type: string
+      format: date-time
+      description: Submission timestamp.
+
+ProposalStatusPatchRequest:
+  type: object
+  required:
+    - action
+  properties:
+    action:
+      type: string
+      enum:
+        - approve
+        - reject
+        - request_revision
+      description: Status transition action.
+    review_note:
+      type: string
+      description: Optional reviewer notes or change requests.
+
+ProposalDownloadUrlResponse:
+  type: object
+  required:
+    - download_url
+    - expires_in_seconds
+  properties:
+    download_url:
+      type: string
+      format: uri
+      description: Short-lived presigned download URL for the proposal PDF.
+    expires_in_seconds:
+      type: integer
+      default: 900
+      description: TTL of the presigned URL in seconds (default 15 minutes).

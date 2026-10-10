@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.errors import install_error_handlers
 from app.api.middleware import RequestIdMiddleware
-from app.api.routes import agent, auth, events, health, internal, overrides, resources
+from app.api.routes import agent, auth, events, health, internal, overrides, proposals, resources
 from app.container import Container, build_container
 from app.logging import configure_logging
 from app.settings import Settings, load_settings
@@ -53,6 +53,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         resources.router,
         agent.router,
         internal.router,
+        proposals.router,
         overrides.router,
     ):
         app.include_router(router)

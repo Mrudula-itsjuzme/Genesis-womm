@@ -1,5 +1,5 @@
-from app.schemas.retrieval import EvidenceChunk
 from app.retrieval.fusion import reciprocal_rank_fusion
+from app.schemas.retrieval import EvidenceChunk
 
 
 def test_rrf_combines_and_fuses_rankings():

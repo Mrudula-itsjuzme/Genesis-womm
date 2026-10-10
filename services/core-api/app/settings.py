@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     agent_turn_deadline_s: float = Field(default=20.0, gt=0)
     agent_client_timeout_s: float = Field(default=25.0, gt=0)
 
+    rag_api_url: str = "http://rag-api:8002"
+    minio_endpoint: str = "minio:9000"
+    minio_access_key: SecretStr = SecretStr("campuscue_admin")
+    minio_secret_key: SecretStr = SecretStr("campuscue_secret")
+    minio_proposal_bucket: str = "campuscue-proposals-dev"
+    minio_archive_bucket: str = "campuscue-proposals-archive-dev"
+    minio_use_ssl: bool = False
+
+
     @field_validator("database_url")
     @classmethod
     def _psycopg_driver(cls, value: str) -> str:

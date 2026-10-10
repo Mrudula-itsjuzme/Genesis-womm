@@ -1,12 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine
 
 from app.container import build_container
 from app.main import create_app
 from tests.conftest import upgrade
 from tests.fakes import make_settings
-from tests.integration.support import NOW, insert, make_club, make_user, make_resource
+from tests.integration.support import NOW, insert, make_club, make_resource, make_user
 
 pytestmark = pytest.mark.integration
 
@@ -65,7 +65,9 @@ def test_e2e_scenarios_1_to_5(engine: Engine) -> None:
         # Admin login to confirm
         with engine.begin() as connection:
             admin = make_user(connection, admin=True)
-        admin_login = client.post("/api/v1/auth/demo-login", json={"email": f"{admin}@example.invalid"})
+        admin_login = client.post(
+            "/api/v1/auth/demo-login", json={"email": f"{admin}@example.invalid"}
+        )
         admin_token = admin_login.json()["access_token"]
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
         
@@ -175,7 +177,8 @@ def test_e2e_scenarios_1_to_5(engine: Engine) -> None:
         )
         assert t3.status_code == 409  # gap violation
         
-        # 5. Apply an authorized campus-gap override and verify it still rejects an unapproved venue overlap.
+        # 5. Apply an authorized campus-gap override and verify it still rejects
+        # an unapproved venue overlap.
         o1 = client.post(
             "/api/v1/overrides",
             json={

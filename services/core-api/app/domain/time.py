@@ -38,6 +38,7 @@ class FixedClock:
 
 
 def ensure_aware(value: datetime) -> datetime:
+
     if value.tzinfo is None or value.utcoffset() is None:
         raise NaiveDatetimeError("datetime must carry a UTC offset")
     return value
