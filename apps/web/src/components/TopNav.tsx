@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Search, User, ChevronDown } from 'lucide-react';
+import { Bell, Search, ChevronDown } from 'lucide-react';
 
 export default function TopNav() {
   const pathname = usePathname();
@@ -16,11 +16,11 @@ export default function TopNav() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 h-16 bg-[#F5EEE9]/95 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 border-b border-[#F5E6DF]">
+    <nav className="fixed top-0 left-0 right-0 h-16 bg-[#F5EEE9]/95 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 border-b border-[#F5E6DF] print:hidden">
       {/* Logo Area */}
       <div className="flex items-center gap-3 w-64">
         <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm p-1 border border-rose-100">
-           <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/87/Amrita_Vishwa_Vidyapeetham_Emblem.svg/1200px-Amrita_Vishwa_Vidyapeetham_Emblem.svg.png" alt="Amrita Logo" className="w-full h-full object-contain" />
+          <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/87/Amrita_Vishwa_Vidyapeetham_Emblem.svg/1200px-Amrita_Vishwa_Vidyapeetham_Emblem.svg.png" alt="Amrita Logo" className="w-full h-full object-contain" />
         </div>
         <div className="flex flex-col justify-center">
           <span className="text-[#7a1b32] font-serif font-bold text-lg leading-none tracking-wide">AMRITA</span>
