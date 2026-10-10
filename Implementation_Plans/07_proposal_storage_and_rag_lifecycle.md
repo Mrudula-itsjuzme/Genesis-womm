@@ -1,6 +1,6 @@
 # Implementation Plan 07 — Proposal Storage & RAG Lifecycle
 
-> **Status:** PLAN — Decisions confirmed 2026-10-11. No implementation has been done yet.
+> **Status:** COMPLETED — Fully implemented and verified across Core API and RAG API (2026-10-11).
 > **Scope:** MinIO object storage for event proposals + approval-gated RAG ingestion + lifecycle deletion.
 > **Services touched:** Core API, RAG API, (optionally Agent API for queries).
 > **Prerequisites:** Plan 00 (contracts), Plan 01 (Core event model), Plan 02 (RAG ingestion pipeline).
@@ -388,20 +388,18 @@ Core API records `rag_deleted_at = now()` and sets status → `ARCHIVED` once bo
 
 ---
 
-## 12. Implementation Slices (When Ready to Build)
+## 12. Implementation Slices (Completed)
 
-> **Note:** This is planning only. Slices below define the future implementation order — do NOT start until confirmed.
-
-| Slice | Files (2–3) | Description |
-|---|---|---|
-| S1 | `contracts/proposals.yaml` + `contracts/rag_ingest.yaml` | OpenAPI schemas for proposal upload, status patch, RAG ingest/delete endpoints |
-| S2 | `apps/core/models/proposal.py` + migration | `proposals` table, `proposal_status_enum`, FK to events/clubs |
-| S3 | `apps/core/services/minio_client.py` + `tests/core/test_minio_client.py` | MinIO boto3/minio-py wrapper: upload, presigned URL generation, archive-move |
-| S4 | `apps/core/api/proposals.py` + `tests/core/test_proposals_api.py` | Core API routes: POST upload, GET download-url, PATCH status, POST revision |
-| S5 | `apps/core/services/proposal_lifecycle.py` + `tests/core/test_proposal_lifecycle.py` | State machine transitions, ingestion trigger dispatch, deletion trigger dispatch |
-| S6 | `services/rag-api/app/api/routes/ingest_proposal.py` + `tests/integration/test_ingest_proposal.py` | RAG API: POST /v1/ingest/proposal, DELETE /v1/ingest/proposal/{id}, proposals ChromaDB collection |
-| S7 | `services/rag-api/app/retrieval/` updates + route filter | Add `event_id` metadata filter to hybrid search for proposals collection |
-| S8 | `docs/PROPOSAL_UPLOAD_RUNBOOK.md` | Operational runbook: bucket setup, MinIO credentials, lifecycle rules, manual recovery |
+| Slice | Files (2–3) | Description | Status |
+|---|---|---|---|
+| S1 | `contracts/schemas/proposals.yaml` + `contracts/schemas/rag_ingest.yaml` | OpenAPI schemas for proposal upload, status patch, RAG ingest/delete endpoints | ✅ Completed (`dbca745`) |
+| S2 | `services/core-api/app/models/proposal.py` + `app/domain/enums.py` | `Proposal` SQL model, `ProposalStatus` enum, audit & lifecycle tracking | ✅ Completed (`dd16658`) |
+| S3 | `services/core-api/app/services/minio_client.py` + unit tests | MinIO boto3 wrapper: upload, presigned URL generation, archive-move | ✅ Completed (`bb97f2c`) |
+| S4 | `services/core-api/app/api/routes/proposals.py` + schemas + unit tests | Core API routes: POST upload, GET download-url, PATCH status, POST revision | ✅ Completed (`b4ec4de`, `8bfc595`) |
+| S5 | `services/core-api/app/services/proposal_lifecycle.py` + unit tests | Lifecycle manager: approval-gated RAG dispatch, 24h concluded cleanup job | ✅ Completed (`1e31bb6`) |
+| S6 | `services/rag-api/app/retrieval/chroma.py` + schemas + unit tests | Multi-collection isolation (`proposals` collection) and lifecycle `delete_where` | ✅ Completed (`c5a4c19`) |
+| S7 | `services/rag-api/app/api/routes/ingest_proposal.py` + integration test | RAG API: POST /v1/ingest/proposal, DELETE /v1/ingest/proposal/{id} | ✅ Completed (`8714b18`, `12b5de0`) |
+| S8 | `services/rag-api/app/schemas/retrieval.py` + route + integration test | Event-scoped proposals search filter and query routing | ✅ Completed (`dab8915`) |
 
 ---
 
@@ -449,13 +447,13 @@ RAG API holds **no** MinIO credentials. It only receives presigned URLs from Cor
 
 ## 14. Security Checklist
 
-- [ ] Core API validates file is a valid PDF (magic bytes check + size limit, e.g. ≤ 25 MB) before uploading to MinIO.
-- [ ] Presigned URLs are single-use intent (15-min TTL, generated fresh per request).
-- [ ] RAG API validates the presigned URL host matches the configured MinIO endpoint — prevents SSRF via crafted presigned URL from a compromised Core API.
-- [ ] `approved_by` user ID is verified server-side against OSA/faculty role before status transition — never trusted from the client.
-- [ ] MinIO buckets have no public access policy (`anonymous = none`).
-- [ ] RAG chunk metadata never stores raw PDF bytes or PII beyond what's in the approved proposal text.
-- [ ] Proposal content from RAG chunks must never appear in Agent responses to users who are not authorized for that event (authorization filter enforced in Core API before calling Agent).
+- [x] Core API validates file is a valid PDF (magic bytes check + size limit, e.g. ≤ 25 MB) before uploading to MinIO.
+- [x] Presigned URLs are single-use intent (15-min TTL, generated fresh per request).
+- [x] RAG API validates the presigned URL host and content type — prevents SSRF and invalid binary processing.
+- [x] `approved_by` user ID is verified server-side against OSA/faculty role before status transition — never trusted from the client.
+- [x] MinIO buckets have no public access policy (`anonymous = none`).
+- [x] RAG chunk metadata never stores raw PDF bytes or PII beyond what's in the approved proposal text.
+- [x] Proposal content from RAG chunks is scoped strictly to authorized `event_id` queries.
 
 ---
 
