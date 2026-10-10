@@ -8,10 +8,12 @@ from fastapi.testclient import TestClient
 
 from app.api.middleware import REQUEST_ID_HEADER
 from app.container import Container
+from app.domain.enums import AvailabilityState, EventStatus
 from app.main import create_app
 from app.schemas.common import ErrorEnvelope
-from app.services.ports import UserIdentity
+from app.services.ports import EventRecord, UserIdentity
 from app.services.readiness import ReadinessService
+from app.services.schedule_write import WriteResult
 from app.services.sessions import IssuedSession, SessionService
 from tests.fakes import FakeReadinessProbe, make_settings
 
@@ -46,9 +48,37 @@ class FakeSessionService:
         return None
 
 
+class FakeScheduleWriteService:
+    def create_event(self, context: Any, command: Any) -> WriteResult:
+        now = datetime.now(UTC)
+        return WriteResult(
+            event=EventRecord(
+                id=uuid4(),
+                club_id=command.club_id,
+                title=command.title,
+                description=command.description,
+                start_at=command.start_at,
+                end_at=command.end_at,
+                resource_id=command.resource_id,
+                expected_attendance=command.expected_attendance,
+                audience_tags=command.audience_tags,
+                status=EventStatus.DRAFT,
+                revision=1,
+                created_by=context.actor.user_id,
+                verified_by=None,
+                verified_at=None,
+                evidence_id=None,
+                is_synthetic=False,
+                created_at=now,
+                updated_at=now,
+            ),
+            conflicts=(),
+            venue_availability=AvailabilityState.UNKNOWN,
+        )
+
+
 # (method, path, json body or None)
 STUBS: list[tuple[str, str, dict[str, Any] | None]] = [
-    ("POST", "/api/v1/events", VALID_EVENT),
     ("GET", "/api/v1/events", None),
     ("GET", f"/api/v1/events/{EVENT}", None),
     ("POST", f"/api/v1/events/{EVENT}/conflict-check", {}),
@@ -82,6 +112,7 @@ def client() -> TestClient:
                 IssuedSession(access_token="demo-token", expires_at=datetime.now(UTC), user=user)
             ),
         ),
+        schedule_write=cast(Any, FakeScheduleWriteService()),
     )
     return TestClient(create_app(make_settings(), container), raise_server_exceptions=False)
 
@@ -169,7 +200,10 @@ def _operations(openapi: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]
 
 def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) -> None:
     for method, path, op in _operations(openapi):
-        if path in {"/health", "/ready", "/api/v1/auth/demo-login"}:
+        if path in {"/health", "/ready"} or (method, path) in {
+            ("POST", "/api/v1/auth/demo-login"),
+            ("POST", "/api/v1/events"),
+        }:
             assert "x-implementation-status" not in op
         else:
             assert op.get("x-implementation-status") == "stub", f"{method} {path}"
@@ -179,7 +213,13 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
     documented = {
         (method, path.replace(EVENT, "{event_id}"))
         for method, path, _ in _operations(openapi)
-        if path not in {"/health", "/ready", "/api/v1/auth/demo-login"}
+        if (method, path)
+        not in {
+            ("GET", "/health"),
+            ("GET", "/ready"),
+            ("POST", "/api/v1/auth/demo-login"),
+            ("POST", "/api/v1/events"),
+        }
     }
     assert len(documented) == len(STUBS)
 
