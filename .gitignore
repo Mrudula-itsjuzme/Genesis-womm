@@ -40,3 +40,9 @@ scratch/
 *.tflite
 models/
 checkpoints/
+
+# Local vector database stores and sqlite
+chroma_db/
+*.sqlite3
+*.sqlite
+
