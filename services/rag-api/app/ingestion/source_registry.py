@@ -1,4 +1,6 @@
-from typing import Dict, Optional
+
+from typing import ClassVar
+
 from pydantic import BaseModel
 
 
@@ -13,7 +15,7 @@ class SourceEntry(BaseModel):
 
 
 class SourceRegistry:
-    _SOURCES: Dict[str, SourceEntry] = {
+    _SOURCES: ClassVar[dict[str, SourceEntry]] = {
         "osa_handbook_cbr": SourceEntry(
             source_id="osa_handbook_cbr",
             title="OSA Student Affairs Handbook",
@@ -33,11 +35,11 @@ class SourceRegistry:
     }
 
     @classmethod
-    def get_by_id(cls, source_id: str) -> Optional[SourceEntry]:
+    def get_by_id(cls, source_id: str) -> SourceEntry | None:
         return cls._SOURCES.get(source_id)
 
     @classmethod
-    def get_by_url(cls, url: str) -> Optional[SourceEntry]:
+    def get_by_url(cls, url: str) -> SourceEntry | None:
         for entry in cls._SOURCES.values():
             if entry.url == url:
                 return entry
