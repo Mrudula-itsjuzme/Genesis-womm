@@ -11,11 +11,11 @@ export default function Dashboard() {
         <div 
           className="absolute inset-0 z-0"
           style={{ 
-            backgroundImage: "url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
+            backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/2/2c/Amrita_Vishwa_Vidyapeetham_coimbatore_campus.jpg')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
-            filter: "brightness(0.85) sepia(0.2) saturate(1.4) hue-rotate(-15deg)"
+            filter: "brightness(0.8)"
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#FAF9F8]/80 via-[#FAF9F8]/40 to-transparent z-0" />
