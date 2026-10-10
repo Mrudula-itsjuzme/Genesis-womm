@@ -13,6 +13,8 @@ from uuid import UUID
 
 from app.domain.authz import Actor
 from app.domain.enums import (
+    AgentActionStatus,
+    AgentActionType,
     AvailabilityState,
     EventStatus,
     FreshnessState,
@@ -20,7 +22,7 @@ from app.domain.enums import (
     ResourceKind,
     Role,
 )
-from app.domain.scheduling import Override, ScheduledEvent
+from app.domain.scheduling import Conflict, Override, ScheduledEvent
 
 
 @dataclass(frozen=True)
@@ -101,6 +103,31 @@ class OverrideRecord:
 
     def to_domain(self) -> Override:
         return Override(scope=self.scope, event_ids=frozenset({self.event_a_id, self.event_b_id}))
+
+
+@dataclass(frozen=True)
+class AgentActionRecord:
+    """A proposal the Agent filed for ``requested_by`` to confirm (spine AD-9)."""
+
+    id: UUID
+    type: AgentActionType
+    status: AgentActionStatus
+    summary: str
+    requested_by: UUID
+    club_id: UUID
+    target_event_id: UUID | None
+    expected_revision: int | None
+    payload: dict[str, Any]
+    conflicts: tuple[Conflict, ...]  # the dry run stored when the proposal was filed
+    decided_by: UUID | None
+    decided_at: datetime | None
+    result_entity_type: str | None
+    result_entity_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+    def but(self, **changes: Any) -> "AgentActionRecord":
+        return replace(self, **changes)
 
 
 @dataclass(frozen=True)
@@ -244,6 +271,41 @@ class DirectoryUnitOfWork(Protocol):
     ) -> None: ...
 
 
+class AgentActionStore(Protocol):
+    def get(self, action_id: UUID) -> AgentActionRecord | None: ...
+
+    def list_for(
+        self,
+        requested_by: UUID,
+        *,
+        status: AgentActionStatus | None,
+        event_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[AgentActionRecord], int]:
+        """One person's proposals, newest first, with the total that matched."""
+        ...
+
+    def add(self, record: AgentActionRecord) -> None: ...
+
+    def decide(
+        self,
+        action_id: UUID,
+        *,
+        status: AgentActionStatus,
+        decided_by: UUID,
+        decided_at: datetime,
+        result_entity_type: str | None,
+        result_entity_id: UUID | None,
+    ) -> bool:
+        """Move a PROPOSED action to its decision. False when it was no longer PROPOSED.
+
+        This is a compare-and-set in one statement, so two people (or two retries) deciding
+        the same proposal at once cannot both win.
+        """
+        ...
+
+
 class AuditWriter(Protocol):
     def add(self, record: AuditRecord) -> None: ...
 
@@ -284,6 +346,36 @@ class UnitOfWork(Protocol):
 
     @property
     def evidence(self) -> EvidenceWriter: ...
+
+    @property
+    def idempotency(self) -> IdempotencyStore: ...
+
+    def __enter__(self) -> Self: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None: ...
+
+    def commit(self) -> None: ...
+
+
+class AgentActionUnitOfWork(Protocol):
+    """One transaction for filing, listing, confirming and rejecting proposals."""
+
+    @property
+    def agent_actions(self) -> AgentActionStore: ...
+
+    @property
+    def events(self) -> EventReader: ...
+
+    @property
+    def clubs(self) -> ClubReader: ...
+
+    @property
+    def audit(self) -> AuditWriter: ...
 
     @property
     def idempotency(self) -> IdempotencyStore: ...
