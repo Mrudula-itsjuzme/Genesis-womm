@@ -1,9 +1,18 @@
 # Implementation Plan 07 — Proposal Storage & RAG Lifecycle
 
-> **Status:** PLAN — No implementation has been done yet.
+> **Status:** PLAN — Decisions confirmed 2026-10-11. No implementation has been done yet.
 > **Scope:** MinIO object storage for event proposals + approval-gated RAG ingestion + lifecycle deletion.
 > **Services touched:** Core API, RAG API, (optionally Agent API for queries).
 > **Prerequisites:** Plan 00 (contracts), Plan 01 (Core event model), Plan 02 (RAG ingestion pipeline).
+
+### ✅ Confirmed Decisions (locked)
+
+| Decision | Resolution |
+|---|---|
+| MinIO credentials in RAG API | ❌ **Never** — RAG API uses per-request presigned URLs from Core API only |
+| ChromaDB collection strategy | **Separate `proposals` collection** — isolated from `policy_corpus` |
+| Chunk deletion timing | **24 hours after event status → `CONCLUDED`** — scheduled cleanup job |
+| Object retention | **Archive only** — objects moved to cold prefix; no hard deletes ever |
 
 ---
 
@@ -306,7 +315,13 @@ DRAFT → SUBMITTED → UNDER_REVIEW ─┬→ APPROVED → CHUNKED ─→ ARCHI
 
 **Trigger:** Event status in Core API transitions to `CONCLUDED` (after organizer submits the event completion report and OSA acknowledges).
 
-Core API emits `proposal.lifecycle_ended` to RAG API for each `CHUNKED` proposal attached to that event.
+A scheduled background job in Core API runs every hour and finds all events that:
+- Have been in `CONCLUDED` status for **≥ 24 hours**, AND
+- Have proposals in `CHUNKED` status (i.e. chunks exist in RAG API)
+
+For each such proposal, Core API emits `proposal.lifecycle_ended` to RAG API to delete the chunks, then archives the MinIO object.
+
+This 24-hour window lets organizers query their proposal content while writing the immediate post-event completion report, without requiring a manual trigger.
 
 ### 9.3 RAG API chunk deletion
 
@@ -319,20 +334,20 @@ RAG API deletes all chunks in the `proposals` collection where metadata `proposa
 
 Core API records `rag_deleted_at = now()` and status → `ARCHIVED`.
 
-### 9.4 What happens to the MinIO object after deletion?
+### 9.4 What happens to the MinIO object after chunk deletion?
 
-**Option A — Archive (recommended for pilot):**
-Core API moves (copy + delete) the object to a cold-tier prefix:
+**Confirmed: Archive only — no hard deletes.**
+
+After RAG API confirms chunk deletion, Core API archive-moves the object:
+
 ```
-proposals-archive/{club_id}/{event_id}/{proposal_id}/v{n}.pdf
+Source:      proposals/{club_id}/{event_id}/{proposal_id}/v{n}.pdf
+Destination: proposals-archive/{club_id}/{event_id}/{proposal_id}/v{n}.pdf
 ```
-Or apply a MinIO lifecycle rule to transition objects with `status=ARCHIVED` metadata to cold storage after 90 days.
 
-**Option B — Hard delete:**
-Core API issues a `DELETE` against the MinIO object key after RAG confirms chunk deletion. Only do this after the university confirms no audit/evidence retention requirement.
+Archive-move is a MinIO server-side copy followed by a delete of the source key — the bytes are never destroyed. The `proposals-archive` bucket can have a MinIO lifecycle rule to transition to a cold storage class after 90 days if the deployment supports tiered storage.
 
-> [!NOTE]
-> For the pilot at Amrita, default to **Option A (archive)**. Do not hard-delete any proposal until the retention policy is confirmed with the institution.
+Core API records `rag_deleted_at = now()` and sets status → `ARCHIVED` once both the RAG chunk deletion and the MinIO archive-move succeed.
 
 ### 9.5 Rejected and never-chunked proposals
 
@@ -353,16 +368,23 @@ Core API issues a `DELETE` against the MinIO object key after RAG confirms chunk
 
 ---
 
-## 11. Key Open Decisions (Blocking on Policy / Architecture)
+## 11. Decisions — Resolved & Remaining Open
 
-| # | Decision | Options | Recommendation |
-|---|---|---|---|
-| D1 | Who can query proposal chunks via RAG? | (a) Only the submitting organizer + OSA, (b) all club members for that event | **(a)** — least privilege; revisit after pilot |
-| D2 | Deletion trigger timing | (a) Immediately on CONCLUDED, (b) 30-day grace after CONCLUDED, (c) manual admin action | **(b) 30-day grace** — gives organizers time to query final report data |
-| D3 | MinIO auth for RAG API | (a) Presigned URL per-request (no RAG credentials), (b) RAG holds service account key | **(a) Presigned URL** — already decided in §6.2 |
-| D4 | Multi-event proposal queries | Can OSA query across all events' proposals at once? | Needs product decision — out of scope for pilot |
-| D5 | Hard delete vs archive | Destroy MinIO object or move to cold tier? | **(Archive)** — pending institution's retention policy confirmation |
-| D6 | Ingestion trigger mechanism | (a) Direct HTTP webhook, (b) Task queue | **(a) Direct HTTP** for MVP; migrate to queue if file sizes exceed 20MB |
+### ✅ Resolved
+
+| # | Decision | Resolution |
+|---|---|---|
+| D3 | MinIO auth for RAG API | Presigned URL per-request — RAG API holds zero MinIO credentials |
+| D5 | Hard delete vs archive | **Archive only** — cold-prefix move; bytes never destroyed |
+| D2 | Deletion trigger timing | **24 hours after `CONCLUDED`** — hourly cleanup job |
+| D6 | ChromaDB collection | **Separate `proposals` collection** — never mixed with `policy_corpus` |
+
+### ⏳ Still Open (need product decision before implementation)
+
+| # | Decision | Options |
+|---|---|---|
+| D1 | Who can query proposal RAG chunks? | (a) Submitting organizer + OSA only; (b) all club members for that event |
+| D4 | Cross-event proposal queries for OSA | Can OSA query across all events' proposals at once? Scope unclear for pilot |
 
 ---
 
