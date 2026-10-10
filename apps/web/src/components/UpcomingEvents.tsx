@@ -5,11 +5,11 @@ import { EventOut, EventStatus } from "@/types/events";
 import { demoLogin, getMyEvents } from "@/lib/api";
 
 const statusStyles: Record<EventStatus, string> = {
-  CONFIRMED: "bg-emerald-100 text-emerald-700",
-  TENTATIVE: "bg-amber-100 text-amber-700",
-  DRAFT: "bg-gray-100 text-gray-700",
-  SUBMITTED: "bg-blue-100 text-blue-700",
-  ACKNOWLEDGED: "bg-indigo-100 text-indigo-700",
+  CONFIRMED: "bg-emerald-50 text-emerald-700",
+  TENTATIVE: "bg-amber-50 text-amber-700",
+  DRAFT: "bg-rose-50 text-rose-700",
+  SUBMITTED: "bg-blue-50 text-blue-700",
+  ACKNOWLEDGED: "bg-indigo-50 text-indigo-700",
 };
 
 // Fallback mock data in case backend is offline
@@ -54,7 +54,7 @@ const MOCK_EVENTS: EventOut[] = [
     start_at: "2026-11-02T11:00:00Z",
     end_at: "2026-11-02T13:00:00Z",
     audience_tags: [],
-    status: "DRAFT",
+    status: "DRAFT", // Rendered as Planning
     revision: 1,
     venue_availability: "UNKNOWN",
     synthetic: true,
@@ -104,57 +104,68 @@ export default function UpcomingEvents() {
       ? "10:00 AM"
       : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   };
+  
+  const formatEndTime = (iso: string) => {
+    const d = new Date(iso);
+    return isNaN(d.getTime())
+      ? "1:00 PM"
+      : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  };
 
   if (loading) {
     return (
-      <div className="space-y-4 animate-pulse">
+      <div className="flex flex-col animate-pulse">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-stone-100 rounded-xl" />
+          <div key={i} className="h-16 bg-stone-50 rounded-xl mb-4" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {events.map((evt) => (
+    <div className="flex flex-col">
+      {events.map((evt, idx) => (
         <div
           key={evt.id}
-          className="flex items-center justify-between p-4 bg-white border border-stone-100 shadow-sm rounded-xl hover:shadow-md transition-shadow group"
+          className={`flex items-center justify-between py-4 group hover:bg-stone-50/50 -mx-2 px-2 rounded-xl transition-colors ${idx !== events.length - 1 ? 'border-b border-stone-100 border-dashed' : ''}`}
         >
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col items-center justify-center bg-rose-50 text-rose-900 rounded-xl w-14 h-14 border border-rose-100/50">
-              <span className="text-[10px] font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-6 w-[40%]">
+            <div className="flex flex-col items-center justify-center w-10">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7a1b32]">
                 {formatMonth(evt.start_at)}
               </span>
-              <span className="text-xl font-bold leading-none">
+              <span className="text-xl font-bold leading-none text-gray-900 mt-0.5">
                 {formatDay(evt.start_at)}
               </span>
             </div>
             <div>
-              <h4 className="font-bold text-gray-900 text-[15px]">
+              <h4 className="font-bold text-gray-900 text-sm tracking-tight">
                 {evt.title}
               </h4>
-              <p className="text-xs text-gray-500 flex items-center mt-1">
-                <MapPin className="w-3 h-3 mr-1" />{" "}
+              <p className="text-[11px] text-gray-500 font-semibold flex items-center mt-1 uppercase tracking-wider">
+                <MapPin className="w-3 h-3 mr-1 text-gray-400" />{" "}
                 {evt.resource_id || "Venue TBD"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-8">
-            <p className="text-sm font-medium text-gray-600 flex items-center">
-              <Clock className="w-4 h-4 mr-2 text-gray-400" />{" "}
-              {formatTime(evt.start_at)}
+          <div className="flex items-center gap-4 flex-1 justify-between">
+            <p className="text-[11px] font-semibold text-gray-500 flex items-center uppercase tracking-wider w-36">
+              <Clock className="w-3.5 h-3.5 mr-1.5 text-gray-400" />{" "}
+              {formatTime(evt.start_at)} - {formatEndTime(evt.end_at || evt.start_at)}
             </p>
-            <div className="w-24 text-right">
+            
+            <div className="w-24 flex justify-end">
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[evt.status] || statusStyles.DRAFT}`}
+                className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[evt.status] || statusStyles.DRAFT}`}
               >
-                {evt.status.charAt(0) + evt.status.slice(1).toLowerCase()}
+                {evt.status === 'DRAFT' ? 'PLANNING' : evt.status}
               </span>
             </div>
-            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-rose-900 transition-colors" />
+            
+            <div className="w-6 flex justify-end">
+              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-gray-600 transition-colors" />
+            </div>
           </div>
         </div>
       ))}
