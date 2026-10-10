@@ -1,0 +1,27 @@
+{
+  "type": "VENUE_OVERLAP",
+  "severity": "blocking",
+  "constraint": "VENUE_OVERLAP",
+  "event_ids": [
+    "3d6f0b9a-8c1e-4b7a-a1d2-0000000000a1",
+    "3d6f0b9a-8c1e-4b7a-a1d2-0000000000b1"
+  ],
+  "with_event": {
+    "id": "3d6f0b9a-8c1e-4b7a-a1d2-0000000000b1",
+    "title": "Cultural Committee Orientation",
+    "club_id": "7b1c4c1e-5d0a-4f4e-9a52-3f2a1c9d0002",
+    "club_name": "Cultural Committee",
+    "start_at": "2026-10-20T09:00:00+05:30",
+    "end_at": "2026-10-20T11:00:00+05:30",
+    "resource_id": "5e0a1c33-2f7d-4d1b-8e64-0000000000c1",
+    "resource_name": "Seminar Hall A",
+    "status": "CONFIRMED",
+    "audience_tags": [
+      "first-year"
+    ]
+  },
+  "start_at": "2026-10-20T10:00:00+05:30",
+  "end_at": "2026-10-20T11:00:00+05:30",
+  "message": "Seminar Hall A is already confirmed for another event from 10:00 to 11:00.",
+  "override_required": true
+}
