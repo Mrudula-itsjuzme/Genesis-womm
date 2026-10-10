@@ -1,6 +1,5 @@
 from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
-from app.schemas.retrieval import EvidenceChunk
 
 
 class Citation(BaseModel):
