@@ -10,4 +10,4 @@ class DocumentChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     source_url = Column(String, index=True)
     content = Column(Text)
-    embedding = Column(Vector(384))  # 384 is default for sentence-transformers all-MiniLM-L6-v2
+    embedding = Column(Vector(768))  # 768 is default for BAAI/bge-base-en-v1.5
