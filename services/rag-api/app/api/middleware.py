@@ -1,9 +1,10 @@
-import uuid
-import time
 import logging
+import time
+import uuid
+
 from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("campuscue.rag.api")
 
@@ -29,7 +30,9 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
             return response
         except RuntimeError as exc:
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            logger.error("Service error on %s: %s (req_id=%s)", request.url.path, exc, request_id)
+            logger.error(
+                "Service error on %s: %s (req_id=%s)", request.url.path, exc, request_id
+            )
             return JSONResponse(
                 status_code=503,
                 content={
@@ -40,9 +43,11 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
                 },
                 headers={"X-Request-ID": request_id},
             )
-        except Exception as exc:
+        except Exception:
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            logger.exception("Unhandled server error on %s: %s (req_id=%s)", request.url.path, exc, request_id)
+            logger.exception(
+                "Unhandled server error on %s (req_id=%s)", request.url.path, request_id
+            )
             return JSONResponse(
                 status_code=500,
                 content={

@@ -1,12 +1,15 @@
 import logging
+
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
+from fastapi.responses import JSONResponse
+
 from app.api.middleware import RequestTracingMiddleware
-from app.api.routes.retrieval import router as retrieval_router
 from app.api.routes.knowledge import router as knowledge_router
+from app.api.routes.retrieval import router as retrieval_router
+from app.config import settings
 
 logging.basicConfig(
     level=settings.log_level,
@@ -37,7 +40,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "code": "VALIDATION_ERROR",
             "message": "Invalid request parameters",
-            "details": exc.errors(),
+            "details": jsonable_encoder(exc.errors()),
             "request_id": req_id,
         },
         headers={"X-Request-ID": req_id} if req_id else {},
@@ -46,7 +49,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 app.include_router(retrieval_router)
 app.include_router(knowledge_router)
-
 
 
 @app.get("/health")
@@ -62,4 +64,3 @@ def ready():
         "sparse_provider": settings.rag_sparse_provider,
         "model_provider": settings.agent_model_provider,
     }
-
