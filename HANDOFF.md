@@ -1,7 +1,7 @@
 # HANDOFF: CampusCue backend and AI workstream
 
-> **Updated:** 2026-10-11, before the requested local-commit and push handoff.
-> **Branch:** `backend-ai`, HEAD `f7bc48f`, 48 commits ahead of `origin/backend-ai` before push. **Owner of this workstream:** Shruhath (git author `Shruhath`).
+> **Updated:** 2026-10-11 (second session). Sections 1 and 'State as of 2026-10-11' are current; sections 3, 5, 7, 8, 15 and 17 were written on 2026-10-10 and are partly superseded (marked below).
+> **Branch:** `backend-ai`, code HEAD `427bfcd`, merged with `origin/main` (`0c8273e`), **9 local commits not pushed**. **Owner of this workstream:** Shruhath (git author `Shruhath`); the teammate Mrudula also pushes to this branch.
 > **If you read nothing else, read sections 1, 2, 3 and 21.**
 
 This file follows the 17-item handoff list in `AGENTS.md` section 15 and adds the context a cold-start agent needs: working rules, a map of the code, the exact design of the next milestone, and the traps the previous session fell into. Everything here was checked against the repository on the day it was written. Where something is a recommendation and not a fact, it says so.
@@ -43,33 +43,45 @@ CampusCue is an AI-assisted event-operations workspace for student clubs at Amri
 
 This workstream owns **Core API and Agent API**. The RAG API and the web UI belong to a teammate (Mrudula). Do not edit their areas without being asked.
 
-**Built and verified so far (all on branch `backend-ai`):**
+**State as of 2026-10-11 (current; supersedes the earlier summary table):**
 
 | Area | State |
 |---|---|
 | Architecture | `docs/architecture/architecture-campuscue-backend-ai-2026-10-10/ARCHITECTURE-SPINE.md`, status `final`, 23 decisions (AD-1 to AD-23) |
-| Core API skeleton | settings, error envelope, request ids, structured logs, `/health`, `/ready`, layered packages enforced by import-linter |
-| Contracts | OpenAPI for both services and shared JSON Schemas are **generated from code** into `contracts/`; 13 example payloads; drift is a test failure |
-| Conflict engine | pure `evaluate()`: half-open intervals, 120-minute campus gap, venue overlap as independent constraints, severity by stage |
-| Authorization | one `authorize()` decision point with a rule table |
-| Lifecycles | event and commitment transition tables; confirmation needs a campus admin and evidence |
-| Persistence | migration `0002`: 10 tables in schema `core`, DB-level rules, append-only history triggers |
-| **Write path** | `ScheduleWriteService`: lock, engine, revision, audit, idempotency in one transaction. **Proved under a real two-session race on PostgreSQL 18** |
-| Agent API | skeleton, ports, deterministic fakes, typed 501 stubs; **no orchestration, no HTTP clients, no model provider yet** |
+| Core domain, persistence, write path | Done and race-proved on PostgreSQL 18 (see sections 7, 9, 10) |
+| Core HTTP, real routes | `POST /api/v1/auth/demo-login`; `POST/GET /api/v1/events`; `GET /api/v1/events/{id}`; `POST /api/v1/events/{id}/conflict-check`; `POST /api/v1/events/{id}/transitions`; `POST /api/v1/overrides`; `GET /api/v1/resources[/{id}]`; `/health`, `/ready` |
+| Core HTTP, still 501 stubs | `POST /api/v1/agent/chat`; `GET /api/v1/agent-actions`; `POST /api/v1/agent-actions/{id}/confirm` and `/reject`; **all three `/internal/v1` facade routes** |
+| Agent API | Real HTTP clients (Core, RAG), LLM port with Groq and fake providers, bounded orchestration engine, tool allowlist, real `/v1/agent/chat`, `/plan-event`, `/analyze-change`. **It cannot run end to end yet, because the Core facade it calls is still a stub.** |
+| RAG and Web | The teammate's: real retrieval and answer routes, and a dashboard UI, merged to `main` |
+| Seeds | Not built. There is no seed script or demo data set |
 
-**Still not built:** conflict-check HTTP wiring and `ConflictProjection`; event transition and override routes; synthetic seeds; the Agent orchestration and its internal facade. Core authentication, event creation/reads, and resource reads are already live.
+**Who did what since the 2026-10-10 handoff:** a second agent built P12 to P14 on Core (session tokens, demo login, authorized reads, advisory conflict checks, resource reads; commits `2fd4b1f` to `0ebe4ee`). Mrudula then pushed 11 commits to this branch: the Core transition, override and conflict-check routes (`236db16`, `391e94b`), the OpenAPI export (`4577cc8`), Agent HTTP clients, providers, orchestration, endpoints and tests, and Core e2e scenarios 1 to 5 (`d435e1d`). `origin/main` already contains all of it (PR #5).
 
-**Last verified test status:** Core fast gate: 506 passed, 100 deselected. Agent baseline remains 176 passing tests from the prior handoff.
+**Defects found and fixed on 2026-10-11 (all committed, none pushed):**
 
-**Git status:** 48 local commits are not pushed before the requested push. `docs/presentations/Campus-Cue.pdf` is unrelated untracked content.
+| Defect | Fix |
+|---|---|
+| The Agent's `HttpCoreClient` called three Core URLs that do not exist (`/internal/v1/agent/check-conflicts`, `/internal/v1/events/{id}`, `/internal/v1/agent/actions`) | Now uses the published `/internal/v1/agent-tools/...` and `/internal/v1/agent-actions`; a test records every request and requires it to be declared in Core's OpenAPI |
+| The same client dropped an explicit `resource_id: null` (`exclude_none`), turning "no venue" into "keep the stored venue" | `exclude_unset`; tested both ways |
+| The client did not treat a 401 (bad or expired delegation token) as a denial | 401 and 403 both map to `DeniedError` |
+| The Agent's `HttpRagClient` called `/v1/rag/search` and `/v1/rag/answer`; the RAG service serves `/v1/retrieval/search` and `/v1/knowledge/answer` | Fixed and pinned by respx tests |
+| The Agent container used `FixedClock(now at start-up)`, so every trace latency read 0 ms | `SystemClock` adapter in `app/clients/system.py` |
+| The orchestration engine imported `app.providers.llm`, breaking two import-linter contracts (`make verify` in agent-api was red on `main`) | `LlmPort`, `LlmResponse`, `ToolCall` moved to `app/ports/llm.py` |
+| Lint and format failures in `test_e2e_scenarios.py` and four Agent files (the gate was red on `main`) | Fixed |
 
-### Pause-state update (2026-10-11)
+**What remains, in order (this is the next agent's work):**
 
-- Core resource catalogue reads are real: authenticated `GET /api/v1/resources` and `GET /api/v1/resources/{resource_id}` call `ResourceReadService`, return sourced metadata, and are no longer OpenAPI stubs. Commit: `bb3b4b7 feat(core): expose sourced resource reads`.
-- The immediately preceding resource-read commits are `ce9b485`, `42df134`, and `6626963`; together they add the port, read service, container wiring, SQL adapter support, and tests.
-- Advisory conflict checks are implemented and committed: `f7bc48f feat(core): add advisory conflict checks`. The service uses the deterministic engine without writes or a lock, authorizes `CHECK_CONFLICTS`, preserves the omitted-versus-null `resource_id` distinction, and is covered by three unit tests.
-- The latest completed Core fast gate was run after the conflict-check slice: `command make verify-fast` exited 0 with **506 passed, 100 deselected**; ruff, formatting, mypy, import-linter, and contract drift all passed.
-- The only other untracked path is `docs/presentations/Campus-Cue.pdf`; it belongs to someone else and must remain untouched and unstaged.
+1. **Core side of the Agent integration** (the critical path): migration `0003` with an `agent_actions` table; a delegation-token service (HS256, `aud=agent-tools`, at most 120 s, signed with `DELEGATION_SIGNING_KEY`); the three `/internal/v1` facade routes; `GET /api/v1/agent-actions`, `POST .../confirm` and `.../reject`; `POST /api/v1/agent/chat`. Spine AD-9, AD-10 and AD-14 are the governing decisions; section 18 below sketches it.
+2. **Synthetic seeds** (P15) and a compose smoke test: demo login, create, propose, submit, confirm, observe the 409, then an Agent turn.
+3. **An end-to-end test that drives a real Agent turn against a real Core** (no mocks on the Core side), including prompt-injection cases.
+4. Contract documents: `contracts/CONTRACTS.md` and `PLAN.md` section 8 still lack the new routes and error codes.
+5. Open items from sections 15 and 16 that still apply (RAG publishes no OpenAPI file; per-service database roles; CI).
+
+**Verified status on 2026-10-11, at HEAD `427bfcd`:** `services/core-api: command make verify` exit 0 (505 unit and contract tests plus 101 PostgreSQL tests; ruff, format, mypy, 9 import-linter contracts, contract drift all clean). `services/agent-api: command make verify` exit 0 (203 tests; the same checks, 9 contracts kept).
+
+**A stash exists** (`git stash list`): an earlier half-finished wiring of the conflict-check route, superseded by `236db16` and `391e94b`. It contains one thing upstream may lack, the mapping of `InvalidRequestError` to a 422 `VALIDATION_ERROR` in `app/api/errors.py`; check, then drop the stash.
+
+**Untracked, not ours:** `docs/presentations/Campus-Cue.pdf`. Leave it alone.
 
 ---
 
@@ -127,6 +139,8 @@ A tentative proposal is not a booking. Submitted is not acknowledged; acknowledg
 
 ## 3. Where you are and what to do first
 
+> **Superseded in part (2026-10-11):** The active objective below (P12 to P15) is mostly done; the live list is 'What remains' in section 1. The first-ten-minutes commands still apply, but expect Core 505 + 101 and Agent 203 tests.
+
 **Active objective:** the *HTTP milestone* of Plan 01, batches **P12 to P15** (section 17): contract additions, demo-login and session tokens, wiring the write path into Core's container, real routes, `ConflictProjection`, seed data, end-to-end tests. After that, Plan 03 (Agent orchestration).
 
 **First ten minutes:**
@@ -181,6 +195,8 @@ Her other changes (RAG ingestion and search endpoint, `apps/web/Dockerfile`, a D
 ---
 
 ## 5. Repository and git state
+
+> **Superseded in part (2026-10-11):** Branch hashes in this section are from 2026-10-10. `origin/main` and `origin/backend-ai` have since moved (see the header and `git log`); the teammate's `feature/fix-tentative-scheduling` conflict note in 4.2 has not been re-checked.
 
 ### 5.1 Layout
 ```
@@ -269,6 +285,8 @@ Agent:  api  ->  orchestration  ->  tools  ->  ports ;  providers and clients im
 
 ## 7. What exists, layer by layer (Core API)
 
+> **Superseded in part (2026-10-11):** Written before P12 to P14. Added since: `app/services/{sessions,event_reads,resource_reads,conflict_checks}.py`, `app/api/presenters.py`, `app/api/routes/{auth,overrides}.py`, `app/schemas/auth.py`, `app/clients/tokens.py` (the session-token adapter), `SystemClock` in `app/domain/time.py` and `UuidSource` in `app/container.py`, and real `events`, `resources` and `overrides` routes. `container.py` now wires the write, read, conflict-check and session services.
+
 Path prefix `services/core-api/`. Python 3.12, FastAPI 0.143, Pydantic 2.14, SQLAlchemy 2.1.4 (sync), Alembic 1.20, psycopg 3.3.6.
 
 ### 7.1 `app/domain/` (pure)
@@ -325,6 +343,8 @@ Only `schedule_write` may import `schedule_store` (import-linter `protected` con
 ---
 
 ## 8. What exists (Agent API)
+
+> **Superseded in part (2026-10-11):** Superseded: the Agent now has real HTTP clients, an LLM port (`app/ports/llm.py`) with Groq and fake providers, a bounded orchestration engine, a tool allowlist and real chat, plan-event and analyze-change endpoints. Read the code, not the 'Not built' row. It still cannot run end to end because Core's facade is a stub.
 
 Path prefix `services/agent-api/`. Async FastAPI. Dependencies: FastAPI, uvicorn, pydantic, pydantic-settings, httpx, structlog. **No PyJWT** (the Agent forwards the delegation token unmodified and never decodes it) and **no Groq SDK yet** (arrives with the provider in Plan 03).
 
@@ -551,6 +571,8 @@ Linux (CachyOS), **zsh**, `make` aliased to `make -j32`, system Python 3.14 (ser
 
 ## 15. Known issues, gaps and blockers
 
+> **Superseded in part (2026-10-11):** Items 1 to 3 and 5 are resolved (write path wired, auth, events/resources/overrides routes). Items 4 (`ConflictProjection`), 6, 7 and 8 still stand in part. See 'What remains' in section 1 for the live list.
+
 1. **The write path is not reachable from HTTP.** `Container` (`app/container.py`) holds only the readiness service and the engine. There is no `SystemClock`, no `UuidIdSource` (`app/clients/` is empty), no session factory, no `ScheduleWriteService`, no `Policy` built from `campus_gap_minutes`. Tests construct everything by hand.
 2. **No authentication.** No login, no session token issue/verify, no `get_actor`. PyJWT is installed and unused. The security schemes in the OpenAPI are declarations only.
 3. **All business routes are 501 stubs** (section 11.1).
@@ -596,6 +618,8 @@ Also open from the spine: `Deferred` items (real SSO, official gap validity, per
 ---
 
 ## 17. The next milestone, designed in detail (P12 to P15)
+
+> **Superseded in part (2026-10-11):** P12 to P14 are built (by a second agent, plus Mrudula's routes). P15 (seeds, end-to-end) is not. The Core-side Agent integration, which this section does not cover, is now the critical path; section 18 item 2 sketches it.
 
 This is a **recommendation**, consistent with the spine and the existing code. Per section 2.7, take it unless the user redirects. Write the batch plan into `Implementation_Plans/01` first (AGENTS.md section 14), with 2 to 3 files per batch.
 
