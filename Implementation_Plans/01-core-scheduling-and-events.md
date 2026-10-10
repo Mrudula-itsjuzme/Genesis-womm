@@ -131,6 +131,68 @@ Exact module names may be adjusted to the selected project layout, but update th
 - **Definition of Done:** the allowed edges equal the spine diagrams exactly and every other pair is rejected; a move into CONFIRMED needs an authorized actor, an evidence reference and sets `verified_by` and `verified_at`; ACKNOWLEDGED is never CONFIRMED; demotion of a CONFIRMED event on a time or venue change is a system step, not a user transition.
 - **Check order:** authorization, then the transition table, then evidence, so an unauthorized actor learns nothing about state.
 
+## Backend and AI execution: persistence and write path slice (branch `backend-ai`)
+
+**Objective:** store events and their history in PostgreSQL and make `ScheduleWriteService.commit` the only way an event's interval, venue or status changes, under the campus lock (spine AD-4, AD-6, AD-7, AD-8, AD-17, AD-20). Steps 1, 7, 8, 9, 10 and 12 of the ordered steps, without HTTP.
+
+**Non-goals for this slice:** HTTP routes, demo-login and session tokens, `ConflictProjection` (AD-23), seed data, change proposals and impact (AD-14), commitments, `DEPENDENCY_CONFLICT`. These are the next milestone (batches P12 to P15 below). Nothing here changes a published contract.
+
+**Decisions that bind the code:**
+- Tables live in schema `core`. Ids are UUIDs, times are `timestamptz`, and `events` has `CHECK (start_at < end_at)`. Business timestamps come from the injected `Clock`, never from database defaults.
+- Statuses are stored as text with a named `CHECK` listing the enum values, not a native PostgreSQL enum, so adding a value is an ordinary migration.
+- `event_revisions` holds previous and new values as JSON snapshots, because history is never read by the engine. `audit_events`, `event_revisions` and `evidence_records` get no update or delete code path.
+- The write path takes `pg_advisory_xact_lock` first, loads the other active events from committed state, runs `evaluate`, then either raises `CONFLICT_DETECTED` (any blocking conflict) or writes the event, a revision row and an audit row in the same transaction. No network call happens inside the lock.
+- A blocking conflict can only arise when the candidate is CONFIRMED, so drafts and proposals always save and return their warnings.
+- Event-targeting writes require `expected_revision`; the update is `... WHERE revision = :expected`, so a stale write changes nothing and raises `STALE_REVISION`.
+- Idempotency is checked inside the lock and the transaction. A replay returns the stored response; the same key with a different body raises `IDEMPOTENCY_MISMATCH`. Only successful writes store a key, so a corrected retry is not blocked.
+- Refusals (conflict, stale, denied, invalid transition) are audited in a separate short transaction after the main one rolls back.
+- Creating an override also takes the campus lock, because it changes what the engine reports.
+- Event write methods are importable only from `ScheduleWriteService` (import-linter `protected`).
+
+### Batch P7a: Derive the expected head
+- **Files:** `services/core-api/tests/integration/test_migrations.py`, `services/core-api/tests/integration/test_health_probe.py`
+- **Verification:** `uv run pytest -m integration`
+- **Expected Commit:** `test(core): derive the expected migration head from the code`
+- **Definition of Done:** no test hard-codes revision `0001` as the head.
+
+### Batch P7b: Schema
+- **Files:** `app/models/directory.py`, `app/models/scheduling.py`, `migrations/versions/0002_core_persistence.py` (plus `app/models/__init__.py`)
+- **Verification:** `uv run pytest -m integration tests/integration/test_migrations.py` (includes `alembic check`)
+- **Expected Commit:** `feat(core): add the persistence schema for events and their history`
+- **Definition of Done:** models and migration agree; upgrade and downgrade are clean; exactly one head.
+
+### Batch P7c: Schema constraints
+- **Files:** `tests/integration/test_schema_constraints.py`
+- **Expected Commit:** `test(core): prove the schema rejects invalid rows`
+- **Definition of Done:** inverted intervals, unknown statuses, duplicate memberships, mis-ordered override pairs, duplicate revisions and duplicate idempotency keys are all rejected by the database.
+
+### Batch P8: Ports and errors
+- **Files:** `app/services/ports.py`, `app/services/errors.py`, `tests/fakes.py`
+- **Expected Commit:** `feat(core): define the write path ports, errors and an in-memory unit of work`
+- **Definition of Done:** the service layer has no import of SQLAlchemy; the fake unit of work enforces the same revision rule as the SQL one.
+
+### Batch P9: The write service
+- **Files:** `app/services/schedule_write.py`, `tests/unit/test_schedule_write.py`
+- **Verification:** `uv run pytest tests/unit/test_schedule_write.py`
+- **Expected Commit:** `feat(core): add the single schedule write path`
+- **Definition of Done:** create, every lifecycle transition, and override creation work through `commit`; the six scenarios in AGENTS.md 10.1 that concern scheduling are covered; authorization, evidence, staleness, idempotency and audit are tested.
+
+### Batch P10: SQL adapters
+- **Files:** `app/repositories/scheduling.py`, `app/repositories/directory.py`, `app/repositories/unit_of_work.py`
+- **Expected Commit:** `feat(core): add the sql unit of work and repositories`
+- **Definition of Done:** the service runs unchanged against PostgreSQL; the `protected` import contract is added and enforced.
+
+### Batch P11: Integration and concurrency
+- **Files:** `tests/integration/test_schedule_write_sql.py`, `tests/integration/test_schedule_concurrency.py`
+- **Expected Commit:** `test(core): verify the write path and its concurrency on postgres 18`
+- **Definition of Done:** two sessions racing to confirm conflicting events yield exactly one CONFIRMED and one `CONFLICT_DETECTED`; a control run without the lock lets both through, which proves the test can see the race.
+
+### Next milestone (not in this slice)
+- **P12:** contract additions (`POST /api/v1/events/{event_id}/transitions`, `POST /api/v1/overrides`, `POST /api/v1/auth/demo-login`) with examples, as one contract-first change.
+- **P13:** demo-login, session tokens and actor resolution from database rows (AD-21).
+- **P14:** `ConflictProjection` (AD-23) and the real event, conflict-check and resource routes.
+- **P15:** synthetic seed data (AD-22) and the end-to-end tests from AGENTS.md 10.1.
+
 ## Risks
 - Campus-wide gap may be a product preference rather than official policy.
 - Cross-row temporal constraints require careful concurrency handling.
@@ -138,5 +200,6 @@ Exact module names may be adjusted to the selected project layout, but update th
 
 ## Deviation log
 - Initial plan dated 2026-10-10; implementation not started.
+- 2026-10-10: Added the persistence and write path slice (batches P7a to P11) for the backend/AI workstream; HTTP, auth, projection and seeds are staged as P12 to P15. The first-pass Core on `main` was replaced by the layered Core before this slice (PR #2), so there is one `events` table and one migration root.
 - 2026-10-10: Batch P4 exceeds 3 files by design (AGENTS.md 11.3.3, atomic multi-service changeset): the Agent's tests compare its mirror strictly against Core's contract and examples, so a required response field (`evaluated_as`) cannot land in smaller green commits. No contract is otherwise broken; `as_status` is optional.
 - 2026-10-10: Added the conflict engine slice (batches P1 to P4) for the backend/AI workstream. Persistence, the write path and routes remain as the plan's later steps. Corrected the conflict `window` wording from Plan 00's schemas: for overlapping events it is the shared interval, which also fixes nested events at different venues.
