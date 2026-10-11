@@ -1,7 +1,7 @@
 """Submitting, reading and reviewing an event's proposal document (Implementation Plan 07).
 
 Real identities and the authorization rule table decide everything here: the club submits and
-reads, only a campus admin reviews, and a delegated agent does none of it.
+reads, faculty reviewers approve first, campus admins finalize, and delegated agents cannot review.
 """
 
 from collections.abc import Mapping
@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from app.domain.authz import Actor
-from app.domain.enums import AvailabilityState, ProposalStatus
+from app.domain.enums import AvailabilityState, ProposalStatus, Role
 from app.domain.lifecycle import InvalidTransitionError, NotAuthorizedError
 from app.domain.scheduling import Policy
 from app.domain.time import FixedClock
@@ -48,6 +48,7 @@ from tests.unit.test_schedule_write import (
 PDF = b"%PDF-1.7 a proposal"
 S = ProposalStatus
 AGENT = Actor(user_id=ORGANIZER.user_id, memberships=ORGANIZER.memberships, via_agent=True)
+FACULTY = Actor(user_id=UUID(int=998), memberships={CLUB_A: Role.FACULTY_ADVISOR})
 
 
 @dataclass
@@ -308,9 +309,34 @@ def test_no_link_is_made_for_someone_who_may_not_read_it(rig: Rig, actor: Actor)
 # ---- reviewing -------------------------------------------------------------------------
 
 
+def faculty_approve(rig: Rig, proposal_id: UUID) -> None:
+    result = rig.svc.review(ctx(FACULTY), proposal_id, ReviewAction.APPROVE, 'Faculty reviewed')
+    assert result.status is S.FACULTY_APPROVED
+    assert rig.rag.ingested == []
+
+
+def test_campus_cannot_bypass_faculty_review(rig: Rig) -> None:
+    saved = submit(rig)
+    with pytest.raises(InvalidTransitionError):
+        rig.svc.review(ctx(CAMPUS), saved.id, ReviewAction.APPROVE, None)
+    assert rig.db.state.proposals[saved.id].status is S.SUBMITTED
+    assert rig.rag.ingested == []
+
+
+def test_faculty_cannot_approve_twice_or_finalize(rig: Rig) -> None:
+    saved = submit(rig)
+    faculty_approve(rig, saved.id)
+    with pytest.raises(InvalidTransitionError):
+        rig.svc.review(ctx(FACULTY), saved.id, ReviewAction.APPROVE, None)
+    assert rig.db.state.proposals[saved.id].status is S.FACULTY_APPROVED
+
+
+
+
 def test_a_campus_admin_approves_and_rag_is_told_who_approved_it(rig: Rig) -> None:
     saved = submit(rig)
 
+    faculty_approve(rig, saved.id)
     reviewed = rig.svc.review(ctx(CAMPUS), saved.id, ReviewAction.APPROVE, "Looks good")
 
     assert reviewed.status is S.CHUNKED
@@ -327,6 +353,7 @@ def test_when_rag_is_down_the_proposal_stays_approved_and_the_review_stands(rig:
     rig.rag.accepts = False
     saved = submit(rig)
 
+    faculty_approve(rig, saved.id)
     reviewed = rig.svc.review(ctx(CAMPUS), saved.id, ReviewAction.APPROVE, None)
 
     assert reviewed.status is S.APPROVED
@@ -347,6 +374,7 @@ def test_a_rejection_or_revision_request_never_reaches_rag(
 ) -> None:
     saved = submit(rig)
 
+    faculty_approve(rig, saved.id)
     reviewed = rig.svc.review(ctx(CAMPUS), saved.id, action, "Add a safety plan")
 
     assert reviewed.status is outcome
@@ -372,6 +400,7 @@ def test_only_a_campus_admin_reviews(rig: Rig, actor: Actor) -> None:
 
 def test_a_decided_proposal_cannot_be_decided_again(rig: Rig) -> None:
     saved = submit(rig)
+    faculty_approve(rig, saved.id)
     rig.svc.review(ctx(CAMPUS), saved.id, ReviewAction.REJECT, None)
 
     with pytest.raises(InvalidTransitionError):
@@ -405,7 +434,7 @@ def test_two_reviewers_deciding_at_once_cannot_both_win() -> None:
     saved = submit(racing)
 
     with pytest.raises(InvalidTransitionError):
-        racing.svc.review(ctx(CAMPUS), saved.id, ReviewAction.APPROVE, None)
+        racing.svc.review(ctx(FACULTY), saved.id, ReviewAction.APPROVE, None)
 
     assert racing.db.state.proposals[saved.id].status is S.REJECTED
     assert racing.rag.ingested == []
