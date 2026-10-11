@@ -38,26 +38,26 @@ DEMO_USERS = (
     DemoUser(
         UUID("10000000-0000-4000-8000-000000000001"),
         "campus-admin@demo.invalid",
-        "Synthetic Campus Admin",
+        "Dr. Ananya Rao",
         True,
     ),
     DemoUser(
         UUID("10000000-0000-4000-8000-000000000002"),
         "club-admin@demo.invalid",
-        "Synthetic Club Admin",
+        "Rohan Kapoor",
     ),
     DemoUser(
         UUID("10000000-0000-4000-8000-000000000003"),
         "organizer@demo.invalid",
-        "Synthetic Organizer",
+        "Maya Iyer",
     ),
     DemoUser(
         UUID("10000000-0000-4000-8000-000000000005"),
         "student@demo.invalid",
-        "Synthetic Student",
+        "Nisha Verma",
     ),
     DemoUser(
-        UUID("10000000-0000-4000-8000-000000000004"), "outsider@demo.invalid", "Synthetic Outsider"
+        UUID("10000000-0000-4000-8000-000000000004"), "outsider@demo.invalid", "Kabir Shah"
     ),
 )
 
@@ -94,8 +94,8 @@ def seed_demo_data(engine: Engine) -> None:
         session.flush()
 
         for club_id, name in (
-            (CLUB_EVENTS, "Synthetic Events Club"),
-            (CLUB_ROBOTICS, "Synthetic Robotics Club"),
+            (CLUB_EVENTS, "Student Activities Council"),
+            (CLUB_ROBOTICS, "Robotics and Automation Society"),
         ):
             _add_if_missing(
                 session,
@@ -134,7 +134,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 RESOURCE_AUDITORIUM,
                 "VENUE",
-                "Synthetic Main Auditorium",
+                "Tagore Auditorium",
                 "CONFIRMED",
                 "CURRENT",
                 450,
@@ -142,7 +142,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 RESOURCE_SEMINAR_HALL,
                 "VENUE",
-                "Synthetic Seminar Hall",
+                "Saraswati Seminar Hall",
                 "REQUESTED",
                 "CURRENT",
                 120,
@@ -150,7 +150,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 RESOURCE_COURTYARD,
                 "VENUE",
-                "Synthetic Open Courtyard",
+                "Central Quadrangle",
                 "UNKNOWN",
                 "STALE",
                 300,
@@ -158,7 +158,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("30000000-0000-4000-8000-000000000004"),
                 "EQUIPMENT",
-                "Synthetic Projector Kit",
+                "Epson Projector Kit",
                 "CONFIRMED",
                 "CURRENT",
                 None,
@@ -166,7 +166,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("30000000-0000-4000-8000-000000000005"),
                 "EQUIPMENT",
-                "Synthetic PA System",
+                "Bose PA System",
                 "REQUESTED",
                 "REVIEW_REQUIRED",
                 None,
@@ -174,7 +174,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("30000000-0000-4000-8000-000000000006"),
                 "SERVICE",
-                "Synthetic AV Support",
+                "Campus AV Services",
                 "UNKNOWN",
                 "UNKNOWN",
                 None,
@@ -189,8 +189,8 @@ def seed_demo_data(engine: Engine) -> None:
                     id=resource_identifier,
                     kind=kind,
                     name=name,
-                    description="Synthetic demo resource; never campus operational data.",
-                    location="Synthetic Campus",
+                    description="Demo resource; not campus operational data.",
+                    location="Northbridge Campus",
                     capacity=capacity,
                     availability_state=availability,
                     freshness_state=freshness,
@@ -208,7 +208,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("40000000-0000-4000-8000-000000000001"),
                 CLUB_EVENTS,
-                "Synthetic Design Expo",
+                "Campus Design Expo",
                 EVENT_START,
                 EVENT_START + timedelta(hours=2),
                 RESOURCE_AUDITORIUM,
@@ -216,7 +216,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("40000000-0000-4000-8000-000000000002"),
                 CLUB_ROBOTICS,
-                "Synthetic Robotics Showcase",
+                "RoboTech Showcase",
                 EVENT_START + timedelta(hours=1),
                 EVENT_START + timedelta(hours=3),
                 RESOURCE_AUDITORIUM,
@@ -224,7 +224,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("40000000-0000-4000-8000-000000000003"),
                 CLUB_EVENTS,
-                "Synthetic Planning Workshop",
+                "Event Planning Workshop",
                 EVENT_START + timedelta(days=2),
                 EVENT_START + timedelta(days=2, hours=1),
                 RESOURCE_SEMINAR_HALL,
@@ -232,7 +232,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("40000000-0000-4000-8000-000000000004"),
                 CLUB_ROBOTICS,
-                "Synthetic Equipment Briefing",
+                "AV Equipment Briefing",
                 EVENT_START + timedelta(days=4),
                 EVENT_START + timedelta(days=4, hours=1),
                 None,
@@ -247,7 +247,7 @@ def seed_demo_data(engine: Engine) -> None:
                     id=event_id,
                     club_id=club_id,
                     title=title,
-                    description="Synthetic demo event; no real attendees or operational booking.",
+                    description="Demo event; no real attendees or operational booking.",
                     start_at=start_at,
                     end_at=end_at,
                     resource_id=event_resource_id,
@@ -273,8 +273,8 @@ def seed_demo_data(engine: Engine) -> None:
             EvidenceRecord(
                 id=EVIDENCE_VENUE_CONFIRMATION,
                 kind="EMAIL_REFERENCE",
-                reference="synthetic-demo/venue-confirmation-1",
-                issuer="Synthetic Student Affairs",
+                reference="demo/venue-confirmation-1",
+                issuer="Northbridge Student Affairs",
                 captured_at=SEED_TIME,
                 recorded_by=DEMO_USERS[0].id,
                 created_at=SEED_TIME,
@@ -286,7 +286,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("40000000-0000-4000-8000-000000000005"),
                 CLUB_EVENTS,
-                "Synthetic Guest Lecture",
+                "Distinguished Alumni Lecture",
                 DEMO_DAY_LECTURE_START,
                 DEMO_DAY_LECTURE_START + timedelta(hours=2),
                 RESOURCE_AUDITORIUM,
@@ -294,7 +294,7 @@ def seed_demo_data(engine: Engine) -> None:
             (
                 UUID("40000000-0000-4000-8000-000000000006"),
                 CLUB_ROBOTICS,
-                "Synthetic Hardware Demo",
+                "Autonomous Systems Demonstration",
                 DEMO_DAY_HARDWARE_START,
                 DEMO_DAY_HARDWARE_START + timedelta(hours=1, minutes=30),
                 RESOURCE_SEMINAR_HALL,
@@ -309,7 +309,7 @@ def seed_demo_data(engine: Engine) -> None:
                     id=event_id,
                     club_id=club_id,
                     title=title,
-                    description="Synthetic demo event; no real attendees or operational booking.",
+                    description="Demo event; no real attendees or operational booking.",
                     start_at=start_at,
                     end_at=end_at,
                     resource_id=event_resource_id,
@@ -338,18 +338,18 @@ def seed_demo(session: Session, app_env: str) -> None:
         raise ValueError("synthetic seeds are allowed only in local, test, or demo")
     now = datetime.now(UTC)
     for club_id, name in (
-        (CLUB_EVENTS, "Synthetic Events Club"),
-        (CLUB_ROBOTICS, "Synthetic Robotics Club"),
+        (CLUB_EVENTS, "Student Activities Council"),
+        (CLUB_ROBOTICS, "Robotics and Automation Society"),
     ):
         session.execute(
             insert(Club)
             .values(id=club_id, name=name, is_synthetic=True, created_at=now)
             .on_conflict_do_nothing()
         )
-    for name, memberships in (
-        ("organizer", ((CLUB_EVENTS, "ORGANIZER"), (CLUB_ROBOTICS, "ORGANIZER"))),
-        ("club-admin", ((CLUB_EVENTS, "CLUB_ADMIN"),)),
-        ("campus-admin", ()),
+    for name, display_name, memberships in (
+        ("organizer", "Maya Iyer", ((CLUB_EVENTS, "ORGANIZER"), (CLUB_ROBOTICS, "ORGANIZER"))),
+        ("club-admin", "Rohan Kapoor", ((CLUB_EVENTS, "CLUB_ADMIN"),)),
+        ("campus-admin", "Dr. Ananya Rao", ()),
     ):
         user_id = demo_id(name)
         email = name + "@example.invalid"
@@ -361,7 +361,7 @@ def seed_demo(session: Session, app_env: str) -> None:
             .values(
                 id=user_id,
                 email=email,
-                display_name="Synthetic " + name,
+                display_name=display_name,
                 campus_admin=not memberships,
                 is_synthetic=True,
                 created_at=now,
@@ -374,15 +374,15 @@ def seed_demo(session: Session, app_env: str) -> None:
                 .values(user_id=user_id, club_id=club_id, role=role, created_at=now)
                 .on_conflict_do_nothing()
             )
-    for name in ("Synthetic Hall A", "Synthetic Hall B"):
+    for name in ("Cauvery Hall", "Narmada Hall"):
         session.execute(
             insert(Resource)
             .values(
                 id=demo_id(name),
                 kind="VENUE",
                 name=name,
-                description="Synthetic demo venue; not institutional data.",
-                location="Synthetic campus",
+                description="Demo venue; not institutional data.",
+                location="Northbridge Campus",
                 capacity=100,
                 availability_state="UNKNOWN",
                 freshness_state="UNKNOWN",
