@@ -1,5 +1,15 @@
 # HANDOFF: CampusCue schedule changes and dependency impact
 
+> **Demo continuation: 2026-10-11.** The local demo now has a presenter guide at
+> `docs/demo/DEMO_PLAN.md`, a fictional robotics proposal PDF, `scripts/demo_reset.sh`, and
+> `scripts/demo_rag_search.py`. Compose mounts the handbook corpus and persistent RAG Chroma and
+> Hugging Face cache volumes, passes the Groq model settings to RAG, and gives Agent tool calls a
+> 12-second timeout. Use `scripts/demo_reset.sh` before a rehearsal; it keeps the embedding-model
+> cache. The Web-facing demo identity is `organizer@example.invalid`. Core also retains the
+> `@demo.invalid` fixture identities, and both identity sets receive the Events and Robotics club
+> roles so a clean seed opens useful demo data. Real embedding ranking and a stock
+> `docker compose up --build` remain verification tasks, not completed claims.
+
 > **Merge resolution: 2026-10-11.** User authorized merging PR #10. Main advanced to `9470acf` (PR #11, backend-ai) after the initial mergeability check; the first GitHub merge attempt was refused because of conflicts. Integrated the new main with a history-preserving merge. Resolutions retain Agent budget/filing guards and chat context, both synthetic demo identity sets, bucket creation and separate public/internal MinIO clients, source-built MinIO provisioning, the factory run command and seed startup. Regenerated the Core contract with the new `route_errors` declarations. `ui_mock.png` remains excluded.
 >
 > Combined-state verification, all exit 0: Core `uv run pytest -q --tb=short`: **1113 passed, 1 skipped in 163.91 s**; Agent equivalent: **348 passed in 31.01 s**. Both services' Ruff/format, mypy (Core 156, Agent 67 files) and contract drift checks pass; Core import-linter keeps all 9 boundaries. Web unit tests: **15 passed**, TypeScript/lint pass; source-built production stack builds and starts with seed initialization exit 0. Browser suite: **14 passed in 15.5 s**; live Core/MinIO/change gateway: **2 passed in 5.3 s**. Compose config and generated web-type drift pass. The tested resolution is being pushed to PR #10 for the requested merge.
