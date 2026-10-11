@@ -1,6 +1,6 @@
 # Implementation Plan 01: Core Events and Scheduling
 
-**Status:** In progress. Conflict engine, authorization, lifecycle, persistence, the locked write path, demo sessions, authorized reads, transitions, overrides, advisory conflict checks and the Agent facade's authentication and read tools are done. Agent action persistence, `ConflictProjection`, synthetic seeds and the Core side of the Agent chat remain (see HANDOFF.md).
+**Status:** In progress. Conflict engine, authorization, lifecycle, persistence, the locked write path, demo sessions, authorized reads, transitions, overrides, advisory conflict checks, Agent actions, synthetic demo seeds and the Core side of Agent chat are done. `ConflictProjection`, the compose smoke script and end-to-end Agent-to-Core turn coverage remain (see HANDOFF.md).
 **Owner:** Core API workstream  
 **Dependencies:** Plan 00 contracts; PostgreSQL available
 

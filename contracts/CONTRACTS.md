@@ -20,6 +20,10 @@ This directory contains versioned service contracts and example payloads. OpenAP
 - Do not expose ORM/database objects directly as API schemas.
 - Student academic-risk data is private to the authenticated student. Organizer responses must not contain student calendar titles, timetable entries, attendance values, or warning details.
 
+## Synthetic demo identities
+
+Local demo login is backed only by the idempotent synthetic seed: `campus-admin@demo.invalid`, `club-admin@demo.invalid`, `organizer@demo.invalid`, and `outsider@demo.invalid`. These are non-production identities; no real person or institutional address belongs in the seed.
+
 ## Conflict object
 ```json
 {

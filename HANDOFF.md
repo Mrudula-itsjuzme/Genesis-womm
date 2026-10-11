@@ -54,7 +54,7 @@ This workstream owns **Core API and Agent API**. The RAG API and the web UI belo
 | Agent facade security | Done: delegation tokens (`app/clients/delegation.py`: HS256, `aud=agent-tools`, at most 120 s, lifetime re-checked on verify), `DelegationService` (organizer-class only; loads the user from the database on every call and flags them `via_agent`), `require_internal_key` (constant-time, fails closed if unconfigured) and `require_delegated_actor` in `app/api/deps.py`, wired in `container.py` and `main.py`. Proven on real PostgreSQL in `tests/integration/test_facade_sql.py` (a revoked membership takes effect while the token is still valid; a deleted user is 401; a delegation is refused on public routes and a session on the facade) |
 | Agent API | Real HTTP clients (Core, RAG), LLM port (`app/ports/llm.py`) with Groq and fake providers, bounded orchestration engine, tool allowlist, real `/v1/agent/chat`, `/plan-event`, `/analyze-change`. Its Core client now calls the published facade paths. **Reads work against Core; filing a proposal cannot until Core persists agent actions.** |
 | RAG and Web | The teammate's: real retrieval and answer routes, and a dashboard UI, merged to `main` |
-| Seeds | Not built. There is no seed script or demo data set |
+| Seeds | `scripts.seed_demo` is idempotent and compose runs it after migrations. Personas: `campus-admin@demo.invalid`, `club-admin@demo.invalid`, `organizer@demo.invalid`, `outsider@demo.invalid` |
 
 **Who did what since the 2026-10-10 handoff:** a second agent built P12 to P14 on Core (session tokens, demo login, authorized reads, advisory conflict checks, resource reads; commits `2fd4b1f` to `0ebe4ee`). Mrudula then pushed 11 commits to this branch: the Core transition, override and conflict-check routes (`236db16`, `391e94b`), the OpenAPI export (`4577cc8`), Agent HTTP clients, providers, orchestration, endpoints and tests, and Core e2e scenarios 1 to 5 (`d435e1d`). `origin/main` already contains all of it (PR #5). The third session (this file's last update) reviewed that work against the other services, fixed what was broken (below) and built the delegation and facade slice.
 
@@ -591,7 +591,7 @@ Linux (CachyOS), **zsh**, `make` aliased to `make -j32`, system Python 3.14 (ser
 2. **No authentication.** No login, no session token issue/verify, no `get_actor`. PyJWT is installed and unused. The security schemes in the OpenAPI are declarations only.
 3. **All business routes are 501 stubs** (section 11.1).
 4. **No `ConflictProjection` (AD-23).** The example payloads contain a hand-written `with_event`; real responses need the projection (other club's non-DRAFT event, minimal fields only).
-5. **No seed data, no demo-login personas.**
+5. **Compose smoke automation is still missing.** The synthetic data seed and demo personas now exist, but a scripted `/ready` → login → chat → confirm compose check is not yet committed.
 6. **Error mapping from service errors to the envelope does not exist** (section 17.5 gives the table). `ErrorCode` lacks codes for a duplicate override and for missing evidence (recommended additions in 17.1).
 7. **Agent is a skeleton.** No HTTP clients, orchestration, tools, provider or Core `agent/chat` route; no `agent_actions` table, so the facade cannot persist proposals.
 8. **Other tables missing:** commitments, tasks, dependencies, change proposals, report drafts, publications, registrations, student-private tables. Plans 01 (later steps), 05 and 06 need them.
