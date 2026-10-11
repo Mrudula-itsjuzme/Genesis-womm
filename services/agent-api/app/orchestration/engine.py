@@ -19,6 +19,7 @@ from uuid import UUID
 
 import structlog
 
+from app.orchestration.context import CAMPUS_OFFSET, flat_line
 from app.ports.clock import Clock
 from app.ports.core import CallContext, CoreToolsPort
 from app.ports.errors import (
@@ -40,6 +41,7 @@ from app.schemas.core import (
     AgentAction,
     AgentActionCreate,
     AgentConflictCheckRequest,
+    Conflict,
 )
 from app.schemas.enums import AgentActionType, ToolOutcome
 from app.schemas.rag import AnswerRequest
@@ -61,6 +63,7 @@ class OrchestrationEngine:
         max_tool_calls: int = 6,
         tool_timeout_s: float = 5.0,
         max_tool_bytes: int = 16_384,
+        turn_deadline_s: float = 20.0,
     ) -> None:
         self._llm = llm
         self._core = core
@@ -69,6 +72,7 @@ class OrchestrationEngine:
         self._max_tool_calls = max_tool_calls
         self._tool_timeout_s = tool_timeout_s
         self._max_tool_bytes = max_tool_bytes
+        self._turn_deadline_s = turn_deadline_s
 
     async def run(
         self,
@@ -76,7 +80,24 @@ class OrchestrationEngine:
         ctx: CallContext,
         system_prompt: str,
     ) -> ChatResponse:
-        """Run bounded LLM-tool loop. Returns a validated ChatResponse."""
+        """Run bounded LLM-tool loop. Returns a validated ChatResponse.
+
+        The whole turn has a deadline shorter than Core's wait, so a slow model is stopped here
+        and reported as unavailable instead of being abandoned while it keeps running.
+        """
+        try:
+            async with asyncio.timeout(self._turn_deadline_s):
+                return await self._run(messages, ctx, system_prompt)
+        except TimeoutError as error:
+            log.warning("turn_deadline_exceeded", request_id=ctx.request_id)
+            raise DependencyUnavailableError("assistant", "taking too long") from error
+
+    async def _run(
+        self,
+        messages: list[ChatMessage],
+        ctx: CallContext,
+        system_prompt: str,
+    ) -> ChatResponse:
         mutable = [_defang(message) for message in messages]
         trace: list[ToolTraceEntry] = []
         citations: list[Citation] = []
@@ -242,21 +263,57 @@ class OrchestrationEngine:
         )
         result = await self._core.check_event_conflicts(request, ctx)
         if not result.conflicts:
-            summary = "No conflicts detected. The slot appears available (advisory check only)."
-        else:
-            lines = [f"Found {len(result.conflicts)} conflict(s):"]
-            for c in result.conflicts:
-                lines.append(
-                    f"  - [{c.severity.upper()}] {c.type}: {c.message} "
-                    f"(override_required={c.override_required})"
+            return "No conflicts detected. The slot appears available (advisory check only).", []
+        named = await self._name_other_events(result.conflicts, ctx)
+        lines = [f"Found {len(result.conflicts)} conflict(s):"]
+        for c in result.conflicts:
+            other = named.get(c.event_ids[1]) if len(c.event_ids) > 1 else None
+            lines.append(
+                f"  - [{c.severity.upper()}] {c.type}: {c.message} "
+                f"(override_required={c.override_required})" + (f" with {other}" if other else "")
+            )
+        if result.has_blocking:
+            lines.append(
+                "At least one conflict is BLOCKING. "
+                "An authorized admin override is required to proceed."
+            )
+        return "\n".join(lines), []
+
+    async def _name_other_events(
+        self, conflicts: list[Conflict], ctx: CallContext
+    ) -> dict[UUID, str]:
+        """Title, status and campus time of the other event in each conflict.
+
+        Core lists the event being checked first, so the other event is always the second id. Read
+        through the same facade as any other tool, so Core's visibility rules decide what may be
+        named. A lookup that fails leaves the conflict itself untouched.
+        """
+        wanted: list[UUID] = []
+        for c in conflicts:
+            other = c.event_ids[1] if len(c.event_ids) > 1 else None
+            if other is not None and other not in wanted:
+                wanted.append(other)
+        named: dict[UUID, str] = {}
+        for event_id in wanted[:_MAX_NAMED_EVENTS]:
+            try:
+                event = await asyncio.wait_for(
+                    self._core.get_event_details(event_id, ctx), timeout=self._tool_timeout_s
                 )
-            if result.has_blocking:
-                lines.append(
-                    "At least one conflict is BLOCKING. "
-                    "An authorized admin override is required to proceed."
-                )
-            summary = "\n".join(lines)
-        return summary, []
+            except (
+                DeniedError,
+                NotFoundError,
+                DependencyUnavailableError,
+                ContractViolationError,
+                TimeoutError,
+            ):
+                continue
+            start = event.start_at.astimezone(CAMPUS_OFFSET)
+            end = event.end_at.astimezone(CAMPUS_OFFSET)
+            named[event_id] = (
+                f'"{flat_line(event.title)}" ({event.status}, '
+                f"{start:%a %d %b %H:%M}-{end:%H:%M} IST)"
+            )
+        return named
 
     async def _get_event(
         self, args: dict[str, Any], ctx: CallContext
@@ -340,6 +397,9 @@ class OrchestrationEngine:
             return stripped
         return None
 
+
+# At most this many other events are named per check; the rest stay listed without detail.
+_MAX_NAMED_EVENTS = 3
 
 # Tool results reach the model as lines that begin "[Tool name]". A caller's own messages may
 # not begin that way, or a person could write a result the system never produced.
