@@ -65,6 +65,14 @@ The structured pipeline writes source-backed records to PostgreSQL:
 
 Deduplicate with source-specific stable identifiers first, such as ICS UID. Use normalized title, date, and venue only as a review cue, never as a reason to silently merge uncertain records.
 
+## Private identities, proposals and shared-resource access
+
+- **Public policy retrieval is allowlist-only.** It may index reviewed institutional rules and public procedures; it must not index student timetables, grades, attendance, registration records, faculty-private information, personal contact details, event proposal PDFs or access credentials.
+- **Private proposal PDF ingestion/search is disabled** in the RAG API until authenticated service-to-service identity, resource-owner authorization, club-scoped query enforcement, audit logging and retention/deletion rules are implemented and verified. Approval of a PDF is **not** permission to publish or index it.
+- Existing deployments that previously indexed proposal PDFs must separately audit and delete those private chunks, because disabling new ingestion does not erase historical index data.
+- Publicly listed departmental support channels may be displayed as sourced structured records; do not promote named personal faculty/student contacts into general retrieval without an explicit lawful, reviewed basis.
+- Shared-resource planning (HPC/GPU time, labs, AV equipment) records **interest**, not allocations. It never reveals user identifiers, quota usage, credentials or private workload data to a public search corpus.
+
 ## 6. Source safety rules
 
 - Do not collect student registration lists, roll numbers, personal phone numbers, or other unnecessary personal data.
