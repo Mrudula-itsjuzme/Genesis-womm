@@ -93,6 +93,17 @@ def proposal(status: ProposalStatus = S.SUBMITTED, **changes: object) -> Proposa
 
 # ---- review decisions ------------------------------------------------------------------
 
+
+def test_faculty_review_is_a_separate_status_and_not_rag_eligible(rig: Rig) -> None:
+    record = proposal(S.SUBMITTED)
+    rig.manager.approve_faculty(record, reviewer_id=REVIEWER)
+    assert record.status is S.FACULTY_APPROVED
+    with pytest.raises(ValueError):
+        rig.manager.dispatch_rag_ingest(record)
+    assert rig.rag.ingested == []
+
+
+
 DECISIONS = [
     ("approve_proposal", S.APPROVED),
     ("reject_proposal", S.REJECTED),
