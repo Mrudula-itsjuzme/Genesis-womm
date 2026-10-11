@@ -23,3 +23,11 @@ def test_session_token_rejects_a_tampered_signature() -> None:
     token, _ = service.issue(uuid4())
     with pytest.raises(InvalidSessionTokenError):
         service.verify(f"{token}x")
+
+
+def test_session_token_requires_an_expiry_claim() -> None:
+    service = PyJwtTokenService("s" * 40)
+    token = jwt.encode({"iss": "core", "sub": str(uuid4())}, "s" * 40, algorithm="HS256")
+
+    with pytest.raises(InvalidSessionTokenError):
+        service.verify(token)
