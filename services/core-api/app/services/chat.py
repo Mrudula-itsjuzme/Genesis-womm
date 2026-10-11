@@ -91,6 +91,10 @@ class ChatService:
         self._actions = actions
         self._context = context
 
+    @property
+    def context_source(self) -> ChatContextSource | None:
+        return self._context
+
     def chat(self, ctx: RequestContext, turn: ChatTurn) -> AgentReply:
         # Issuing the delegation is also the authorization check: nothing about the campus is
         # looked up for someone who may not use the assistant.
