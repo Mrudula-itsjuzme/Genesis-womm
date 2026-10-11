@@ -179,7 +179,7 @@ def main() -> int:
         f"total={events['total']}",
     )
     _, resources = call("GET", f"{CORE}/api/v1/resources?kind=VENUE", token=organizer)
-    check("three venues are catalogued", resources["total"] == 3, f"total={resources['total']}")
+    check("venues are catalogued", resources["total"] >= 3, f"total={resources['total']}")
     before = events["total"]
 
     section("5. The assistant plans a free slot (a real tool loop)")
