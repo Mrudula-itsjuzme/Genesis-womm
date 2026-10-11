@@ -33,50 +33,22 @@ def mock_chroma() -> ChromaStore:
     return ChromaStore(use_mock=True)
 
 
-def test_ingest_and_delete_proposal_lifecycle(test_client: TestClient, mock_chroma: ChromaStore) -> None:
+def test_private_proposal_ingestion_is_disabled_and_does_not_fetch_pdf(test_client: TestClient, mock_chroma: ChromaStore) -> None:
     app.dependency_overrides[get_chroma_store] = lambda: mock_chroma
-
-    proposal_id = str(uuid4())
-    event_id = str(uuid4())
-    club_id = str(uuid4())
-
-    pdf_bytes = generate_test_pdf_bytes("Proposing annual robotics symposium in Amrita Coimbatore Campus.")
-
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.content = pdf_bytes
-    mock_resp.raise_for_status = MagicMock()
-
-    with patch("httpx.get", return_value=mock_resp):
-        # 1. Ingest proposal
-        payload = {
-            "proposal_id": proposal_id,
-            "event_id": event_id,
-            "club_id": club_id,
-            "revision": 1,
-            "presigned_url": "https://minio.local/presigned-url.pdf",
-            "title": "Robotics Symposium Proposal",
-            "submitted_by": "user-123",
-            "approved_by": "osa-admin",
-        }
-        resp = test_client.post("/v1/ingest/proposal", json=payload)
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["proposal_id"] == proposal_id
-        assert data["event_id"] == event_id
-        assert data["collection"] == "proposals"
-        assert data["status"] == "success"
-
-        # 2. Delete proposal chunks after lifecycle conclusion
-        del_resp = test_client.request(
-            "DELETE",
-            f"/v1/ingest/proposal/{proposal_id}",
-            json={"event_id": event_id},
-        )
-        assert del_resp.status_code == 200
-        del_data = del_resp.json()
-        assert del_data["proposal_id"] == proposal_id
-        assert del_data["event_id"] == event_id
-        assert del_data["status"] in ("success", "not_found")
-
-    app.dependency_overrides.clear()
+    payload = {
+        "proposal_id": str(uuid4()),
+        "event_id": str(uuid4()),
+        "club_id": str(uuid4()),
+        "revision": 1,
+        "presigned_url": "https://example.invalid/private.pdf",
+        "title": "Private faculty and student records",
+        "submitted_by": "user-123",
+    }
+    try:
+        with patch("httpx.get") as fetch:
+            response = test_client.post("/v1/ingest/proposal", json=payload)
+            assert response.status_code == 403
+            fetch.assert_not_called()
+        assert mock_chroma.count("proposals") == 0
+    finally:
+        app.dependency_overrides.clear()
