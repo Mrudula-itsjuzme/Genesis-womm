@@ -1,6 +1,6 @@
 # Implementation Plan 08: Schedule Changes and Dependency Impact
 
-Status: In progress on `feat/schedule-change-impact` (2026-10-11).
+Status: Implemented and verified on `feat/schedule-change-impact` (2026-10-11).
 
 User-selected continuation of the frontend integration. Implements architecture AD-14 using the existing campus lock, authorization table and revision/audit history.
 
@@ -16,24 +16,26 @@ User-selected continuation of the frontend integration. Implements architecture 
 
 ## Atomic implementation slices
 
-- [ ] Pure impact function and meaningful unit tests.
-- [ ] Change/operational-item persistence models, migration and model registration.
-- [ ] Persistence integration tests and migration/metadata verification.
-- [ ] Typed change ports and SQL adapter.
-- [ ] SQL unit-of-work wiring and adapter tests.
-- [ ] Authorized staging/dependency/read service and tests.
-- [ ] Schedule writer apply/revalidation and transaction tests.
-- [ ] Wire schemas and schema-validation tests.
-- [ ] Container/dependency/app wiring with tests.
-- [ ] HTTP routes, route tests and generated OpenAPI.
-- [ ] Frontend generated types and typed endpoints.
-- [ ] Persisted changes/impact and dependency UI with browser tests.
-- [ ] Live smoke, full regression, plans and handoff.
+- [x] Pure impact function and meaningful unit tests.
+- [x] Change/operational-item persistence models, migration and model registration.
+- [x] Persistence integration tests and migration/metadata verification.
+- [x] Typed change ports and SQL adapter.
+- [x] SQL unit-of-work wiring and adapter tests.
+- [x] Authorized staging/dependency/read service and tests.
+- [x] Schedule writer apply/revalidation and transaction tests.
+- [x] Wire schemas and schema-validation tests.
+- [x] Container/dependency/app wiring with tests.
+- [x] HTTP routes, route tests and generated OpenAPI.
+- [x] Frontend generated types and typed endpoints.
+- [x] Persisted changes/impact and dependency UI with browser tests.
+- [x] Live smoke, full regression, plans and handoff.
 
 ## Verification
 
 Run targeted red/green tests and static checks before each explicit 2–3-file commit. Final gates: Core pytest (including PostgreSQL concurrency), ruff check/format, mypy, import-linter, contract drift; web lint/type/unit/build/browser; Compose migration and live gateway smoke. Preserve pre-existing `ui_mock.png`.
 
 ## Boundaries
+
+Implementation decisions: impact preview uses POST `/events/{event_id}/impact` with a typed patch body; saved proposals have bounded pagination. Migration 0005 creates storage; 0006 renames the fixed rule discriminator to `rule_code` without rewriting applied migrations. Applying recomputes dependencies registered after staging. Confirmed attendance-only edits preserve verification. Rollback and competing-apply tests run against PostgreSQL. Frontend partial patches preserve timestamp seconds when controls are untouched. Verification and commit ledger are in [HANDOFF.md](../HANDOFF.md).
 
 No outbound messages, automatic AI apply, official commitment verification UI, graph inference, resource booking claims or report/RAG changes. Dependency metadata is explicitly registered, not inferred. Existing scheduling rules and statuses remain authoritative.

@@ -1,4 +1,74 @@
-# HANDOFF: CampusCue frontend/backend integration
+# HANDOFF: CampusCue schedule changes and dependency impact
+
+> **Latest continuation: 2026-10-11.** Branch `feat/schedule-change-impact`, based on integration HEAD `32ea704`. User selected Core schedule changes and dependency impact. [Plan 08](Implementation_Plans/08-schedule-change-impact.md) is implemented. This section supersedes the older current-state notes below. Local commits only; no push or deployment.
+
+## Delivered continuation
+
+Organizers stage revision-bound schedule/venue/attendance proposals without mutating events. Club/campus administrators explicitly apply them; Core rechecks revision, conflicts and current registered dependencies under the campus lock. Event revision/audit, proposal decision and revalidation commit or roll back together. Competing applies cannot both succeed. Idempotency preserves retry outcomes.
+
+Registered organizer-reported tasks and requested commitments bind to explicit fields. Matching tasks receive a revalidation flag; live commitments become NEEDS_REVALIDATION. Closed work is excluded. Schedule/venue edits demote confirmed events to submitted and clear current verification while retaining historical evidence; attendance-only changes retain confirmation. An empty impact means no registered binding matched, not absence of real-world impact.
+
+New authenticated endpoints under `/api/v1/events/{event_id}`: POST `/impact`; GET/POST `/dependencies`; GET/POST `/change-proposals`; GET `/change-proposals/{proposal_id}`; POST `/change-proposals/{proposal_id}/apply`. Reads/writes are club-scoped; delegated actors cannot stage/apply. Omitted patch fields stay unchanged and explicit null clears nullable fields. OpenAPI and generated TypeScript types are synchronized.
+
+The Changes page shows live impact, dependency records, paginated saved proposals and role-gated human apply controls. Mutation retries use stable keys. Stale failures retain review state. Untouched timestamps retain seconds when another field changes. Migrations 0005/0006 add persistence and name the fixed rule discriminator `rule_code`; the local demo is at 0006.
+
+## Continuation verification
+
+Commands below executed in this continuation. All final commands returned exit 0.
+
+| Location / command | Evidence |
+|---|---|
+| Core `uv run pytest -q --tb=short` | **1064 passed, 1 skipped in 219.70 s**; includes real PostgreSQL rollback, fresh-dependency revalidation, authorization, migration and competing-apply coverage. Skip is the existing empty stub parameter set. |
+| Core `uv run ruff check .` / `uv run ruff format --check .` | All checks passed; 154 files formatted. |
+| Core `uv run mypy` | 152 source files, no issues. |
+| Core `uv run lint-imports` | 9 contracts kept, 0 broken. |
+| Core `uv run python -m scripts.export_contracts --check` | No contract drift. |
+| Core `uv run python ../../apps/web/scripts/export_types.py --check` | No wire-type drift. |
+| Web `npm test` | 15 passed, 0 failed/skipped; 621.63 ms. |
+| Web `npm run lint` / `npx tsc --noEmit` | No lint/type errors. |
+| Web `npm run build` | Production build passes, all 12 static page outputs generated. |
+| Web `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 npx playwright test --workers=1` | **14 passed in 33.7 s**, including untouched timestamp seconds. |
+| Web `npx playwright test --workers=1` | **14 passed in 20.4 s** against refreshed production web. |
+| Web `PLAYWRIGHT_LIVE=1 npx playwright test --workers=1` | **2 passed in 6.3 s** against refreshed production gateway/Core/PostgreSQL/MinIO; staged changes, human admin apply, dependency flags, stale revisions, PDF storage and existing lifecycle/chat smoke. |
+| Root `docker compose --env-file .env.example config --quiet` | Valid Compose configuration. |
+| Root `docker compose --env-file .env.example up -d --build postgres migrate minio minio-init core-api agent-api web` | Built and started demo, migrations/storage initialization exit 0. Core subsequently rebuilt for 0006; web refreshed for final timestamp fix. |
+| Root `docker compose --env-file .env.example exec core-api python -m alembic current` | `0006 (head)`. |
+| Root `docker compose --env-file .env.example exec core-api python -m scripts.seed_demo` | Synthetic directory ready. |
+
+Initial failures were resolved: Docker was stopped after interruption; schema naming test rejected a text `rule_id` (fixed by 0006); live-test session initialization/cleanup credentials were corrected; a browser test reproduced timestamp rounding and now passes. No final known test failures.
+
+## Continuation commits (atomic slices)
+
+| Hash | Conventional commit |
+|---|---|
+| `ddd890a` | docs(core): plan staged schedule changes and dependency impact |
+| `dfe0f9c` | feat(core): compute deterministic registered dependency impact |
+| `1e386c5` | feat(core): persist change proposals and event dependencies |
+| `77cdf4a` | feat(core): store explicit field dependencies and staged changes |
+| `4cc80bc` | feat(core): transact dependency records through the unit of work |
+| `6edbef1` | feat(core): preview authorized changes against registered dependencies |
+| `8f631a0` | feat(core): apply staged changes with atomic dependency revalidation |
+| `db3d391` | feat(contracts): define strict change and impact schemas |
+| `336c701` | feat(core): wire change queries into the application |
+| `109dd5a` | feat(core): provide request scoped change queries |
+| `744fce7` | feat(core): expose staged changes and dependency impact routes |
+| `f0cd1e5` | test(core): verify change authority rollback and fresh impact |
+| `74e5c56` | feat(frontend): add typed change and dependency clients |
+| `2dc94dd` | feat(frontend): stage changes and review registered dependency impact |
+| `7e6e7e8` | fix(core): name dependency rule codes without uuid ambiguity |
+| `051371b` | test(frontend): verify live staged change and revalidation workflow |
+| `0d582c3` | docs(core): track persisted change and dependency impact delivery |
+| `c2349bb` | fix(frontend): preserve untouched timestamps in partial changes |
+
+The final documentation commit records this handoff and Plan 08 completion; inspect `git log --oneline 32ea704..HEAD` for its hash and the complete ledger. PLAN.md, Plan 04 and IMPLEMENTATION_INDEX.md now reflect delivery.
+
+## Remaining scope and workspace
+
+Commitment timeline/evidence verification, dependency closure/reverification UI and drafted follow-ups remain future work; no inferred dependency graph or outbound messaging was added. Server reports and real RAG model/index/evaluation work remain pending. All demo records are explicitly synthetic; successful live QA events are cancelled, while failed early smoke attempts left tentative synthetic records. User-owned untracked `ui_mock.png` is preserved. No temporary source files, credentials or build artifacts were staged; ignored Playwright diagnostics remain under scratch.
+
+---
+
+# Prior handoff: CampusCue frontend/backend integration
 
 > **Current update:** 2026-10-11. This section supersedes older branch/HEAD/setup notes below. Branch: `feat/frontend-backend-integration`, based on `a54fe1b`. No push or deployment performed.
 > **Active plan:** [full frontend/backend integration](docs/superpowers/plans/2026-10-11-full-frontend-backend-integration.md). Implemented against available Core contracts; backend-dependent extensions remain.
