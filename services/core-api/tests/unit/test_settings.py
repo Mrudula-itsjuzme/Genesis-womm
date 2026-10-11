@@ -69,6 +69,23 @@ def test_internal_key_may_be_empty_in_local() -> None:
     assert make(app_env="local", internal_api_key=SecretStr("")).app_env == "local"
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("session_signing_key", "dev-" + "x" * 36),
+        ("delegation_signing_key", "dev-" + "x" * 36),
+        ("internal_api_key", "dev-" + "x" * 36),
+        ("minio_access_key", "campuscue_admin"),
+        ("minio_secret_key", "campuscue_secret"),
+    ],
+)
+def test_demo_rejects_development_secrets_and_default_object_storage_credentials(
+    field: str, value: str
+) -> None:
+    with pytest.raises(ValidationError):
+        make(app_env="demo", **{field: SecretStr(value)})
+
+
 def test_agent_client_timeout_must_exceed_turn_deadline() -> None:
     with pytest.raises(ValidationError, match="timeout"):
         make(agent_turn_deadline_s=20.0, agent_client_timeout_s=20.0)
