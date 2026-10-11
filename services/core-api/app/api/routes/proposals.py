@@ -16,8 +16,9 @@ from app.schemas.proposals import (
     ProposalStatusPatch,
     ProposalUploadOut,
 )
+from app.services.errors import InvalidRequestError
 from app.services.ports import ProposalRecord
-from app.services.proposals import ProposalService, ReviewAction
+from app.services.proposals import MAX_PROPOSAL_BYTES, ProposalService, ReviewAction
 from app.services.schedule_write import RequestContext
 
 router = APIRouter(
@@ -51,7 +52,9 @@ async def upload_proposal(
     request: Request,
     title: Annotated[str, Form(description="Title of the proposal")] = "Event Proposal",
 ) -> ProposalUploadOut:
-    content = await file.read()
+    content = await file.read(MAX_PROPOSAL_BYTES + 1)
+    if len(content) > MAX_PROPOSAL_BYTES:
+        raise InvalidRequestError(f"the proposal file is larger than {MAX_PROPOSAL_BYTES} bytes")
     record = await asyncio.to_thread(
         service.submit,
         RequestContext(actor=actor, request_id=str(request.state.request_id)),
