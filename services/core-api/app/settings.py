@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     app_env: AppEnv = "local"
     log_level: str = "INFO"
+    cors_allowed_origins: tuple[str, ...] = ("http://localhost:3000",)
     # CampusCue planning rule, not verified institutional policy.
     campus_gap_minutes: int = Field(default=120, ge=1)
 
