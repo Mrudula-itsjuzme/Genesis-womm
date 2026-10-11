@@ -226,6 +226,10 @@ def test_filed_draft_is_returned_as_a_proposal_not_a_completed_event() -> None:
     responses = [
         LlmResponse(
             text=None,
+            tool_calls=[ToolCall(id="tc-check", name="check_event_conflicts", arguments={})],
+        ),
+        LlmResponse(
+            text=None,
             tool_calls=[
                 ToolCall(
                     id="tc-draft",

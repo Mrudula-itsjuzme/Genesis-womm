@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -43,7 +44,7 @@ from app.schemas.core import (
     AgentConflictCheckRequest,
     Conflict,
 )
-from app.schemas.enums import AgentActionType, ToolOutcome
+from app.schemas.enums import AgentActionType, Severity, ToolOutcome
 from app.schemas.rag import AnswerRequest
 from app.tools.allowlist import ALLOWED_TOOL_NAMES, TOOL_SCHEMAS
 
@@ -99,6 +100,8 @@ class OrchestrationEngine:
         system_prompt: str,
     ) -> ChatResponse:
         mutable = [_defang(message) for message in messages]
+        typed = [m.content for m in messages if m.role == "user"]
+        turn = _TurnState(go_ahead=bool(typed) and _GO_AHEAD.search(typed[-1]) is not None)
         trace: list[ToolTraceEntry] = []
         citations: list[Citation] = []
         proposed_actions: list[AgentAction] = []
@@ -142,7 +145,9 @@ class OrchestrationEngine:
             # Dispatch each tool call
             for tc in response.tool_calls:
                 tool_calls_used += 1
-                result_text, _outcome, new_citations, action = await self._dispatch(tc, ctx, trace)
+                result_text, _outcome, new_citations, action = await self._dispatch(
+                    tc, ctx, trace, turn
+                )
                 citations.extend(new_citations)
                 if action is not None:
                     proposed_actions.append(action)
@@ -158,6 +163,7 @@ class OrchestrationEngine:
         tc: ToolCall,
         ctx: CallContext,
         trace: list[ToolTraceEntry],
+        turn: _TurnState,
     ) -> tuple[str, ToolOutcome, list[Citation], AgentAction | None]:
         """Dispatch one tool call; always appends a trace entry."""
         start_instant = self._clock.now()
@@ -179,7 +185,7 @@ class OrchestrationEngine:
 
         try:
             result, new_citations, action = await asyncio.wait_for(
-                self._call_tool(tc, ctx),
+                self._call_tool(tc, ctx, turn),
                 timeout=self._tool_timeout_s,
             )
             # Enforce output size cap
@@ -222,12 +228,12 @@ class OrchestrationEngine:
         return result, outcome, new_citations, action
 
     async def _call_tool(
-        self, tc: ToolCall, ctx: CallContext
+        self, tc: ToolCall, ctx: CallContext, turn: _TurnState
     ) -> tuple[str, list[Citation], AgentAction | None]:
         args = tc.arguments
 
         if tc.name == "check_event_conflicts":
-            result, citations = await self._check_conflicts(args, ctx)
+            result, citations = await self._check_conflicts(args, ctx, turn)
             return result, citations, None
 
         if tc.name == "get_event_details":
@@ -239,7 +245,7 @@ class OrchestrationEngine:
             return result, citations, None
 
         if tc.name == "file_event_draft_proposal":
-            return await self._file_draft(args, ctx)
+            return await self._file_draft(args, ctx, turn)
 
         if tc.name == "file_change_request_proposal":
             return await self._file_change(args, ctx)
@@ -252,7 +258,7 @@ class OrchestrationEngine:
     # ------------------------------------------------------------------
 
     async def _check_conflicts(
-        self, args: dict[str, Any], ctx: CallContext
+        self, args: dict[str, Any], ctx: CallContext, turn: _TurnState
     ) -> tuple[str, list[Citation]]:
         request = AgentConflictCheckRequest(
             event_id=_opt_uuid(args.get("event_id")),
@@ -262,6 +268,10 @@ class OrchestrationEngine:
             resource_id=_opt_uuid(args.get("resource_id")),
         )
         result = await self._core.check_event_conflicts(request, ctx)
+        turn.checked = True
+        turn.flagged = any(
+            c.severity in (Severity.WARNING, Severity.BLOCKING) for c in result.conflicts
+        )
         if not result.conflicts:
             return "No conflicts detected. The slot appears available (advisory check only).", []
         named = await self._name_other_events(result.conflicts, ctx)
@@ -350,8 +360,16 @@ class OrchestrationEngine:
         return response.answer, list(response.citations)
 
     async def _file_draft(
-        self, args: dict[str, Any], ctx: CallContext
+        self, args: dict[str, Any], ctx: CallContext, turn: _TurnState
     ) -> tuple[str, list[Citation], AgentAction]:
+        if turn.flagged and not turn.go_ahead:
+            raise DeniedError(
+                "the conflict check found warnings or blocking conflicts and the person has not "
+                "told you to go ahead. Explain the conflicts and ask whether to propose it anyway "
+                "or to try another time or venue."
+            )
+        if not turn.checked and not turn.go_ahead:
+            raise DeniedError("check the slot with check_event_conflicts before filing a proposal.")
         action_create = AgentActionCreate(
             type=AgentActionType.CREATE_EVENT_DRAFT,
             summary=str(args["summary"]),
@@ -396,6 +414,20 @@ class OrchestrationEngine:
         if stripped.endswith("?") and len(stripped.splitlines()) <= 3:
             return stripped
         return None
+
+
+# The person's own words that mean "file it despite what you found". Typed by the person in their
+# latest message; nothing the model or a tool says can set it.
+_GO_AHEAD = re.compile(r"\b(go ahead|proceed|anyway|file it|propose it|do it|yes)\b", re.I)
+
+
+@dataclass
+class _TurnState:
+    """What this turn has established, so filing can be refused in code and not just in a prompt."""
+
+    go_ahead: bool
+    checked: bool = False
+    flagged: bool = False  # the latest check found a warning or a block
 
 
 # At most this many other events are named per check; the rest stay listed without detail.
