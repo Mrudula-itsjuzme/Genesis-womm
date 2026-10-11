@@ -308,18 +308,17 @@ def test_no_link_is_made_for_someone_who_may_not_read_it(rig: Rig, actor: Actor)
 # ---- reviewing -------------------------------------------------------------------------
 
 
-def test_a_campus_admin_approves_and_rag_is_told_who_approved_it(rig: Rig) -> None:
+def test_approving_a_private_proposal_never_publishes_it_to_rag(rig: Rig) -> None:
     saved = submit(rig)
 
     reviewed = rig.svc.review(ctx(CAMPUS), saved.id, ReviewAction.APPROVE, "Looks good")
 
-    assert reviewed.status is S.CHUNKED
+    assert reviewed.status is S.APPROVED
     assert (reviewed.reviewed_by, reviewed.review_note) == (CAMPUS.user_id, "Looks good")
-    [payload] = rig.rag.ingested
-    assert payload["approved_by"] == str(CAMPUS.user_id)
-    assert payload["submitted_by"] == str(ORGANIZER.user_id)
+    assert rig.rag.ingested == []
+    assert rig.storage.presigned == []
     stored = rig.db.state.proposals[saved.id]
-    assert (stored.status, stored.rag_ingested_at) == (S.CHUNKED, NOW)
+    assert (stored.status, stored.rag_ingested_at) == (S.APPROVED, None)
     assert ("REVIEW_PROPOSAL", "SUCCESS", None, "USER") in audit(rig)
 
 
