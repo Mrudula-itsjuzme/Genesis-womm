@@ -46,3 +46,9 @@ chroma_db/
 *.sqlite3
 *.sqlite
 
+# Allow tracked RAG policy corpus and pre-built ChromaDB
+!services/rag-api/data/corpus_chunks.jsonl
+!services/rag-api/data/dense_embeddings.npy
+!services/rag-api/data/chroma_db/
+!services/rag-api/data/chroma_db/**
+
