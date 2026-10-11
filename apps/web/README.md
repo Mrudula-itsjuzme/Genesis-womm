@@ -17,6 +17,8 @@ The fake Agent provider is the default and may abstain. Real policy answers need
 
 Proposal PDFs use MinIO with private buckets; download links expire after 15 minutes. `MINIO_PUBLIC_ENDPOINT` must be browser reachable (localhost:9000 for a local demo). Regenerate links after expiration. Proposal review remains subject to Core authorization and RAG availability.
 
+The Changes page also registers organizer-reported tasks or requested commitments against schedule, venue and attendance fields. Stage a change to preview conflicts and affected work without changing the event. Club/campus administrators apply saved proposals after review; Core rechecks revision and dependencies atomically. Schedule or venue changes demote confirmed events to submitted. Matching live commitments/tasks require revalidation. Empty impact only means no registered binding matched. The live `changes.spec.ts` smoke verifies this workflow through the real gateway.
+
 Compose builds the pinned MinIO community server and client sources because the historical public images and binary downloads are unavailable. The first build downloads Go modules and takes longer; subsequent builds use Docker's cache. Source commits are checked in `infra/minio/Dockerfile`.
 
 ## Development and verification
