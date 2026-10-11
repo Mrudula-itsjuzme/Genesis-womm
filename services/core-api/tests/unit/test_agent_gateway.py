@@ -7,8 +7,9 @@ contract does not declare fails here and not as a 404 in production.
 import json
 import re
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
@@ -16,8 +17,9 @@ import respx
 import yaml
 
 from app.clients.agent_gateway import HttpAgentGateway
+from app.domain.enums import AvailabilityState, Role
 from app.services.errors import AgentOutputInvalidError, AgentUnavailableError
-from app.services.ports import ChatTurn
+from app.services.ports import ChatClub, ChatContext, ChatTurn, ChatVenue
 from scripts import export_contracts as export
 
 BASE = "http://agent.test"
@@ -84,6 +86,33 @@ def test_the_body_carries_the_turn_and_a_fixed_access_level(gateway: HttpAgentGa
             {"role": "assistant", "content": "For when?"},
         ],
         "access_level": "CAMPUS_PUBLIC",
+    }
+
+
+@respx.mock
+def test_the_context_goes_over_in_a_documented_shape(gateway: HttpAgentGateway) -> None:
+    club, venue = UUID(int=5), UUID(int=6)
+    context = ChatContext(
+        now=datetime(2026, 11, 1, 3, 0, tzinfo=UTC),
+        clubs=(ChatClub(club, "Robotics Club", Role.ORGANIZER),),
+        venues=(ChatVenue(venue, "Main Auditorium", 450, AvailabilityState.CONFIRMED),),
+    )
+    respx.post(URL).respond(json=REPLY)
+
+    chat(gateway, ChatTurn(messages=(("user", "Plan it"),), context=context))
+
+    assert json.loads(respx.calls.last.request.content)["context"] == {
+        "now": "2026-11-01T03:00:00+00:00",
+        "timezone": "Asia/Kolkata",
+        "clubs": [{"id": str(club), "name": "Robotics Club", "role": "ORGANIZER"}],
+        "venues": [
+            {
+                "id": str(venue),
+                "name": "Main Auditorium",
+                "capacity": 450,
+                "availability": "CONFIRMED",
+            }
+        ],
     }
 
 

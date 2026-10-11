@@ -9,11 +9,32 @@ from typing import Any
 import httpx
 
 from app.services.errors import AgentOutputInvalidError, AgentUnavailableError
-from app.services.ports import ChatTurn
+from app.services.ports import ChatContext, ChatTurn
 
 # A route in contracts/agent-api.openapi.yaml; a unit test pins it.
 CHAT_PATH = "/v1/agent/chat"
 _ACCESS_LEVEL = "CAMPUS_PUBLIC"
+_CAMPUS_TIMEZONE = "Asia/Kolkata"
+
+
+def _context_body(context: ChatContext) -> dict[str, Any]:
+    return {
+        "now": context.now.isoformat(),
+        "timezone": _CAMPUS_TIMEZONE,
+        "clubs": [
+            {"id": str(club.id), "name": club.name, "role": club.role.value}
+            for club in context.clubs
+        ],
+        "venues": [
+            {
+                "id": str(venue.id),
+                "name": venue.name,
+                "capacity": venue.capacity,
+                "availability": venue.availability.value,
+            }
+            for venue in context.venues
+        ],
+    }
 
 
 class HttpAgentGateway:
@@ -27,6 +48,8 @@ class HttpAgentGateway:
         }
         if turn.event_id is not None:
             body["event_id"] = str(turn.event_id)
+        if turn.context is not None:
+            body["context"] = _context_body(turn.context)
         try:
             response = self._client.post(
                 CHAT_PATH,
