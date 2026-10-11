@@ -44,10 +44,10 @@ function Conversation() {
     </article>)}</div>
     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
       <span className="font-medium text-stone-500">Demo prompts:</span>
-      <button type="button" onClick={() => setInput('Plan a workshop for Synthetic Robotics Club in Synthetic Main Auditorium on 24 November 2026 from 3pm to 5pm.')} className="rounded-full border border-rose-200 bg-rose-50/60 px-3 py-1 text-[#7a1b32] transition hover:bg-rose-100">
+      <button type="button" onClick={() => setInput('Plan a workshop for the Robotics and Automation Society in Tagore Auditorium on 24 November 2026 from 3pm to 5pm.')} className="rounded-full border border-rose-200 bg-rose-50/60 px-3 py-1 text-[#7a1b32] transition hover:bg-rose-100">
         📅 Plan Robotics Workshop
       </button>
-      <button type="button" onClick={() => setInput('Plan an event in Synthetic Main Auditorium on 20 November 2026 from 10am to 11am.')} className="rounded-full border border-amber-200 bg-amber-50/60 px-3 py-1 text-amber-900 transition hover:bg-amber-100">
+      <button type="button" onClick={() => setInput('Plan an event in Tagore Auditorium on 20 November 2026 from 10am to 11am.')} className="rounded-full border border-amber-200 bg-amber-50/60 px-3 py-1 text-amber-900 transition hover:bg-amber-100">
         ⚠️ Test Conflicting Slot
       </button>
     </div>
