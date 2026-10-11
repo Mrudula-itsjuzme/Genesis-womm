@@ -17,6 +17,7 @@ class MinIOProposalStorage:
         archive_bucket: str = "campuscue-proposals-archive-dev",
         use_ssl: bool = False,
         client: Any = None,
+        public_endpoint: str | None = None,
     ) -> None:
         self.endpoint = endpoint
         self.access_key = access_key
@@ -25,27 +26,28 @@ class MinIOProposalStorage:
         self.archive_bucket = archive_bucket
         self.use_ssl = use_ssl
         self._client = client
+        self.public_endpoint = public_endpoint
+        self._download_client: Any = None
+
+    def _s3_client(self, endpoint: str) -> Any:
+        import boto3
+        from botocore.client import Config
+
+        protocol = "https" if self.use_ssl else "http"
+        endpoint_url = endpoint if endpoint.startswith("http") else f"{protocol}://{endpoint}"
+        return boto3.client(
+            "s3",
+            endpoint_url=endpoint_url,
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+            config=Config(signature_version="s3v4"),
+            region_name="us-east-1",
+        )
 
     @property
     def client(self) -> Any:
         if self._client is None:
-            # Lazy import and initialization of boto3 or minio client
-            import boto3
-            from botocore.client import Config
-
-            protocol = "https" if self.use_ssl else "http"
-            if not self.endpoint.startswith("http"):
-                endpoint_url = f"{protocol}://{self.endpoint}"
-            else:
-                endpoint_url = self.endpoint
-            self._client = boto3.client(
-                "s3",
-                endpoint_url=endpoint_url,
-                aws_access_key_id=self.access_key,
-                aws_secret_access_key=self.secret_key,
-                config=Config(signature_version="s3v4"),
-                region_name="us-east-1",
-            )
+            self._client = self._s3_client(self.endpoint)
         return self._client
 
     def build_object_key(
@@ -111,7 +113,12 @@ class MinIOProposalStorage:
         expires_in_seconds: int = 900,
     ) -> str:
         """Generates a short-lived presigned GET URL (default 15 minutes TTL)."""
-        url: str = self.client.generate_presigned_url(
+        signer = self.client
+        if self.public_endpoint:
+            if self._download_client is None:
+                self._download_client = self._s3_client(self.public_endpoint)
+            signer = self._download_client
+        url: str = signer.generate_presigned_url(
             "get_object",
             Params={"Bucket": bucket, "Key": object_key},
             ExpiresIn=expires_in_seconds,
