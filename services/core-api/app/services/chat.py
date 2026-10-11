@@ -7,12 +7,12 @@ proposal from its own database, keeping only the signed-in person's.
 """
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
-from app.schemas.agent import Citation, MessageText, ToolTraceEntry
+from app.domain.enums import ToolOutcome
 from app.services.agent_actions import AgentActionService
 from app.services.delegation import DelegationService
 from app.services.errors import AgentOutputInvalidError
@@ -22,6 +22,28 @@ from app.services.schedule_write import RequestContext
 # A turn is bounded to a handful of tool calls, so a reply naming more proposals than this is
 # not something the Agent produced honestly.
 MAX_PROPOSALS_PER_REPLY = 20
+_MESSAGE_TEXT = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)
+]
+
+
+class _Citation(BaseModel):
+    evidence_id: str
+    document_id: str
+    title: str
+    source_url: str
+    page_start: int
+    page_end: int
+    excerpt: str
+    document_version: str
+
+
+class _ToolTraceEntry(BaseModel):
+    tool: str
+    args: dict[str, Any]
+    outcome: ToolOutcome
+    latency_ms: int
+    request_id: str
 
 
 class _ProposedActionReference(BaseModel):
@@ -37,11 +59,11 @@ class _AgentReplyPayload(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    message: MessageText
+    message: _MESSAGE_TEXT
     clarifying_question: str | None = None
-    citations: list[Citation] = Field(default_factory=list)
+    citations: list[_Citation] = Field(default_factory=list)
     proposed_actions: list[_ProposedActionReference] = Field(default_factory=list)
-    trace: list[ToolTraceEntry] = Field(default_factory=list)
+    trace: list[_ToolTraceEntry] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
