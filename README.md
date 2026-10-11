@@ -21,11 +21,12 @@ apps/
 ```
 
 ## Architecture in one minute
-- `core-api`: operational source of truth, authorization, event scheduling and audit.
-- `agent-api`: bounded tool orchestration and explanations.
-- `rag-api`: approved document ingestion, hybrid retrieval and citations.
-- `web`: user interface.
-- PostgreSQL: operational records and initial sparse/dense retrieval storage.
+- `core-api`: operational source of truth, authorization (Club Organizer, Faculty Advisor, Club Admin, Campus Admin), deterministic scheduling, and audit.
+- `agent-api`: bounded tool orchestration and policy explanations.
+- `rag-api`: approved document ingestion (Amrita Student Affairs Handbook), hybrid retrieval, ChromaDB vector store, and page citations.
+- `web`: Next.js user interface with official Amrita Coimbatore Facility Booking form (Rev. 15-Nov-24), dynamic conflict warnings, and interactive approval queues.
+- PostgreSQL: operational records and audit history.
+- MinIO: private S3 object storage for proposal PDF attachments.
 
 ## Student registration flow
 

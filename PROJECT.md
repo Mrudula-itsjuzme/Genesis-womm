@@ -9,10 +9,11 @@ CampusCue is an AI-assisted event operations workspace that helps university clu
 - Primary use case: club event planning and operations before and after official approval, with a private student discovery and registration experience for published events.
 
 ## Users
-- Club organizers: create proposals, discover resources, track requests, manage event dependencies, prepare reports.
+- Club organizers: create proposals, submit official facility bookings, discover resources, track requests, manage event dependencies, prepare reports.
+- Faculty advisors: assigned to specific clubs, review and endorse event proposals at Stage 1 before submission to university administration.
 - Club committee members: coordinate tasks and handovers within authorized visibility.
 - Students: discover events published to them, review private academic-risk warnings, and register internally or continue to an organizer-selected external registration page.
-- Authorized campus administrators: verify institutional status and apply explicitly permitted overrides, if the pilot authorizes this role.
+- Authorized campus administrators: Office of Student Affairs (OSA), verify institutional status, conduct final Stage 2 proposal reviews, apply explicitly permitted overrides, and record official booking evidence.
 - Incoming committee members: use approved, sanitized operational memory.
 
 ## Problem

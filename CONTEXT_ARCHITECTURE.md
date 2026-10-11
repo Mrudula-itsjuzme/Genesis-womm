@@ -21,22 +21,32 @@ flowchart TB
     UI[Web Frontend]
     CORE[Core API and Scheduling Engine]
     DB[(PostgreSQL)]
+    CHROMA[(ChromaDB Vector Store)]
+    MINIO[(MinIO S3 Proposal Storage)]
     AGENT[Agent FastAPI]
     RAG[RAG FastAPI]
-    DOCS[Approved Documents]
-    LLM[LLM Provider or Local Model]
-    EMB[Embedding / Reranker]
+    DOCS[Approved Documents & Student Handbook]
+    LLM[Groq / LLM Provider]
+    EMB[Local Embedding Models]
 
     UI --> CORE
     CORE <--> DB
+    CORE <--> MINIO
     CORE --> AGENT
     AGENT --> CORE
     AGENT --> RAG
     AGENT --> LLM
     RAG --> DOCS
+    RAG --> CHROMA
     RAG --> EMB
     RAG --> LLM
 ```
+
+## 2.1 Multi-Stage Proposal Workflow
+Proposals follow a deterministic two-stage authorized review pipeline before official institutional booking:
+1. **Club Proposal Submission:** Club Organizer files the official Amrita Facility Booking Form and encloses Dean Academic Approval PDF. Proposal enters status `SUBMITTED`.
+2. **Stage 1 (Faculty Advisor Endorsement):** The club's designated `FACULTY_ADVISOR` (e.g. *Dr. S. Mahadevan* for Intel IoT Club) reviews the proposal document and endorses/approves it (`APPROVED` stage 1).
+3. **Stage 2 (Campus Admin / OSA Final Confirmation):** Campus Admin conducts final institutional review, checks deterministic venue overlaps and 120-minute campus gaps, records verification evidence, and confirms the event. On final approval, the proposal document is automatically indexed into RAG (`CHUNKED`) via MinIO presigned transfer.
 
 ## 3. Service ownership
 
