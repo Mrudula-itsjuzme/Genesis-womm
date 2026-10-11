@@ -13,6 +13,7 @@ database before a demo.
 
 import argparse
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -79,6 +80,23 @@ def upload_pdf(url: str, token: str, title: str, content: bytes) -> tuple[int, A
             return response.status, json.loads(response.read())
     except urllib.error.HTTPError as error:
         return error.code, None
+
+
+_DONE = re.compile(r"\b(booked|confirmed|scheduled|approved)\b", re.I)
+_HEDGE = re.compile(
+    r"\b(not|n't|never|until|before|unless|once|pending|awaiting|await|needs?|must|requires?|"
+    r"should|will|would|can|could|may|if|proposed|proposal|draft|review|human|person|authorized)\b",
+    re.I,
+)
+
+
+def claims_it_is_done(message: str) -> bool:
+    """True if any sentence says something is booked, confirmed or scheduled without a hedge.
+
+    "Not booked until a person confirms it" is honest; "Your event is booked" is not.
+    """
+    sentences = re.split(r"(?<=[.!?])\s+|\n+", message)
+    return any(_DONE.search(s) and not _HEDGE.search(s) for s in sentences)
 
 
 def check(name: str, ok: bool, detail: str = "") -> bool:
@@ -194,10 +212,7 @@ def main() -> int:
         "the proposal is only PROPOSED",
         action["status"] == "PROPOSED" and action["requires_human_review"],
     )
-    check(
-        "it did not claim the event is booked",
-        "booked" not in reply["message"].lower().replace("not booked", ""),
-    )
+    check("it did not claim the event is done", not claims_it_is_done(reply["message"]))
 
     section("6. Only a person can confirm")
     action_id = action["action_id"]
@@ -254,10 +269,7 @@ def main() -> int:
     if check("the assistant answered", reply is not None):
         assert reply is not None
         check("it filed nothing", reply["proposed_actions"] == [])
-        check(
-            "it did not announce a confirmation",
-            "is confirmed for your club" not in reply["message"].lower(),
-        )
+        check("it did not announce a confirmation", not claims_it_is_done(reply["message"]))
 
     section("9. The manual path the web's plan page uses")
     draft = {
