@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { proposalsApi } from '@/lib/api/endpoints';
@@ -7,13 +7,24 @@ import { errorMessage } from '@/lib/api/client';
 import { validateProposal } from '@/lib/proposal';
 import type { ProposalUploadOut, ProposalOut, ProposalStatusPatch } from '@/types/core-api';
 
-export default function ProposalUpload({ eventId, clubId }: { eventId: string; clubId: string }) {
+export default function ProposalUpload({ eventId, clubId, initialProposalId }: { eventId: string; clubId: string; initialProposalId?: string }) {
   const { token, session } = useAuth();
   const [file, setFile] = useState<File | null>(null); const [title, setTitle] = useState('');
   const [record, setRecord] = useState<ProposalUploadOut | ProposalOut | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [url, setUrl] = useState(''); const [note, setNote] = useState('');
-  const [existingId, setExistingId] = useState('');
+  const [existingId, setExistingId] = useState(initialProposalId ?? '');
+  useEffect(() => {
+    if (!token || !initialProposalId) return;
+    let active = true;
+    proposalsApi.get(token, initialProposalId).then(proposal => {
+      if (!active) return;
+      if (proposal.event_id !== eventId || proposal.club_id !== clubId) throw new Error('Document does not belong to this event.');
+      setRecord(proposal);
+      setExistingId(initialProposalId);
+    }).catch(err => { if (active) setError(errorMessage(err)); });
+    return () => { active = false; };
+  }, [token, initialProposalId, eventId, clubId]);
   const role = session?.user.memberships?.find(m => m.club_id === clubId)?.role;
   const canUpload = session?.user.campus_admin || role === 'ORGANIZER' || role === 'CLUB_ADMIN';
   async function load(event: FormEvent) {
@@ -30,7 +41,7 @@ export default function ProposalUpload({ eventId, clubId }: { eventId: string; c
     event.preventDefault(); if (!token || !file || busy) return;
     const invalid = validateProposal(file); if (invalid) { setError(invalid); return; }
     setBusy(true); setError(''); setUrl('');
-    try { setRecord(await proposalsApi.upload(token, clubId, eventId, file, title.trim())); setFile(null); }
+    try { const saved = await proposalsApi.upload(token, clubId, eventId, file, title.trim()); setRecord(saved); setExistingId(saved.id); setFile(null); }
     catch (err) { setError(errorMessage(err)); }
     finally { setBusy(false); }
   }
