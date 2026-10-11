@@ -11,6 +11,7 @@ from app.container import Container, build_container
 from app.domain.authz import Actor
 from app.domain.enums import Role
 from app.main import create_app
+from app.services.chat_context import ChatContextBuilder
 from app.services.readiness import ReadinessService
 from app.settings import Settings
 from tests.fakes import FakeReadinessProbe, make_settings
@@ -46,6 +47,13 @@ def test_delegations_are_signed_with_the_delegation_key_and_not_the_session_key(
     assert PyJwtDelegationService(DELEGATION_KEY).verify(issued.token) == ORGANIZER.user_id
     with pytest.raises(InvalidDelegationTokenError):
         PyJwtDelegationService(SESSION_KEY).verify(issued.token)
+
+
+def test_the_assistant_is_wired_to_build_its_campus_context_from_core_s_database(
+    container: Container,
+) -> None:
+    assert container.chat is not None
+    assert isinstance(container.chat.context_source, ChatContextBuilder)
 
 
 def test_the_app_publishes_the_delegation_service_and_the_internal_key(

@@ -17,7 +17,7 @@ def test_defaults_match_spine_ad_11() -> None:
     assert settings.max_tool_calls == 6
     assert settings.turn_deadline_s == 20
     assert settings.tool_timeout_s == 5
-    assert settings.groq_model == "llama-3.3-70b-versatile"
+    assert settings.groq_model == "openai/gpt-oss-120b"
 
 
 def test_reads_environment_variables(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -74,3 +74,35 @@ def test_service_url_trailing_slash_is_dropped() -> None:
 
 def test_the_llm_key_never_appears_in_repr() -> None:
     assert "gsk_secretvalue" not in repr(make(groq_api_key=SecretStr("gsk_secretvalue")))
+
+
+def test_a_rate_limited_model_has_a_smaller_one_to_fall_back_to() -> None:
+    settings = make()
+
+    assert settings.groq_fallback_model == "openai/gpt-oss-20b"
+    assert make(groq_fallback_model="").groq_fallback_model == ""
+
+
+def test_a_model_call_is_bounded_well_inside_the_turn_deadline() -> None:
+    settings = make()
+
+    assert settings.groq_timeout_s < settings.turn_deadline_s
+
+
+def test_the_turn_deadline_must_fit_inside_cores_wait() -> None:
+    # Core waits 25 s for the Agent; a longer turn would be abandoned while still running.
+    with pytest.raises(ValidationError, match="TURN_DEADLINE_S"):
+        make(turn_deadline_s=30.0)
+
+
+def test_the_token_budget_defaults_suit_a_small_per_minute_allowance() -> None:
+    settings = make()
+
+    assert settings.groq_reasoning_effort == "low"
+    assert settings.groq_max_completion_tokens == 1024
+    assert settings.groq_rate_limit_wait_s < settings.turn_deadline_s
+
+
+def test_an_unknown_reasoning_effort_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        make(groq_reasoning_effort="extreme")

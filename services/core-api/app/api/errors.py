@@ -104,13 +104,12 @@ def error_responses(*codes: ErrorCode) -> dict[int | str, dict[str, Any]]:
     return responses
 
 
-def stub_errors(*extra: ErrorCode) -> dict[int | str, dict[str, Any]]:
-    """Documented errors for an authenticated route that is still a typed stub."""
+def route_errors(*extra: ErrorCode) -> dict[int | str, dict[str, Any]]:
+    """Documented errors for an authenticated, implemented route."""
     return error_responses(
         ErrorCode.UNAUTHENTICATED,
         ErrorCode.FORBIDDEN,
         ErrorCode.VALIDATION_ERROR,
-        ErrorCode.NOT_IMPLEMENTED,
         *extra,
     )
 

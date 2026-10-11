@@ -5,16 +5,21 @@ every route needs a signed-in person, authorization decides who may do what, and
 store or RAG service neither leaks detail nor undoes a review.
 """
 
+import asyncio
 import io
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
+from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import AsyncMock, Mock
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 
+from app.api.routes.proposals import upload_proposal
 from app.container import Container
 from app.domain.authz import Actor
 from app.domain.enums import AvailabilityState, ProposalStatus
@@ -22,6 +27,7 @@ from app.domain.scheduling import Policy
 from app.domain.time import FixedClock
 from app.main import create_app
 from app.schemas.proposals import ProposalDownloadUrlOut, ProposalOut, ProposalUploadOut
+from app.services.errors import InvalidRequestError
 from app.services.ports import MembershipIdentity, UserIdentity
 from app.services.proposal_lifecycle import ProposalLifecycleManager
 from app.services.proposals import MAX_PROPOSAL_BYTES, ProposalService
@@ -224,6 +230,27 @@ def test_an_invalid_upload_is_a_422_envelope_not_a_bare_detail(
     assert body["code"] == "VALIDATION_ERROR"
     assert "request_id" in body
     assert rig.storage.uploads == []
+
+
+def test_an_oversized_upload_reads_only_one_byte_past_the_limit(rig: Rig) -> None:
+    file = AsyncMock()
+    file.read.return_value = b"%PDF-" + b"x" * MAX_PROPOSAL_BYTES
+
+    with pytest.raises(InvalidRequestError):
+        asyncio.run(
+            upload_proposal(
+                CLUB_A,
+                rig.event,
+                file,
+                ORGANIZER,
+                cast(ProposalService, Mock()),
+                cast(
+                    Request, SimpleNamespace(state=SimpleNamespace(request_id="oversized-upload"))
+                ),
+            )
+        )
+
+    file.read.assert_awaited_once_with(MAX_PROPOSAL_BYTES + 1)
 
 
 def test_a_storage_failure_is_a_503_that_says_nothing_about_the_store(rig: Rig) -> None:

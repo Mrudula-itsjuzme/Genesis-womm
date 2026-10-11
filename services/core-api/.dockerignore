@@ -6,7 +6,6 @@ __pycache__
 .ruff_cache
 .hypothesis
 tests
-scripts
 Makefile
 .importlinter
 .env

@@ -21,6 +21,7 @@ from app.repositories.health import SqlReadinessProbe
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.agent_actions import AgentActionService
 from app.services.chat import ChatService
+from app.services.chat_context import ChatContextBuilder
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
@@ -121,9 +122,11 @@ def build_container(settings: Settings) -> Container:
         delegation=delegation,
         gateway=HttpAgentGateway(agent_client),
         actions=agent_actions,
+        context=ChatContextBuilder(lambda: SqlUnitOfWork(database_sessions), clock=SystemClock()),
     )
     storage = MinIOProposalStorage(
         endpoint=settings.minio_endpoint,
+        public_endpoint=settings.minio_public_endpoint,
         access_key=settings.minio_access_key.get_secret_value(),
         secret_key=settings.minio_secret_key.get_secret_value(),
         proposal_bucket=settings.minio_proposal_bucket,

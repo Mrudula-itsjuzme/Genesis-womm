@@ -3,10 +3,10 @@
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from app.schemas.core import AgentAction
-from app.schemas.enums import AccessLevel, ToolOutcome
+from app.schemas.enums import AccessLevel, AvailabilityState, ToolOutcome
 from app.schemas.text import MessageText
 
 
@@ -49,6 +49,34 @@ class ChatResponse(BaseModel):
     request_id: str
 
 
+class ClubContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    name: str = Field(max_length=200)
+    role: str = Field(max_length=40)
+
+
+class VenueContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    name: str = Field(max_length=200)
+    capacity: int | None = Field(default=None, ge=0)
+    availability: AvailabilityState
+
+
+class TurnContext(BaseModel):
+    """Facts from Core's database for this person and moment. Data, never instructions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    now: AwareDatetime
+    timezone: Literal["Asia/Kolkata"]
+    clubs: list[ClubContext] = Field(default_factory=list, max_length=20)
+    venues: list[VenueContext] = Field(default_factory=list, max_length=50)
+
+
 class AgentTurnRequest(BaseModel):
     """Core to Agent. `access_level` is set by Core from the user's role, never by the model."""
 
@@ -57,6 +85,9 @@ class AgentTurnRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=20)
     event_id: UUID | None = Field(default=None, description="Event the conversation is about.")
     access_level: AccessLevel = AccessLevel.CAMPUS_PUBLIC
+    context: TurnContext | None = Field(
+        default=None, description="The person's clubs, the venues and Core's clock."
+    )
 
 
 class PlanEventRequest(BaseModel):

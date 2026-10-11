@@ -25,6 +25,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                             "UUID of an existing event to re-check. Omit for new events."
                         ),
                     },
+                    "club_id": {
+                        "type": "string",
+                        "description": "UUID of the club creating an unsaved event candidate.",
+                    },
                     "start_at": {
                         "type": "string",
                         "description": (
@@ -104,9 +108,30 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "payload": {
                         "type": "object",
-                        "description": (
-                            "Event fields the user wants to set (title, start_at, end_at, etc.)."
-                        ),
+                        "description": "The event to create. Use ids from the campus context.",
+                        "properties": {
+                            "club_id": {"type": "string", "description": "UUID of the club."},
+                            "title": {"type": "string", "description": "Short event title."},
+                            "start_at": {
+                                "type": "string",
+                                "description": "ISO-8601 datetime with a +05:30 offset.",
+                            },
+                            "end_at": {
+                                "type": "string",
+                                "description": "ISO-8601 with timezone; after start_at.",
+                            },
+                            "resource_id": {
+                                "type": "string",
+                                "description": "UUID of the venue, from the campus context.",
+                            },
+                            "description": {"type": "string", "description": "Optional detail."},
+                            "expected_attendance": {
+                                "type": "integer",
+                                "description": "Optional headcount the user stated; never invent.",
+                            },
+                        },
+                        "required": ["club_id", "title", "start_at", "end_at"],
+                        "additionalProperties": False,
                     },
                 },
                 "required": ["summary", "payload"],

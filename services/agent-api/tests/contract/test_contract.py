@@ -172,8 +172,12 @@ def test_a_turn_is_cores_chat_request_plus_an_access_level_set_by_core(
     access_level = turn["properties"].pop("access_level")
     assert access_level["$ref"] == "AccessLevel"
     assert access_level["default"] == "CAMPUS_PUBLIC"
+    context = turn["properties"].pop("context")
+    assert {ref["$ref"] for ref in context["anyOf"] if "$ref" in ref} == {"TurnContext"}
     assert turn == chat_request
-    assert "access_level" not in json.dumps(core_openapi), "clients must not be able to set it"
+    serialized = json.dumps(core_openapi)
+    assert "access_level" not in serialized, "clients must not be able to set it"
+    assert "TurnContext" not in serialized, "clients must not be able to supply the context"
 
 
 def test_every_facade_operation_the_agent_calls_exists_in_core(

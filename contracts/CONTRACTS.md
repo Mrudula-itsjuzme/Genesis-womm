@@ -20,6 +20,30 @@ This directory contains versioned service contracts and example payloads. OpenAP
 - Do not expose ORM/database objects directly as API schemas.
 - Student academic-risk data is private to the authenticated student. Organizer responses must not contain student calendar titles, timetable entries, attendance values, or warning details.
 
+## Synthetic demo identities
+
+Local demo login is backed only by the idempotent synthetic seed (`services/core-api/scripts/seed_demo.py`). These are non-production identities; no real person or institutional address belongs in the seed.
+
+| Email | Who | Can do |
+|---|---|---|
+| `organizer@demo.invalid` | Organizer in both clubs | Plan, propose, ask the assistant, confirm their own proposals |
+| `club-admin@demo.invalid` | Club admin of *Synthetic Events Club* | Everything an organizer can, plus cancel and complete |
+| `campus-admin@demo.invalid` | Campus admin | Confirm events, create overrides, review proposal documents |
+| `outsider@demo.invalid` | Signed in, belongs to no club | Read public summaries only; cannot plan or confirm |
+| `student@demo.invalid` | Student | Student portal; no club |
+
+Clubs: *Synthetic Events Club* (`20000000-0000-4000-8000-000000000001`), *Synthetic Robotics Club* (`...0002`). Venues: *Synthetic Main Auditorium* (`30000000-0000-4000-8000-000000000001`, availability CONFIRMED), *Synthetic Seminar Hall* (`...0002`, REQUESTED), *Synthetic Open Courtyard* (`...0003`, UNKNOWN).
+
+The **demo day is 20 November 2026**. Two CONFIRMED events anchor it: *Synthetic Guest Lecture* (auditorium, 09:30 to 11:30 IST) and *Synthetic Hardware Demo* (seminar hall, 13:00 to 14:30 IST). A draft for the auditorium from 10:00 to 12:00 collides with both (it overlaps the lecture and ends only 60 minutes before the demo): Core reports `TENTATIVE_OVERLAP` warnings for a draft, and `VENUE_OVERLAP` plus `CAMPUS_GAP_VIOLATION` blocks if it is confirmed. A free slot is the auditorium on any other day.
+
+## Browser access (CORS)
+
+Core allows the origins in `CORS_ALLOWED_ORIGINS` (a JSON list; default `["http://localhost:3000"]`) to call `/api/v1` with `Authorization`, `Content-Type`, `Idempotency-Key` and `X-Request-ID`, and exposes `X-Request-ID`. Methods: `GET`, `POST`, `PATCH`, `OPTIONS`. Other origins receive no CORS headers. The Agent and RAG services are not browser-facing.
+
+## Assistant turn context
+
+`POST /api/v1/agent/chat` takes only `messages` and an optional `event_id` from the browser. Core adds a `context` to the turn it relays to the Agent (`TurnContext` in `contracts/agent-api.openapi.yaml`): its own clock, the person's clubs (id, name, role) and the venue catalogue (id, name, capacity, availability), read from Core's database. Clients cannot supply it. The Agent tells the model to use only the ids listed there. Names are flattened and bounded before the model sees them.
+
 ## Conflict object
 ```json
 {

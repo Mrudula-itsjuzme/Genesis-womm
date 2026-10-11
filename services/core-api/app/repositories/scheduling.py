@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -89,10 +89,15 @@ class SqlEventStore:
         resource_id: UUID | None,
         starts_after: datetime | None,
         starts_before: datetime | None,
+        draft_clubs: frozenset[UUID] | None,
         limit: int,
         offset: int,
     ) -> tuple[list[EventRecord], int]:
         filters = []
+        if draft_clubs is not None:
+            filters.append(
+                or_(Event.status != EventStatus.DRAFT.value, Event.club_id.in_(draft_clubs))
+            )
         if club_id is not None:
             filters.append(Event.club_id == club_id)
         if status is not None:

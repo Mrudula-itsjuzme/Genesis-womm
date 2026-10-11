@@ -18,6 +18,7 @@ RUN uv sync --frozen --no-dev
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY app ./app
+COPY scripts ./scripts
 
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin campuscue
 USER 10001

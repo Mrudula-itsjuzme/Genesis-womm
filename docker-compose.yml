@@ -34,6 +34,25 @@ services:
     # Not published to the host: another local Postgres often owns 5432. Use
     # `docker compose exec postgres psql -U campuscue` instead.
 
+  minio:
+    # The historical official Docker Hub image was withdrawn; this pinned mirror preserves the
+    # published upstream 2025-09-07 release for the local demo only.
+    image: dappros/minio:RELEASE.2025-09-07T16-13-09Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-campuscue_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-campuscue_secret}
+    volumes:
+      - miniodata:/data
+    ports:
+      # Local only: the browser follows presigned download links to this address.
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # One-shot: applies Core's migrations, then exits. The API never migrates at start-up.
   migrate:
     build: ./services/core-api
@@ -43,6 +62,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: "no"
+
+  # One-shot: installs fixed synthetic records after the schema is current.
+  seed-demo:
+    build: ./services/core-api
+    command: ["python", "-m", "scripts.seed_demo"]
+    environment:
+      <<: *core-env
+      SESSION_SIGNING_KEY: ${SESSION_SIGNING_KEY:-local-only-session-key-not-a-secret-0001}
+      DELEGATION_SIGNING_KEY: ${DELEGATION_SIGNING_KEY:-local-only-delegation-key-not-a-secret-0002}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: "no"
 
   core-api:
@@ -55,9 +87,15 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
       AGENT_API_URL: http://agent-api:8001
       CAMPUS_GAP_MINUTES: ${CAMPUS_GAP_MINUTES:-120}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost:${MINIO_PORT:-9000}}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-campuscue_admin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-campuscue_secret}
     depends_on:
-      migrate:
+      seed-demo:
         condition: service_completed_successfully
+      minio:
+        condition: service_healthy
     ports:
       - "${CORE_API_PORT:-8000}:8000"
 
@@ -67,8 +105,14 @@ services:
       APP_ENV: ${APP_ENV:-local}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # The Agent holds the LLM credential and neither of Core's signing keys.
+      # groq uses the real model (needs GROQ_API_KEY); fake is deterministic and offline. Set
+      # AGENT_DEMO_MODE=true with fake for the scripted walkthrough that needs no network.
       AGENT_MODEL_PROVIDER: ${AGENT_MODEL_PROVIDER:-fake}
+      AGENT_DEMO_MODE: ${AGENT_DEMO_MODE:-false}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Keep these defaults equal to services/agent-api/app/settings.py.
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      GROQ_FALLBACK_MODEL: ${GROQ_FALLBACK_MODEL:-openai/gpt-oss-20b}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
       CORE_API_URL: http://core-api:8000
       RAG_API_URL: http://rag-api:8002
@@ -99,3 +143,4 @@ services:
 
 volumes:
   pgdata:
+  miniodata:
