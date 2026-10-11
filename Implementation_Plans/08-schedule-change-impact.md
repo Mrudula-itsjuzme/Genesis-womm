@@ -4,6 +4,8 @@ Status: Implemented and verified on `feat/schedule-change-impact` (2026-10-11).
 
 PR readiness: latest `origin/main` (`a54fe1b`) is already included, with no conflicts. Fresh full Core and web checks pass; evidence is recorded in HANDOFF.md. User authorized publication of the combined integration and Plan 08 branch as a PR to main.
 
+Published: [PR #10](https://github.com/Mrudula-itsjuzme/Genesis-womm/pull/10), open against main; GitHub reports MERGEABLE/CLEAN. No merge or deployment performed.
+
 User-selected continuation of the frontend integration. Implements architecture AD-14 using the existing campus lock, authorization table and revision/audit history.
 
 ## Contract and behavior
