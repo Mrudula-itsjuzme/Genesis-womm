@@ -67,6 +67,19 @@ async def upload_proposal(
 
 
 @router.get(
+    "/events/{event_id}/proposals",
+    response_model=list[ProposalOut],
+    responses=error_responses(ErrorCode.UNAUTHENTICATED, ErrorCode.FORBIDDEN, ErrorCode.NOT_FOUND),
+)
+def list_event_proposals(
+    event_id: UUID,
+    actor: SessionActor,
+    service: Annotated[ProposalService, Depends(get_proposal_service)],
+) -> list[ProposalOut]:
+    return [_out(record) for record in service.list_for_event(actor, event_id)]
+
+
+@router.get(
     "/proposals/{proposal_id}",
     response_model=ProposalOut,
     responses=error_responses(
