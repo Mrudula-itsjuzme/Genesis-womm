@@ -1,4 +1,5 @@
 import { apiClient } from './client.ts';
+import type { ChangeRequest, StageChange, ApplyChange, ChangeProposalOut, ChangeProposalList, ChangeAppliedOut, ImpactReport, DependencyCreate, DependencyOut, DependencyList } from '../../types/core-api.ts';
 import type { SessionOut, EventCreate, EventCreatedOut, EventOut, EventList, EventStatus, ConflictCheckRequest, ConflictCheckOut, TransitionRequest, ResourceList, ResourceKind, ResourceOut, ChatMessage, ChatResponse, AgentAction, AgentActionConfirmOut, ProposalUploadOut, ProposalOut, ProposalDownloadUrlOut, ProposalStatusPatch, OverrideRequest, OverrideOut } from '../../types/core-api.ts';
 export const authApi = { demoLogin: (email: string) => apiClient<SessionOut>('auth/demo-login', { method: 'POST', body: JSON.stringify({ email }) }) };
 export type EventFilters = { club_id?: string; status?: EventStatus; starts_after?: string; starts_before?: string; limit?: number; offset?: number };
@@ -29,3 +30,11 @@ export const proposalsApi = {
   review: (token: string, id: string, payload: ProposalStatusPatch) => apiClient<ProposalOut>(`proposals/${id}/status`, { token, method: 'PATCH', body: JSON.stringify(payload) }),
 };
 export const overridesApi = { create: (token: string, payload: OverrideRequest, idempotencyKey: string) => apiClient<OverrideOut>('overrides', { token, method: 'POST', body: JSON.stringify(payload), idempotencyKey }) };
+export const changesApi = {
+  preview: (token: string, id: string, payload: ChangeRequest, signal?: AbortSignal) => apiClient<ImpactReport>(`events/${id}/impact`, { token, method: 'POST', body: JSON.stringify(payload), signal }),
+  stage: (token: string, id: string, payload: StageChange, idempotencyKey: string) => apiClient<ChangeProposalOut>(`events/${id}/change-proposals`, { token, method: 'POST', body: JSON.stringify(payload), idempotencyKey }),
+  list: (token: string, id: string, offset = 0, signal?: AbortSignal) => apiClient<ChangeProposalList>(`events/${id}/change-proposals`, { token, params: { limit: 20, offset }, signal }),
+  apply: (token: string, id: string, proposal: string, payload: ApplyChange, idempotencyKey: string) => apiClient<ChangeAppliedOut>(`events/${id}/change-proposals/${proposal}/apply`, { token, method: 'POST', body: JSON.stringify(payload), idempotencyKey }),
+  dependencies: (token: string, id: string, signal?: AbortSignal) => apiClient<DependencyList>(`events/${id}/dependencies`, { token, signal }),
+  register: (token: string, id: string, payload: DependencyCreate, idempotencyKey: string) => apiClient<DependencyOut>(`events/${id}/dependencies`, { token, method: 'POST', body: JSON.stringify(payload), idempotencyKey }),
+};
