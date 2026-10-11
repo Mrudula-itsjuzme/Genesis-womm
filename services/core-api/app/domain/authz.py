@@ -52,6 +52,7 @@ class Reason(StrEnum):
     NOT_ORGANIZER = "NOT_ORGANIZER"
     NOT_IN_CLUB = "NOT_IN_CLUB"
     NOT_CLUB_ADMIN = "NOT_CLUB_ADMIN"
+    NOT_FACULTY_ADVISOR = "NOT_FACULTY_ADVISOR"
     NOT_CAMPUS_ADMIN = "NOT_CAMPUS_ADMIN"
     NOT_OWNER = "NOT_OWNER"
     AGENT_NOT_ALLOWED = "AGENT_NOT_ALLOWED"
@@ -59,8 +60,10 @@ class Reason(StrEnum):
 
 class _Scope(StrEnum):
     ANY_ORGANIZER = "ANY_ORGANIZER"  # any organizer-class user; no club needed
-    OWN_CLUB_ORGANIZER = "OWN_CLUB_ORGANIZER"  # ORGANIZER or CLUB_ADMIN of the resource's club
+    OWN_CLUB_ORGANIZER = "OWN_CLUB_ORGANIZER"  # ORGANIZER, CLUB_ADMIN, or FACULTY_ADVISOR of the resource's club
     OWN_CLUB_ADMIN = "OWN_CLUB_ADMIN"  # CLUB_ADMIN of the resource's club
+    OWN_FACULTY_ADVISOR = "OWN_FACULTY_ADVISOR"  # FACULTY_ADVISOR of the resource's club
+    REVIEW_PROPOSAL = "REVIEW_PROPOSAL"  # CAMPUS_ADMIN or FACULTY_ADVISOR of the resource's club
     CAMPUS_ADMIN = "CAMPUS_ADMIN"  # campus-wide
     ACTION_OWNER = "ACTION_OWNER"  # the human a proposal was filed for
 
@@ -86,10 +89,10 @@ _SCOPE: dict[Action, _Scope] = {
     Action.FILE_AGENT_ACTION: _Scope.OWN_CLUB_ORGANIZER,
     Action.CONFIRM_AGENT_ACTION: _Scope.ACTION_OWNER,
     Action.ISSUE_DELEGATION: _Scope.ANY_ORGANIZER,
-    # An event's proposal document: the club submits and reads it; only the campus reviews it.
+    # An event's proposal document: the club submits and reads it; faculty advisors and campus admins review it.
     Action.SUBMIT_PROPOSAL: _Scope.OWN_CLUB_ORGANIZER,
     Action.VIEW_PROPOSAL: _Scope.OWN_CLUB_ORGANIZER,
-    Action.REVIEW_PROPOSAL: _Scope.CAMPUS_ADMIN,
+    Action.REVIEW_PROPOSAL: _Scope.REVIEW_PROPOSAL,
 }
 
 # A delegated (agent) principal can read, check conflicts and file proposals. It can never
@@ -98,8 +101,10 @@ AGENT_ACTIONS: frozenset[Action] = frozenset(
     {Action.VIEW_EVENT, Action.CHECK_CONFLICTS, Action.FILE_AGENT_ACTION}
 )
 
-_CLUB_SCOPES = frozenset({_Scope.OWN_CLUB_ORGANIZER, _Scope.OWN_CLUB_ADMIN})
-_MEMBERSHIP_ROLES = frozenset({Role.ORGANIZER, Role.CLUB_ADMIN})
+_CLUB_SCOPES = frozenset(
+    {_Scope.OWN_CLUB_ORGANIZER, _Scope.OWN_CLUB_ADMIN, _Scope.OWN_FACULTY_ADVISOR, _Scope.REVIEW_PROPOSAL}
+)
+_MEMBERSHIP_ROLES = frozenset({Role.ORGANIZER, Role.CLUB_ADMIN, Role.FACULTY_ADVISOR})
 
 
 @dataclass(frozen=True)
@@ -114,7 +119,9 @@ class Actor:
     def __post_init__(self) -> None:
         for role in self.memberships.values():
             if role not in _MEMBERSHIP_ROLES:
-                raise ValueError(f"a membership role must be ORGANIZER or CLUB_ADMIN, not {role}")
+                raise ValueError(
+                    f"a membership role must be ORGANIZER, CLUB_ADMIN, or FACULTY_ADVISOR, not {role}"
+                )
 
     @property
     def organizer_class(self) -> bool:
@@ -178,4 +185,8 @@ def authorize(actor: Actor, action: Action, resource: Resource | None = None) ->
         return _deny(Reason.NOT_IN_CLUB)
     if scope is _Scope.OWN_CLUB_ADMIN and role is not Role.CLUB_ADMIN:
         return _deny(Reason.NOT_CLUB_ADMIN)
+    if scope is _Scope.OWN_FACULTY_ADVISOR and role is not Role.FACULTY_ADVISOR:
+        return _deny(Reason.NOT_FACULTY_ADVISOR)
+    if scope is _Scope.REVIEW_PROPOSAL and role is not Role.FACULTY_ADVISOR:
+        return _deny(Reason.NOT_FACULTY_ADVISOR)
     return _allow()

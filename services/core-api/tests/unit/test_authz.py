@@ -28,7 +28,6 @@ ADMIN_ONLY = {
     Action.REJECT_EVENT,
     Action.CREATE_OVERRIDE,
     Action.VERIFY_COMMITMENT,
-    Action.REVIEW_PROPOSAL,
 }
 CLUB_ADMIN_ONLY = {
     Action.CANCEL_EVENT,
@@ -48,6 +47,9 @@ ORGANIZER_OWN_CLUB = {
     Action.SUBMIT_PROPOSAL,
     Action.VIEW_PROPOSAL,
 }
+FACULTY_ADVISOR_ONLY = {
+    Action.REVIEW_PROPOSAL,
+}
 OWNER_SCOPED = {Action.CONFIRM_AGENT_ACTION}
 ANY_ORGANIZER = {Action.VIEW_EVENT, Action.ISSUE_DELEGATION}
 
@@ -58,6 +60,10 @@ def admin() -> Actor:
 
 def club_admin(club: UUID = CLUB_A) -> Actor:
     return Actor(user_id=USER, memberships={club: Role.CLUB_ADMIN})
+
+
+def faculty_advisor(club: UUID = CLUB_A) -> Actor:
+    return Actor(user_id=USER, memberships={club: Role.FACULTY_ADVISOR})
 
 
 def organizer(club: UUID = CLUB_A) -> Actor:
@@ -97,10 +103,16 @@ def test_a_club_admin_runs_their_own_club_but_confirms_nothing() -> None:
 def test_an_organizer_cannot_cancel_complete_apply_changes_or_close_commitments() -> None:
     expected = ORGANIZER_OWN_CLUB | OWNER_SCOPED | ANY_ORGANIZER
     assert granted(organizer()) == expected
+    assert not expected & (CLUB_ADMIN_ONLY | ADMIN_ONLY | FACULTY_ADVISOR_ONLY)
+
+
+def test_a_faculty_advisor_reviews_proposals_for_their_own_club() -> None:
+    expected = ORGANIZER_OWN_CLUB | FACULTY_ADVISOR_ONLY | OWNER_SCOPED | ANY_ORGANIZER
+    assert granted(faculty_advisor()) == expected
     assert not expected & (CLUB_ADMIN_ONLY | ADMIN_ONLY)
 
 
-@pytest.mark.parametrize("actor", [club_admin(CLUB_B), organizer(CLUB_B)])
+@pytest.mark.parametrize("actor", [club_admin(CLUB_B), organizer(CLUB_B), faculty_advisor(CLUB_B)])
 def test_membership_of_another_club_grants_only_what_needs_no_club(actor: Actor) -> None:
     # Viewing (as a summary), minting a delegation, and owning one's own agent actions.
     assert granted(actor) == ANY_ORGANIZER | OWNER_SCOPED
@@ -234,7 +246,8 @@ def test_decisions_always_carry_a_reason() -> None:
         assert decision.reason is not Reason.ALLOWED
 
 
-def test_memberships_can_only_be_organizer_or_club_admin() -> None:
+def test_memberships_can_only_be_organizer_or_club_admin_or_faculty_advisor() -> None:
+    assert faculty_advisor().memberships[CLUB_A] == Role.FACULTY_ADVISOR
     for bad in (Role.CAMPUS_ADMIN, Role.STUDENT):
         with pytest.raises(ValueError, match="membership"):
             Actor(user_id=USER, memberships={CLUB_A: bad})

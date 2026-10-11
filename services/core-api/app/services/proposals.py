@@ -188,9 +188,9 @@ class ProposalService:
         action: ReviewAction,
         review_note: str | None,
     ) -> ProposalRecord:
-        self._require(ctx.actor, Action.REVIEW_PROPOSAL, None)
         with self._uow_factory() as uow:
             record = self._load(uow, proposal_id)
+            self._require(ctx.actor, Action.REVIEW_PROPOSAL, record.club_id)
             before = record.status
             decide = {
                 ReviewAction.APPROVE: self._manager.approve_proposal,
