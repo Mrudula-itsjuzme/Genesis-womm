@@ -1,18 +1,28 @@
 """Install the deterministic, non-production data used by the CampusCue demo."""
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 
 from app.models.directory import Club, Membership, Resource, User
-from app.models.scheduling import Event
+from app.models.scheduling import Event, EvidenceRecord
 from app.settings import load_settings
 
 SEED_TIME = datetime(2026, 10, 1, 9, 0, tzinfo=UTC)
 EVENT_START = datetime(2026, 10, 20, 10, 0, tzinfo=UTC)
+# The demo day. Two official (CONFIRMED) events anchor it, so a request for the same morning in
+# the auditorium collides with both: it overlaps the lecture, and it ends only an hour before
+# the hardware demo starts across campus.
+DEMO_DAY_LECTURE_START = datetime(
+    2026, 11, 20, 9, 30, tzinfo=timezone(timedelta(hours=5, minutes=30))
+)
+DEMO_DAY_HARDWARE_START = datetime(
+    2026, 11, 20, 13, 0, tzinfo=timezone(timedelta(hours=5, minutes=30))
+)
+EVIDENCE_VENUE_CONFIRMATION = UUID("50000000-0000-4000-8000-000000000001")
 
 
 @dataclass(frozen=True)
@@ -41,6 +51,11 @@ DEMO_USERS = (
         "Synthetic Organizer",
     ),
     DemoUser(
+        UUID("10000000-0000-4000-8000-000000000005"),
+        "student@demo.invalid",
+        "Synthetic Student",
+    ),
+    DemoUser(
         UUID("10000000-0000-4000-8000-000000000004"), "outsider@demo.invalid", "Synthetic Outsider"
     ),
 )
@@ -48,6 +63,8 @@ DEMO_USERS = (
 CLUB_EVENTS = UUID("20000000-0000-4000-8000-000000000001")
 CLUB_ROBOTICS = UUID("20000000-0000-4000-8000-000000000002")
 RESOURCE_AUDITORIUM = UUID("30000000-0000-4000-8000-000000000001")
+RESOURCE_SEMINAR_HALL = UUID("30000000-0000-4000-8000-000000000002")
+RESOURCE_COURTYARD = UUID("30000000-0000-4000-8000-000000000003")
 type DemoEvent = tuple[UUID, UUID, str, datetime, datetime, UUID | None]
 
 
@@ -109,7 +126,7 @@ def seed_demo_data(engine: Engine) -> None:
                 450,
             ),
             (
-                UUID("30000000-0000-4000-8000-000000000002"),
+                RESOURCE_SEMINAR_HALL,
                 "VENUE",
                 "Synthetic Seminar Hall",
                 "REQUESTED",
@@ -117,7 +134,7 @@ def seed_demo_data(engine: Engine) -> None:
                 120,
             ),
             (
-                UUID("30000000-0000-4000-8000-000000000003"),
+                RESOURCE_COURTYARD,
                 "VENUE",
                 "Synthetic Open Courtyard",
                 "UNKNOWN",
@@ -196,7 +213,7 @@ def seed_demo_data(engine: Engine) -> None:
                 "Synthetic Planning Workshop",
                 EVENT_START + timedelta(days=2),
                 EVENT_START + timedelta(days=2, hours=1),
-                UUID("30000000-0000-4000-8000-000000000002"),
+                RESOURCE_SEMINAR_HALL,
             ),
             (
                 UUID("40000000-0000-4000-8000-000000000004"),
@@ -228,6 +245,68 @@ def seed_demo_data(engine: Engine) -> None:
                     verified_by=None,
                     verified_at=None,
                     evidence_id=None,
+                    is_synthetic=True,
+                    created_at=SEED_TIME,
+                    updated_at=SEED_TIME,
+                ),
+            )
+        session.flush()
+
+        _add_if_missing(
+            session,
+            EvidenceRecord,
+            EVIDENCE_VENUE_CONFIRMATION,
+            EvidenceRecord(
+                id=EVIDENCE_VENUE_CONFIRMATION,
+                kind="EMAIL_REFERENCE",
+                reference="synthetic-demo/venue-confirmation-1",
+                issuer="Synthetic Student Affairs",
+                captured_at=SEED_TIME,
+                recorded_by=DEMO_USERS[0].id,
+                created_at=SEED_TIME,
+            ),
+        )
+        session.flush()
+
+        confirmed: tuple[DemoEvent, ...] = (
+            (
+                UUID("40000000-0000-4000-8000-000000000005"),
+                CLUB_EVENTS,
+                "Synthetic Guest Lecture",
+                DEMO_DAY_LECTURE_START,
+                DEMO_DAY_LECTURE_START + timedelta(hours=2),
+                RESOURCE_AUDITORIUM,
+            ),
+            (
+                UUID("40000000-0000-4000-8000-000000000006"),
+                CLUB_ROBOTICS,
+                "Synthetic Hardware Demo",
+                DEMO_DAY_HARDWARE_START,
+                DEMO_DAY_HARDWARE_START + timedelta(hours=1, minutes=30),
+                RESOURCE_SEMINAR_HALL,
+            ),
+        )
+        for event_id, club_id, title, start_at, end_at, event_resource_id in confirmed:
+            _add_if_missing(
+                session,
+                Event,
+                event_id,
+                Event(
+                    id=event_id,
+                    club_id=club_id,
+                    title=title,
+                    description="Synthetic demo event; no real attendees or operational booking.",
+                    start_at=start_at,
+                    end_at=end_at,
+                    resource_id=event_resource_id,
+                    expected_attendance=120,
+                    audience_tags=["synthetic-demo"],
+                    status="CONFIRMED",
+                    revision=1,
+                    created_by=DEMO_USERS[1].id,
+                    verified_by=DEMO_USERS[0].id,
+                    verified_at=SEED_TIME,
+                    evidence_id=EVIDENCE_VENUE_CONFIRMATION,
                     is_synthetic=True,
                     created_at=SEED_TIME,
                     updated_at=SEED_TIME,
