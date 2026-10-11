@@ -129,6 +129,14 @@ class ProposalService:
         return record
 
     # ---- reading ----
+    def list_for_event(self, actor: Actor, event_id: UUID) -> list[ProposalRecord]:
+        with self._uow_factory() as uow:
+            event = uow.events.get(event_id)
+            if event is None:
+                raise NotFoundError("event", event_id)
+            self._require(actor, Action.VIEW_PROPOSAL, event.club_id)
+            return uow.proposals.list_for_event(event_id)
+
 
     def get(self, actor: Actor, proposal_id: UUID) -> ProposalRecord:
         with self._uow_factory() as uow:
