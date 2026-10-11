@@ -95,6 +95,7 @@ function PlanFacilityBookingForm() {
   const [error, setError] = useState('');
   const [created, setCreated] = useState<EventCreatedOut | null>(null);
   const [approvalUploaded, setApprovalUploaded] = useState(false);
+  const [approvalRecordId, setApprovalRecordId] = useState<string | undefined>(undefined);
   const [approvalUploadError, setApprovalUploadError] = useState('');
   const pending = useRef<{ payload: string; key: string } | null>(null);
 
@@ -178,7 +179,8 @@ function PlanFacilityBookingForm() {
       // If user attached academic approval PDF, automatically upload proposal to the created event
       if (approvalFile) {
         try {
-          await proposalsApi.upload(token, activeClub.club_id, result.event.id, approvalFile, `Dean Academic Approval - ${title.trim()}`);
+          const uploaded = await proposalsApi.upload(token, activeClub.club_id, result.event.id, approvalFile, `Dean Academic Approval - ${title.trim()}`);
+          setApprovalRecordId(uploaded.id);
           setApprovalUploaded(true);
           toast('success', 'Draft and document saved', 'The document was uploaded to CampusCue. No official booking or approval was made.');
         } catch (uploadErr) {
@@ -202,7 +204,8 @@ function PlanFacilityBookingForm() {
     setSaving(true);
     setApprovalUploadError('');
     try {
-      await proposalsApi.upload(token, activeClub.club_id, created.event.id, approvalFile, `Dean Academic Approval - ${title.trim()}`);
+      const uploaded = await proposalsApi.upload(token, activeClub.club_id, created.event.id, approvalFile, `Dean Academic Approval - ${title.trim()}`);
+      setApprovalRecordId(uploaded.id);
       setApprovalUploaded(true);
       toast('success', 'Document uploaded', 'The PDF was saved in CampusCue; this is not official institutional approval.');
     } catch (err) {
@@ -873,7 +876,7 @@ function PlanFacilityBookingForm() {
           {created && (
             <div className="mt-8">
               <h2 className="text-xl font-bold text-stone-900 mb-2">Upload Supplementary Proposal Documents</h2>
-              <ProposalUpload key={token + created.event.id} eventId={created.event.id} clubId={created.event.club_id} />
+              <ProposalUpload key={token + created.event.id} eventId={created.event.id} clubId={created.event.club_id} initialProposalId={approvalRecordId} />
             </div>
           )}
         </>
