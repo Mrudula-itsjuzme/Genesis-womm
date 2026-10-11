@@ -21,6 +21,7 @@ export const agentApi = {
   rejectAction: (token: string, id: string) => apiClient<AgentAction>(`agent-actions/${id}/reject`, { token, method: 'POST' }),
 };
 export const proposalsApi = {
+  listForEvent: (token: string, event: string, signal?: AbortSignal) => apiClient<ProposalOut[]>(`events/${event}/proposals`, { token, signal }),
   upload: (token: string, club: string, event: string, file: File, title: string) => {
     const body = new FormData(); body.append('file', file); body.append('title', title);
     return apiClient<ProposalUploadOut>(`clubs/${club}/events/${event}/proposals`, { token, method: 'POST', body });
