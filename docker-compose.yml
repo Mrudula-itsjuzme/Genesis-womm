@@ -90,7 +90,7 @@ services:
       # groq uses the real model (needs GROQ_API_KEY); fake is deterministic and offline. Set
       # AGENT_DEMO_MODE=true with fake for the scripted walkthrough that needs no network.
       AGENT_MODEL_PROVIDER: ${AGENT_MODEL_PROVIDER:-fake}
-      AGENT_DEMO_MODE: ${AGENT_DEMO_MODE:-false}
+      AGENT_DEMO_MODE: ${AGENT_DEMO_MODE:-true}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       # Keep these defaults equal to services/agent-api/app/settings.py.
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}

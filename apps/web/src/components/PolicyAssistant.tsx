@@ -41,8 +41,16 @@ function Conversation() {
       {turn.response?.proposed_actions?.map(action => <ActionReview key={action.action_id} action={action} />)}
       {Boolean(turn.response?.trace?.length) && <details className="mt-3 text-xs"><summary>Tool activity</summary>{turn.response?.trace?.map((trace, n) => <p key={n}>{trace.tool}: {trace.outcome} · {trace.latency_ms} ms</p>)}</details>}
       {turn.response && <p className="mt-2 text-xs">Request: {turn.response.request_id}</p>}
-    </article>)}</div>
-    <form onSubmit={send} className="mt-5 space-y-3"><label className="block">Policy question<textarea disabled={busy || !token} required maxLength={4000} value={input} onChange={e => setInput(e.target.value)} className="mt-2 w-full rounded-xl border p-3" /></label><button disabled={busy || !token || !input.trim()} className="rounded-xl bg-[#7a1b32] px-5 py-3 text-white disabled:opacity-50">{busy ? 'Asking…' : 'Ask CampusCue'}</button>{error && <p role="alert" className="text-rose-800">{error}</p>}</form>
+    <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+      <span className="font-medium text-stone-500">Demo prompts:</span>
+      <button type="button" onClick={() => setInput('Plan a workshop for Synthetic Robotics Club in Synthetic Main Auditorium on 24 November 2026 from 3pm to 5pm.')} className="rounded-full border border-rose-200 bg-rose-50/60 px-3 py-1 text-[#7a1b32] transition hover:bg-rose-100">
+        📅 Plan Robotics Workshop
+      </button>
+      <button type="button" onClick={() => setInput('Plan an event in Synthetic Main Auditorium on 20 November 2026 from 10am to 11am.')} className="rounded-full border border-amber-200 bg-amber-50/60 px-3 py-1 text-amber-900 transition hover:bg-amber-100">
+        ⚠️ Test Conflicting Slot
+      </button>
+    </div>
+    <form onSubmit={send} className="mt-3 space-y-3"><label className="block">Policy question<textarea disabled={busy || !token} required maxLength={4000} value={input} onChange={e => setInput(e.target.value)} className="mt-2 w-full rounded-xl border p-3" /></label><button disabled={busy || !token || !input.trim()} className="rounded-xl bg-[#7a1b32] px-5 py-3 text-white disabled:opacity-50">{busy ? 'Asking…' : 'Ask CampusCue'}</button>{error && <p role="alert" className="text-rose-800">{error}</p>}</form>
   </section>;
 }
 function ActionReview({ action }: { action: AgentAction }) {
