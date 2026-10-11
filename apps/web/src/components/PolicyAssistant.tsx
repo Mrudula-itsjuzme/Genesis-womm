@@ -41,6 +41,7 @@ function Conversation() {
       {turn.response?.proposed_actions?.map(action => <ActionReview key={action.action_id} action={action} />)}
       {Boolean(turn.response?.trace?.length) && <details className="mt-3 text-xs"><summary>Tool activity</summary>{turn.response?.trace?.map((trace, n) => <p key={n}>{trace.tool}: {trace.outcome} · {trace.latency_ms} ms</p>)}</details>}
       {turn.response && <p className="mt-2 text-xs">Request: {turn.response.request_id}</p>}
+    </article>)}</div>
     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
       <span className="font-medium text-stone-500">Demo prompts:</span>
       <button type="button" onClick={() => setInput('Plan a workshop for Synthetic Robotics Club in Synthetic Main Auditorium on 24 November 2026 from 3pm to 5pm.')} className="rounded-full border border-rose-200 bg-rose-50/60 px-3 py-1 text-[#7a1b32] transition hover:bg-rose-100">
