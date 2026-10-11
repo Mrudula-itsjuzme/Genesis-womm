@@ -1,8 +1,9 @@
 """Typed storage boundary for staged changes and registered operational items."""
 
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 from uuid import UUID
 
 from app.domain.impact import Dependency, DependentKind, FieldPath, Impact
@@ -72,3 +73,38 @@ class ChangeStore(Protocol):
 class ChangeUnitOfWork(UnitOfWork, Protocol):
     @property
     def changes(self) -> ChangeStore: ...
+
+
+def record_json(record: ChangeRecord | ItemRecord) -> dict[str, Any]:
+    return cast(
+        dict[str, Any],
+        json.loads(
+            json.dumps(
+                asdict(record),
+                default=lambda value: (
+                    value.isoformat() if isinstance(value, datetime) else str(value)
+                ),
+            )
+        ),
+    )
+
+
+def change_from_json(data: dict[str, Any]) -> ChangeRecord:
+    values = dict(data)
+    for name in ("id", "event_id", "requested_by", "applied_by"):
+        if values.get(name) is not None:
+            values[name] = UUID(values[name])
+    for name in ("created_at", "applied_at"):
+        if values.get(name) is not None:
+            values[name] = datetime.fromisoformat(values[name])
+    return ChangeRecord(**values)
+
+
+def item_from_json(data: dict[str, Any]) -> ItemRecord:
+    values = dict(data)
+    for name in ("id", "event_id", "reported_by"):
+        values[name] = UUID(values[name])
+    for name in ("created_at", "updated_at"):
+        values[name] = datetime.fromisoformat(values[name])
+    values["field_paths"] = tuple(values["field_paths"])
+    return ItemRecord(**values)

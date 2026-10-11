@@ -17,13 +17,14 @@ from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
 
 from app.domain.authz import Action, Actor, Resource, authorize
 from app.domain.enums import AvailabilityState, EventStatus, OverrideScope, Severity
+from app.domain.impact import DependentKind, FieldPath
 from app.domain.lifecycle import (
     Evidence,
     EvidenceRequiredError,
@@ -35,6 +36,16 @@ from app.domain.lifecycle import (
 )
 from app.domain.scheduling import Conflict, Policy, evaluate
 from app.domain.time import Clock, ensure_interval
+from app.services.change_ports import (
+    ChangeRecord,
+    ChangeUnitOfWork,
+    ItemRecord,
+    change_from_json,
+    impact_json,
+    item_from_json,
+    record_json,
+)
+from app.services.change_queries import FIELDS, TERMINAL, ChangeQueries, preview_in
 from app.services.codec import (
     conflict_from_json,
     conflict_to_json,
@@ -263,6 +274,213 @@ class ScheduleWriteService:
         )
 
     # ---- the one place an event is written (spine AD-4) -------------------------------
+
+    def stage_change(
+        self,
+        ctx: RequestContext,
+        event_id: UUID,
+        *,
+        expected_revision: int,
+        changes: dict[str, Any],
+        reason: str,
+    ) -> ChangeRecord:
+        return self._mutate(
+            ctx,
+            action="STAGE_CHANGE",
+            entity_type="change_proposal",
+            entity_id=event_id,
+            payload={
+                "event_id": event_id,
+                "expected_revision": expected_revision,
+                "changes": changes,
+                "reason": reason,
+            },
+            status_code=201,
+            authorize_first=lambda: self._authorize_event_action(
+                ctx.actor, event_id, Action.REQUEST_CHANGE
+            ),
+            work=lambda uow, now: self._stage(
+                cast(ChangeUnitOfWork, uow), ctx, event_id, expected_revision, changes, reason, now
+            ),
+            encode=record_json,
+            decode=change_from_json,
+            entity_of=lambda record: record.id,
+        )
+
+    def register_dependency(
+        self,
+        ctx: RequestContext,
+        event_id: UUID,
+        *,
+        kind: str,
+        title: str,
+        field_paths: tuple[str, ...],
+    ) -> ItemRecord:
+        return self._mutate(
+            ctx,
+            action="REGISTER_DEPENDENCY",
+            entity_type="event_item",
+            entity_id=event_id,
+            payload={
+                "event_id": event_id,
+                "kind": kind,
+                "title": title,
+                "field_paths": sorted(set(field_paths)),
+            },
+            status_code=201,
+            authorize_first=lambda: self._authorize_event_action(
+                ctx.actor, event_id, Action.REPORT_COMMITMENT
+            ),
+            work=lambda uow, now: self._register(
+                cast(ChangeUnitOfWork, uow), ctx, event_id, kind, title, field_paths, now
+            ),
+            encode=record_json,
+            decode=item_from_json,
+            entity_of=lambda record: record.id,
+        )
+
+    def apply_change(
+        self,
+        ctx: RequestContext,
+        proposal_id: UUID,
+        *,
+        expected_revision: int,
+    ) -> WriteResult:
+        return self._mutate(
+            ctx,
+            action="APPLY_CHANGE",
+            entity_type="change_proposal",
+            entity_id=proposal_id,
+            payload={"proposal_id": proposal_id, "expected_revision": expected_revision},
+            status_code=200,
+            authorize_first=lambda: self._authorize_change(ctx.actor, proposal_id),
+            work=lambda uow, now: self._apply_change(uow, ctx, proposal_id, expected_revision, now),
+            encode=self._encode_write,
+            decode=self._decode_write,
+            entity_of=lambda _result: proposal_id,
+        )
+
+    def _authorize_event_action(self, actor: Actor, event_id: UUID, action: Action) -> None:
+        with self._uow_factory() as uow:
+            event = uow.events.get(event_id)
+            if event is None:
+                raise NotFoundError("event", event_id)
+            self._require(actor, action, Resource(club_id=event.club_id))
+
+    def _authorize_change(self, actor: Actor, proposal_id: UUID) -> None:
+        with self._uow_factory() as uow:
+            change = cast(ChangeUnitOfWork, uow).changes.get(proposal_id)
+            if change is None:
+                raise NotFoundError("change proposal", proposal_id)
+            event = uow.events.get(change.event_id)
+            if event is None:
+                raise NotFoundError("event", change.event_id)
+            self._require(actor, Action.APPLY_CHANGE, Resource(club_id=event.club_id))
+
+    def _stage(
+        self,
+        uow: ChangeUnitOfWork,
+        ctx: RequestContext,
+        event_id: UUID,
+        expected_revision: int,
+        changes: dict[str, Any],
+        reason: str,
+        now: datetime,
+    ) -> ChangeRecord:
+        event = ChangeQueries.event_for(uow, ctx.actor, event_id)
+        if event.revision != expected_revision:
+            raise StaleRevisionError(event_id, expected_revision, event.revision)
+        text = reason.strip()
+        if not text or len(text) > 500:
+            raise InvalidRequestError("A change needs a reason of 1 to 500 characters")
+        preview = preview_in(uow, event, changes, self._policy)
+        record = ChangeRecord(
+            self._ids.new_id(),
+            event_id,
+            expected_revision,
+            text,
+            "STAGED",
+            preview.changes,
+            [conflict_to_json(item) for item in preview.conflicts],
+            impact_json(preview.impact),
+            ctx.actor.user_id,
+            now,
+        )
+        uow.changes.add(record)
+        return record
+
+    def _register(
+        self,
+        uow: ChangeUnitOfWork,
+        ctx: RequestContext,
+        event_id: UUID,
+        kind: str,
+        title: str,
+        field_paths: tuple[str, ...],
+        now: datetime,
+    ) -> ItemRecord:
+        event = ChangeQueries.event_for(uow, ctx.actor, event_id)
+        text, fields = title.strip(), tuple(sorted(set(field_paths)))
+        if event.status in TERMINAL:
+            raise InvalidRequestError("Cannot add dependencies to a terminal event")
+        if kind not in {"COMMITMENT", "TASK"} or not text or len(text) > 200:
+            raise InvalidRequestError("A dependency needs a task/commitment kind and title")
+        if not fields or set(fields) - FIELDS:
+            raise InvalidRequestError("A dependency must bind one or more supported event fields")
+        record = ItemRecord(
+            self._ids.new_id(),
+            event_id,
+            cast(DependentKind, kind),
+            text,
+            "REQUESTED" if kind == "COMMITMENT" else "OPEN",
+            False,
+            ctx.actor.user_id,
+            cast(tuple[FieldPath, ...], fields),
+            now,
+            now,
+        )
+        uow.changes.add_item(record)
+        return record
+
+    def _apply_change(
+        self,
+        uow: ScheduleUnitOfWork,
+        ctx: RequestContext,
+        proposal_id: UUID,
+        expected_revision: int,
+        now: datetime,
+    ) -> WriteResult:
+        change_uow = cast(ChangeUnitOfWork, uow)
+        change = change_uow.changes.get(proposal_id)
+        if change is None:
+            raise NotFoundError("change proposal", proposal_id)
+        before = uow.events.get(change.event_id)
+        if before is None:
+            raise NotFoundError("event", change.event_id)
+        self._require(ctx.actor, Action.APPLY_CHANGE, Resource(club_id=before.club_id))
+        if before.revision != expected_revision or before.revision != change.base_revision:
+            raise StaleRevisionError(before.id, change.base_revision, before.revision)
+        if change.status != "STAGED":
+            raise InvalidRequestError("This change was already applied; reload the event")
+        preview = preview_in(change_uow, before, change.changes, self._policy)
+        after = preview.candidate.but(revision=before.revision + 1, updated_at=now)
+        if before.status is EventStatus.CONFIRMED and after.status is not EventStatus.CONFIRMED:
+            after = after.but(verified_by=None, verified_at=None, evidence_id=None)
+        conflicts = self.commit(
+            uow,
+            ctx,
+            before=before,
+            after=after,
+            availability=preview.availability,
+            reason=change.reason,
+            now=now,
+        )
+        change_uow.changes.revalidate(before.id, preview.impact, now)
+        if not change_uow.changes.apply(
+            proposal_id, ctx.actor.user_id, now, impact_json(preview.impact)
+        ):
+            raise InvalidRequestError("The proposal was already decided")
+        return WriteResult(after, tuple(conflicts), preview.availability)
 
     def commit(
         self,
