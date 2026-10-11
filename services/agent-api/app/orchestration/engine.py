@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from typing import Any
 from uuid import UUID
 
@@ -76,7 +77,7 @@ class OrchestrationEngine:
         system_prompt: str,
     ) -> ChatResponse:
         """Run bounded LLM-tool loop. Returns a validated ChatResponse."""
-        mutable = list(messages)
+        mutable = [_defang(message) for message in messages]
         trace: list[ToolTraceEntry] = []
         citations: list[Citation] = []
         proposed_actions: list[AgentAction] = []
@@ -338,6 +339,18 @@ class OrchestrationEngine:
         if stripped.endswith("?") and len(stripped.splitlines()) <= 3:
             return stripped
         return None
+
+
+# Tool results reach the model as lines that begin "[Tool name]". A caller's own messages may
+# not begin that way, or a person could write a result the system never produced.
+_FORGED_TOOL_RESULT = re.compile(r"(?m)^(\s*)\[Tool\b")
+
+
+def _defang(message: ChatMessage) -> ChatMessage:
+    content = _FORGED_TOOL_RESULT.sub(r"\1[quoted Tool", message.content)
+    return (
+        message if content == message.content else message.model_copy(update={"content": content})
+    )
 
 
 def _opt_uuid(value: Any) -> UUID | None:
