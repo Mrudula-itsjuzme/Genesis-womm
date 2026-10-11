@@ -13,6 +13,8 @@ AppEnv = Literal["local", "test", "demo"]
 ModelProvider = Literal["groq", "fake"]
 
 _LOCAL_ONLY_PREFIX = "local-only"
+# Core abandons a turn after this long (AGENT_CLIENT_TIMEOUT_S); the Agent must finish first.
+_CORE_WAIT_S = 25.0
 
 
 class Settings(BaseSettings):
@@ -29,7 +31,10 @@ class Settings(BaseSettings):
     agent_model_provider: ModelProvider = "fake"
     agent_demo_mode: bool = False
     groq_api_key: SecretStr = SecretStr("")
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
+    # Used once when the main model is rate limited. Empty disables the fallback.
+    groq_fallback_model: str = "openai/gpt-oss-20b"
+    groq_timeout_s: float = Field(default=12.0, gt=0)
 
     core_api_url: str = "http://core-api:8000"
     rag_api_url: str = "http://rag-api:8002"
@@ -54,6 +59,10 @@ class Settings(BaseSettings):
     def _check_cross_field_rules(self) -> Self:
         if self.tool_timeout_s > self.turn_deadline_s:
             raise ValueError("TOOL_TIMEOUT_S must not exceed TURN_DEADLINE_S")
+        if self.turn_deadline_s >= _CORE_WAIT_S:
+            raise ValueError(
+                f"TURN_DEADLINE_S must stay under the {_CORE_WAIT_S:.0f} s Core waits for a turn"
+            )
         internal = self.internal_api_key.get_secret_value()
         if self.app_env != "local" and not internal:
             raise ValueError("INTERNAL_API_KEY is required outside APP_ENV=local")

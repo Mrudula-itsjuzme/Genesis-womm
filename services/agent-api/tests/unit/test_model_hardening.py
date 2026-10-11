@@ -20,7 +20,7 @@ from app.ports.core import CallContext
 from app.ports.errors import ContractViolationError, DependencyUnavailableError
 from app.ports.llm import LlmResponse
 from app.providers.fakes import FakeLlmProvider
-from app.providers.groq import GroqProvider
+from app.providers.groq import GroqProvider, make_client
 from app.schemas.chat import ChatMessage
 from app.tools.allowlist import TOOL_SCHEMAS
 
@@ -31,8 +31,12 @@ CTX = CallContext(request_id="req-1", delegation_token="t.o.k")
 
 def status_error(code: int, body: object = None, message: str = "boom") -> groq.APIStatusError:
     response = httpx.Response(code, request=REQUEST)
-    cls = groq.BadRequestError if code == 400 else groq.RateLimitError
-    return cls(message, response=response, body=body)
+    classes: dict[int, type[groq.APIStatusError]] = {
+        400: groq.BadRequestError,
+        404: groq.NotFoundError,
+        429: groq.RateLimitError,
+    }
+    return classes[code](message, response=response, body=body)
 
 
 def completion(content: str | None, tool_calls: list[Any] | None = None) -> Any:
@@ -51,19 +55,21 @@ class ScriptedClient:
     def __init__(self, *outcomes: Any) -> None:
         self.outcomes = list(outcomes)
         self.calls = 0
+        self.models: list[str] = []
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
 
-    async def _create(self, **_: Any) -> Any:
+    async def _create(self, **kwargs: Any) -> Any:
         self.calls += 1
+        self.models.append(kwargs["model"])
         outcome = self.outcomes.pop(0)
         if isinstance(outcome, Exception):
             raise outcome
         return outcome
 
 
-def provider(*outcomes: Any) -> tuple[GroqProvider, ScriptedClient]:
+def provider(*outcomes: Any, fallback: str | None = None) -> tuple[GroqProvider, ScriptedClient]:
     client = ScriptedClient(*outcomes)
-    return GroqProvider("key", "model", client=client), client
+    return GroqProvider("key", "model", fallback_model=fallback, client=client), client
 
 
 # ---- provider failures -----------------------------------------------------------------
@@ -91,6 +97,49 @@ async def test_the_failure_text_does_not_carry_the_providers_message() -> None:
         await llm.complete(USER, [], "system")
 
     assert "sk-secret" not in str(raised.value)
+
+
+async def test_a_rate_limited_call_is_answered_by_the_fallback_model() -> None:
+    llm, client = provider(status_error(429), completion("from the small model"), fallback="small")
+
+    reply = await llm.complete(USER, [], "system")
+
+    assert reply.text == "from the small model"
+    assert client.models == ["model", "small"]
+
+
+async def test_when_the_fallback_is_limited_too_the_turn_fails_fast() -> None:
+    llm, client = provider(status_error(429), status_error(429), fallback="small")
+
+    with pytest.raises(DependencyUnavailableError):
+        await llm.complete(USER, [], "system")
+
+    assert client.models == ["model", "small"]
+
+
+async def test_without_a_fallback_a_rate_limit_is_not_retried() -> None:
+    llm, client = provider(status_error(429))
+
+    with pytest.raises(DependencyUnavailableError):
+        await llm.complete(USER, [], "system")
+
+    assert client.calls == 1
+
+
+async def test_a_missing_model_does_not_fall_back_it_is_a_misconfiguration() -> None:
+    llm, client = provider(status_error(404), fallback="small")
+
+    with pytest.raises(DependencyUnavailableError):
+        await llm.complete(USER, [], "system")
+
+    assert client.calls == 1
+
+
+def test_the_real_client_never_retries_silently_and_has_a_short_timeout() -> None:
+    client = make_client("key", timeout_s=12.0)
+
+    assert client.max_retries == 0
+    assert client.timeout == 12.0
 
 
 async def test_a_malformed_tool_call_is_retried_once_and_then_succeeds() -> None:

@@ -29,10 +29,24 @@ def _parse_arguments(raw: str | None) -> dict[str, Any]:
     return arguments
 
 
+def make_client(api_key: str, *, timeout_s: float) -> AsyncGroq:
+    """No silent retries: the SDK would back off for longer than a turn is allowed to take."""
+    return AsyncGroq(api_key=api_key, max_retries=0, timeout=timeout_s)
+
+
 class GroqProvider(LlmPort):
-    def __init__(self, api_key: str, model: str, *, client: Any = None) -> None:
-        self._client = client if client is not None else AsyncGroq(api_key=api_key)
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        *,
+        fallback_model: str | None = None,
+        timeout_s: float = 12.0,
+        client: Any = None,
+    ) -> None:
+        self._client = client if client is not None else make_client(api_key, timeout_s=timeout_s)
         self._model = model
+        self._fallback_model = fallback_model or None
 
     async def complete(
         self,
@@ -63,22 +77,30 @@ class GroqProvider(LlmPort):
         return LlmResponse(text=response_msg.content, tool_calls=tool_calls)
 
     async def _create(self, api_messages: list[Any], kwargs: dict[str, Any]) -> Any:
-        """One completion. A malformed tool call is retried once; nothing else is."""
-        for attempt in (1, 2):
+        """One completion. A malformed tool call is retried once and a rate limit moves to the
+        fallback model once; nothing else is retried."""
+        model = self._model
+        retried_tool_call = fell_back = False
+        while True:
             try:
                 return await self._client.chat.completions.create(
-                    messages=api_messages, model=self._model, **kwargs
+                    messages=api_messages, model=model, **kwargs
                 )
             except groq.BadRequestError as error:
                 if not _is_malformed_tool_call(error):
                     self._log_failure(error)
                     raise DependencyUnavailableError("model") from error
-                if attempt == 2:
+                if retried_tool_call:
                     raise ContractViolationError("the model wrote an invalid tool call") from error
+                retried_tool_call = True
+            except groq.RateLimitError as error:
+                self._log_failure(error)
+                if self._fallback_model is None or fell_back:
+                    raise DependencyUnavailableError("model", "busy") from error
+                fell_back, model = True, self._fallback_model
             except groq.APIError as error:
                 self._log_failure(error)
                 raise DependencyUnavailableError("model") from error
-        raise AssertionError("unreachable")  # pragma: no cover
 
     @staticmethod
     def _log_failure(error: groq.APIError) -> None:
