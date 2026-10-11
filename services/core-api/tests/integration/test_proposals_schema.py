@@ -74,7 +74,7 @@ def test_an_unknown_status_is_refused(db: Engine) -> None:
     refused(db, lambda c: make_proposal(c, club, user, event, status="PUBLISHED"))
 
 
-@pytest.mark.parametrize("status", ["APPROVED", "REJECTED", "REVISION_REQUESTED", "CHUNKED"])
+@pytest.mark.parametrize("status", ["FACULTY_APPROVED", "APPROVED", "REJECTED", "REVISION_REQUESTED", "CHUNKED"])
 def test_a_decided_proposal_names_its_reviewer_and_when(db: Engine, status: str) -> None:
     club, user, event = world(db)
     extra: dict[str, Any] = {"rag_ingested_at": NOW} if status == "CHUNKED" else {}
