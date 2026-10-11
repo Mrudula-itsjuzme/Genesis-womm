@@ -1,4 +1,5 @@
 import { ExternalLink, FileText, Landmark, CalendarDays, Users, Wifi, BookOpenCheck } from 'lucide-react';
+import SharedResourcePlanner from '@/components/SharedResourcePlanner';
 
 const sourceGroups = [
   {
@@ -55,6 +56,8 @@ export default function ResourcesPage() {
             Official documents and campus websites, grouped by what they contain. Sources do not confirm approvals, bookings, or live availability.
           </p>
         </header>
+
+        <div className="mb-8"><SharedResourcePlanner /></div>
 
         <div className="space-y-8">
           {sourceGroups.map((group) => {
