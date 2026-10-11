@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gateway, event, eventId, check } from './fixtures';
+import { gateway, event, eventId, check, session } from './fixtures';
 
 test('planner previews unsaved schedules and sends an idempotent campus-time draft', async ({ page }) => {
   await gateway(page);
@@ -50,4 +50,34 @@ test('mobile navigation works and backend failures never display mock events', a
   await page.goto('/'); await expect(page.getByText(/Core unavailable/).first()).toBeVisible(); await expect(page.getByText('WOMM Orientation')).not.toBeVisible();
   await page.getByRole('button', { name: 'Open navigation' }).click(); await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link', { name: 'Reports' }).click(); await expect(page).toHaveURL(/reports/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('proposal lookup rejects a document belonging to another event', async ({ page }) => {
+  await gateway(page);
+  await page.route('**/api/v1/proposals/known-id', route => route.fulfill({ json: { id: 'known-id', event_id: 'other-event', club_id: event.club_id, revision: 1, status: 'SUBMITTED', title: 'Wrong event', minio_key: 'test.pdf' } }));
+  await page.goto('/changes?eventId=' + eventId);
+  await page.getByLabel('Existing proposal ID').fill('known-id');
+  await page.getByRole('button', { name: 'Load proposal', exact: true }).click();
+  await expect(page.getByText('This proposal belongs to another event or club.')).toBeVisible();
+  await expect(page.getByText('Saved Wrong event')).not.toBeVisible();
+});
+
+test('expired sessions clear protected records and identity', async ({ page }) => {
+  await gateway(page);
+  await page.route('**/api/v1/events*', route => route.fulfill({ status: 401, json: { code: 'UNAUTHORIZED', message: 'Session expired', details: [], request_id: 'expired-request' } }));
+  await page.goto('/calendar');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('campuscue.session.v1'))).toBeNull();
+  await expect(page.getByText(event.title)).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out' })).not.toBeVisible();
+});
+
+test('campus administrators can reopen and review a saved proposal', async ({ page }) => {
+  await gateway(page, false);
+  await page.addInitScript(value => localStorage.setItem('campuscue.session.v1', JSON.stringify(value)), { ...session, user: { ...session.user, campus_admin: true } });
+  await page.route('**/api/v1/proposals/known-id', route => route.fulfill({ json: { id: 'known-id', event_id: eventId, club_id: event.club_id, revision: 1, status: 'SUBMITTED', title: 'Reopened proposal', minio_key: 'test.pdf' } }));
+  await page.route('**/api/v1/proposals/known-id/status', async route => { expect(route.request().postDataJSON().action).toBe('request_revision'); await route.fulfill({ json: { id: 'known-id', event_id: eventId, club_id: event.club_id, revision: 1, status: 'REVISION_REQUESTED', title: 'Reopened proposal', minio_key: 'test.pdf' } }); });
+  await page.goto('/changes?eventId=' + eventId);
+  await page.getByLabel('Existing proposal ID').fill('known-id'); await page.getByRole('button', { name: 'Load proposal', exact: true }).click();
+  await page.getByLabel('Review note').fill('Please include the agenda'); await page.getByRole('button', { name: 'request revision', exact: true }).click();
+  await expect(page.getByText(/Saved Reopened proposal.*REVISION_REQUESTED/)).toBeVisible();
 });

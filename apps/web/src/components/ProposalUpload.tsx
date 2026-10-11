@@ -13,8 +13,19 @@ export default function ProposalUpload({ eventId, clubId }: { eventId: string; c
   const [record, setRecord] = useState<ProposalUploadOut | ProposalOut | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [url, setUrl] = useState(''); const [note, setNote] = useState('');
+  const [existingId, setExistingId] = useState('');
   const role = session?.user.memberships?.find(m => m.club_id === clubId)?.role;
   const canUpload = session?.user.campus_admin || role === 'ORGANIZER' || role === 'CLUB_ADMIN';
+  async function load(event: FormEvent) {
+    event.preventDefault(); if (!token || !existingId.trim() || busy) return;
+    setBusy(true); setError(''); setUrl(''); setRecord(null);
+    try {
+      const proposal = await proposalsApi.get(token, existingId.trim());
+      if (proposal.event_id !== eventId || proposal.club_id !== clubId) throw new Error('This proposal belongs to another event or club.');
+      setRecord(proposal);
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setBusy(false); }
+  }
   async function upload(event: FormEvent) {
     event.preventDefault(); if (!token || !file || busy) return;
     const invalid = validateProposal(file); if (invalid) { setError(invalid); return; }
@@ -36,6 +47,7 @@ export default function ProposalUpload({ eventId, clubId }: { eventId: string; c
     finally { setBusy(false); }
   }
   return <section className="mt-6 rounded-2xl border bg-white p-5"><h2 className="text-xl font-bold">Proposal document</h2><p className="my-2 text-sm">PDF only, up to 15 MiB. Uploading a proposal does not confirm the event.</p>
+    <form onSubmit={load} className="my-3 flex flex-wrap items-end gap-2"><label className="block text-sm">Existing proposal ID<input value={existingId} onChange={e => setExistingId(e.target.value)} className="block rounded border p-2" /></label><button disabled={busy || !existingId.trim()} className="rounded border p-2">Load proposal</button></form><p className="mb-3 text-xs">Keep the proposal ID after uploading to reopen it for download or review.</p>
     {canUpload && !record && <form onSubmit={upload} className="space-y-3"><label className="block">Document title<input required maxLength={200} value={title} onChange={e => setTitle(e.target.value)} className="ml-2 rounded border p-2" /></label><label className="block">PDF file<input disabled={busy} type="file" accept=".pdf,application/pdf" onChange={e => { setFile(e.target.files?.[0] ?? null); setError(''); }} className="block max-w-full p-2" /></label><button disabled={busy || !file || !title.trim()} className="rounded-lg bg-[#7a1b32] px-4 py-2 text-white disabled:opacity-50">{busy ? 'Uploading…' : 'Upload proposal'}</button></form>}
     {record && <div><p role="status">Saved {record.title} · Revision {record.revision} · {record.status}</p><p className="break-all text-xs">Proposal ID: {record.id}</p><button disabled={busy} onClick={download} className="my-3 underline">Get fresh download link</button>{url && <a href={url} target="_blank" rel="noreferrer" className="ml-3 underline">Download PDF (expires in 15 minutes)</a>}
       {session?.user.campus_admin && <div><label>Review note<textarea value={note} onChange={e => setNote(e.target.value)} className="block w-full rounded border p-2" /></label><div className="my-2 flex flex-wrap gap-3">{(['approve', 'reject', 'request_revision'] as const).map(action => <button key={action} disabled={busy} onClick={() => review(action)} className="rounded border p-2">{action.replaceAll('_', ' ')}</button>)}</div></div>}
