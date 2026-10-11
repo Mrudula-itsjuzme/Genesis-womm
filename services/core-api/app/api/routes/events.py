@@ -10,7 +10,7 @@ from app.api.deps import (
     get_schedule_write_service,
     require_session_actor,
 )
-from app.api.errors import stub_errors
+from app.api.errors import route_errors
 from app.api.presenters import conflict_check_out, conflict_out, event_out
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode, EventStatus
@@ -53,7 +53,7 @@ IdempotencyKey = Annotated[
         "Saves a DRAFT. Drafts and proposals always save; conflicts are returned alongside. "
         "A proposal is not a venue booking."
     ),
-    responses=stub_errors(ErrorCode.IDEMPOTENCY_MISMATCH),
+    responses=route_errors(ErrorCode.IDEMPOTENCY_MISMATCH),
 )
 def create_event(
     payload: EventCreate,
@@ -89,7 +89,7 @@ def create_event(
     "",
     response_model=EventList,
     summary="List events visible to the caller",
-    responses=stub_errors(),
+    responses=route_errors(),
 )
 def list_events(
     actor: Annotated[Actor, Depends(require_session_actor)],
@@ -124,7 +124,7 @@ def list_events(
     "/{event_id}",
     response_model=EventOut,
     summary="Get one event",
-    responses=stub_errors(ErrorCode.NOT_FOUND),
+    responses=route_errors(ErrorCode.NOT_FOUND),
 )
 def get_event(
     event_id: UUID,
@@ -143,7 +143,7 @@ def get_event(
         "Advisory: runs the same engine as a write but without the campus lock, so the result "
         "can go stale. Writes re-check inside the transaction."
     ),
-    responses=stub_errors(ErrorCode.NOT_FOUND),
+    responses=route_errors(ErrorCode.NOT_FOUND),
 )
 def check_event_conflicts(
     event_id: UUID,
@@ -173,7 +173,7 @@ def check_event_conflicts(
     response_model=EventOut,
     summary="Move an event along its lifecycle",
     description="Only a confirmation can be blocked by a conflict.",
-    responses=stub_errors(ErrorCode.NOT_FOUND, ErrorCode.CONFLICT_DETECTED),
+    responses=route_errors(ErrorCode.NOT_FOUND, ErrorCode.CONFLICT_DETECTED),
 )
 def transition_event_route(
     event_id: UUID,

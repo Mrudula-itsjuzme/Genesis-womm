@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 
 from app.api.deps import get_schedule_write_service, require_session_actor
-from app.api.errors import stub_errors
+from app.api.errors import route_errors
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
 from app.schemas.events import OverrideOut, OverrideRequest
@@ -20,7 +20,7 @@ router = APIRouter(
     response_model=OverrideOut,
     summary="Create a new schedule conflict override",
     description="Waive one constraint for one pair of events. Campus admins only.",
-    responses=stub_errors(ErrorCode.FORBIDDEN, ErrorCode.DUPLICATE_OVERRIDE),
+    responses=route_errors(ErrorCode.DUPLICATE_OVERRIDE),
 )
 def create_override(
     payload: OverrideRequest,

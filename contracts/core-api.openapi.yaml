@@ -125,12 +125,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
     get:
       tags:
       - events
@@ -225,12 +219,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/events/{event_id}:
     get:
       tags:
@@ -268,12 +256,6 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '422':
           description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
           content:
             application/json:
               schema:
@@ -331,12 +313,6 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '422':
           description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
           content:
             application/json:
               schema:
@@ -402,12 +378,6 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '422':
           description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
           content:
             application/json:
               schema:
@@ -1184,19 +1154,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '403':
-          description: FORBIDDEN / FORBIDDEN
+          description: FORBIDDEN
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '422':
           description: VALIDATION_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          description: NOT_IMPLEMENTED
           content:
             application/json:
               schema:
