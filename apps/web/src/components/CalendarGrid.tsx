@@ -7,6 +7,7 @@ import { eventsApi } from '@/lib/api/endpoints';
 import { calendarWindow, calendarCells, shiftDay, type CalendarView } from '@/lib/calendar';
 import { campusFormat, fromCampusISO, toCampusISO } from '@/lib/campus-time';
 import RemoteState from './RemoteState';
+import EventDetailModal from './EventDetailModal';
 const subscribe = () => () => {};
 const currentDay = () => fromCampusISO(new Date().toISOString()).date;
 const serverDay = () => '';
@@ -14,7 +15,7 @@ const serverDay = () => '';
 export default function CalendarGrid() {
   const { token } = useAuth();
   const [anchor, setAnchor] = useState(''); const [view, setView] = useState<CalendarView>('Month');
-  const [offset, setOffset] = useState(0);
+  const [offset, setOffset] = useState(0); const [selected, setSelected] = useState<{token: string; id: string} | null>(null);
   // Read the current campus date only after hydration, avoiding server/client date mismatch.
   const today = useSyncExternalStore(subscribe, currentDay, serverDay);
   const now = anchor || today || '2000-01-01';
@@ -40,9 +41,10 @@ export default function CalendarGrid() {
       <Link href="/plan" className="ml-auto rounded-xl bg-[#7a1b32] px-5 py-3 text-white">Plan an event</Link>
     </div>
     <RemoteState signedIn={Boolean(token)} {...remote} empty={events.length === 0} />
-    {remote.data && <>{view === 'List' ? <div className="space-y-3">{events.map(event => <article key={event.id} className="rounded-xl border bg-white p-4"><Link className="font-bold underline" href={'/changes?eventId=' + event.id}>{event.title}</Link><p>{campusFormat(event.start_at)} – {campusFormat(event.end_at)}</p><p>{event.status} · Venue availability: {event.venue_availability}{event.synthetic ? ' · Synthetic demo' : ''}</p></article>)}</div>
-      : <div className="grid grid-cols-1 gap-2 sm:grid-cols-7">{days.map(day => <div key={day} className={'min-h-32 rounded-lg border p-2 ' + (day.slice(0, 7) === now.slice(0, 7) ? 'bg-white' : 'bg-stone-100')}><p className="text-xs font-bold">{campusFormat(toCampusISO(day, '12:00'), { weekday: 'short', day: 'numeric', month: 'short' })}</p>{events.filter(event => fromCampusISO(event.start_at).date === day).map(event => <Link key={event.id} href={'/changes?eventId=' + event.id} className="my-2 block rounded bg-rose-50 p-2 text-xs"><strong>{event.title}</strong><p>{campusFormat(event.start_at, { timeStyle: 'short' })} · {event.status}</p>{event.synthetic && <p>Synthetic demo</p>}</Link>)}</div>)}</div>}
+    {remote.data && <>{view === 'List' ? <div className="space-y-3">{events.map(event => <article key={event.id} className="rounded-xl border bg-white p-4"><button className="font-bold underline" onClick={() => setSelected({ token: token!, id: event.id })}>{event.title}</button><p>{campusFormat(event.start_at)} – {campusFormat(event.end_at)}</p><p>{event.status} · Venue availability: {event.venue_availability}{event.synthetic ? ' · Synthetic demo' : ''}</p></article>)}</div>
+      : <div className="grid grid-cols-1 gap-2 sm:grid-cols-7">{days.map(day => <div key={day} className={'min-h-32 rounded-lg border p-2 ' + (day.slice(0, 7) === now.slice(0, 7) ? 'bg-white' : 'bg-stone-100')}><p className="text-xs font-bold">{campusFormat(toCampusISO(day, '12:00'), { weekday: 'short', day: 'numeric', month: 'short' })}</p>{events.filter(event => fromCampusISO(event.start_at).date === day).map(event => <button key={event.id} onClick={() => setSelected({ token: token!, id: event.id })} className="my-2 block w-full rounded bg-rose-50 p-2 text-left text-xs"><strong>{event.title}</strong><p>{campusFormat(event.start_at, { timeStyle: 'short' })} · {event.status}</p>{event.synthetic && <p>Synthetic demo</p>}</button>)}</div>)}</div>}
     <div className="my-4 flex items-center gap-4"><button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 100))}>Previous records</button><span>{remote.data.total} records in period</span><button disabled={offset + 100 >= remote.data.total} onClick={() => setOffset(offset + 100)}>More records</button></div></>}
     </>}
+    {selected && selected.token === token && <EventDetailModal key={token + selected.id} id={selected.id} close={() => setSelected(null)} />}
   </section>;
 }
