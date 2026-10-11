@@ -27,7 +27,7 @@ class ProposalRow(Base):
         ),
         CheckConstraint("sha256_hash IS NULL OR length(sha256_hash) = 64", name="sha256_length"),
         CheckConstraint(
-            "status NOT IN ('APPROVED', 'REJECTED', 'REVISION_REQUESTED', 'CHUNKED') "
+            "status NOT IN ('FACULTY_APPROVED', 'APPROVED', 'REJECTED', 'REVISION_REQUESTED', 'CHUNKED') "
             "OR (reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL)",
             name="decided_has_reviewer",
         ),
