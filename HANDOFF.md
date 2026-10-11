@@ -1,5 +1,9 @@
 # HANDOFF: CampusCue schedule changes and dependency impact
 
+> **PR preparation: 2026-10-11.** Fetched `origin/main` at `a54fe1b`; `git merge --no-ff --no-commit origin/main` reported already up to date. No merge conflicts or resolution edits. User authorized pushing `feat/schedule-change-impact` and opening a PR to main. The PR includes both frontend integration and Plan 08 (64 implementation/documentation commits before this verification note).
+>
+> Fresh pre-PR verification: Core `uv run pytest -q --tb=short`: **1064 passed, 1 skipped in 152.56 s**, exit 0. Ruff check/format, mypy (152 files), import-linter (9 kept), contract/type drift and Compose configuration all exit 0. Web unit tests: **15 passed in 517.47 ms**; browser: **14 passed in 15.8 s**; live gateway: **2 passed in 6.2 s**. Web lint, TypeScript and production build exit 0. `ui_mock.png` remains untracked and excluded. Publishing is the next step; use `gh pr view --head feat/schedule-change-impact` or the branch's GitHub PR listing for the resulting PR.
+
 > **Latest continuation: 2026-10-11.** Branch `feat/schedule-change-impact`, based on integration HEAD `32ea704`. User selected Core schedule changes and dependency impact. [Plan 08](Implementation_Plans/08-schedule-change-impact.md) is implemented. This section supersedes the older current-state notes below. Local commits only; no push or deployment.
 
 ## Delivered continuation
