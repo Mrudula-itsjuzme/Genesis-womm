@@ -29,8 +29,13 @@ USER = [ChatMessage(role="user", content="hello")]
 CTX = CallContext(request_id="req-1", delegation_token="t.o.k")
 
 
-def status_error(code: int, body: object = None, message: str = "boom") -> groq.APIStatusError:
-    response = httpx.Response(code, request=REQUEST)
+def status_error(
+    code: int,
+    body: object = None,
+    message: str = "boom",
+    headers: dict[str, str] | None = None,
+) -> groq.APIStatusError:
+    response = httpx.Response(code, request=REQUEST, headers=headers)
     classes: dict[int, type[groq.APIStatusError]] = {
         400: groq.BadRequestError,
         404: groq.NotFoundError,
@@ -56,20 +61,38 @@ class ScriptedClient:
         self.outcomes = list(outcomes)
         self.calls = 0
         self.models: list[str] = []
+        self.kwargs: list[dict[str, Any]] = []
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
 
     async def _create(self, **kwargs: Any) -> Any:
         self.calls += 1
         self.models.append(kwargs["model"])
+        self.kwargs.append(kwargs)
         outcome = self.outcomes.pop(0)
         if isinstance(outcome, Exception):
             raise outcome
         return outcome
 
 
-def provider(*outcomes: Any, fallback: str | None = None) -> tuple[GroqProvider, ScriptedClient]:
+class Sleeper:
+    """Stands in for asyncio.sleep so waiting out a rate limit costs the tests no time."""
+
+    def __init__(self) -> None:
+        self.slept: list[float] = []
+
+    async def __call__(self, seconds: float) -> None:
+        self.slept.append(seconds)
+
+
+def provider(
+    *outcomes: Any,
+    fallback: str | None = None,
+    model: str = "model",
+    **options: Any,
+) -> tuple[GroqProvider, ScriptedClient]:
     client = ScriptedClient(*outcomes)
-    return GroqProvider("key", "model", fallback_model=fallback, client=client), client
+    options.setdefault("sleep", Sleeper())
+    return GroqProvider("key", model, fallback_model=fallback, client=client, **options), client
 
 
 # ---- provider failures -----------------------------------------------------------------
@@ -267,3 +290,89 @@ def test_a_draft_proposal_spells_out_the_fields_core_accepts() -> None:
     }
     assert set(payload["required"]) == {"club_id", "title", "start_at", "end_at"}
     assert payload["additionalProperties"] is False
+
+
+# ---- spending the token budget carefully -------------------------------------------------
+
+
+async def test_a_gpt_oss_call_asks_for_low_reasoning_and_a_bounded_answer() -> None:
+    llm, client = provider(completion("ok"), model="openai/gpt-oss-120b")
+
+    await llm.complete(USER, [], "system")
+
+    assert client.kwargs[0]["reasoning_effort"] == "low"
+    assert client.kwargs[0]["max_completion_tokens"] == 1024
+
+
+async def test_another_model_is_not_sent_a_parameter_it_may_reject() -> None:
+    llm, client = provider(completion("ok"), model="some/other-model")
+
+    await llm.complete(USER, [], "system")
+
+    assert "reasoning_effort" not in client.kwargs[0]
+
+
+async def test_reasoning_effort_can_be_turned_off() -> None:
+    llm, client = provider(completion("ok"), model="openai/gpt-oss-120b", reasoning_effort="")
+
+    await llm.complete(USER, [], "system")
+
+    assert "reasoning_effort" not in client.kwargs[0]
+
+
+async def test_a_short_rate_limit_is_waited_out_on_the_same_model() -> None:
+    sleeper = Sleeper()
+    limited = status_error(429, headers={"retry-after": "2"})
+    llm, client = provider(limited, completion("ok"), fallback="small", sleep=sleeper)
+
+    reply = await llm.complete(USER, [], "system")
+
+    assert (reply.text, client.models, sleeper.slept) == ("ok", ["model", "model"], [2.0])
+
+
+async def test_a_long_rate_limit_goes_straight_to_the_fallback() -> None:
+    sleeper = Sleeper()
+    limited = status_error(429, headers={"retry-after": "40"})
+    llm, client = provider(limited, completion("ok"), fallback="small", sleep=sleeper)
+
+    await llm.complete(USER, [], "system")
+
+    assert (client.models, sleeper.slept) == (["model", "small"], [])
+
+
+async def test_it_waits_at_most_once_then_falls_back() -> None:
+    sleeper = Sleeper()
+    limited = status_error(429, headers={"retry-after": "1"})
+    llm, client = provider(limited, limited, completion("ok"), fallback="small", sleep=sleeper)
+
+    await llm.complete(USER, [], "system")
+
+    assert (client.models, sleeper.slept) == (["model", "model", "small"], [1.0])
+
+
+async def test_a_missing_or_unreadable_retry_after_does_not_wait() -> None:
+    sleeper = Sleeper()
+    llm, _ = provider(
+        status_error(429, headers={"retry-after": "soon"}),
+        completion("ok"),
+        fallback="small",
+        sleep=sleeper,
+    )
+
+    await llm.complete(USER, [], "system")
+
+    assert sleeper.slept == []
+
+
+async def test_a_negative_retry_after_is_not_a_wait() -> None:
+    sleeper = Sleeper()
+    llm, client = provider(
+        status_error(429, headers={"retry-after": "-5"}),
+        completion("ok"),
+        fallback="small",
+        sleep=sleeper,
+    )
+
+    await llm.complete(USER, [], "system")
+
+    assert (sleeper.slept, client.models) == ([], ["model", "small"])
