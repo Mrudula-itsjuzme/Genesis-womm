@@ -110,6 +110,19 @@ def seed_demo_data(engine: Engine) -> None:
             (DEMO_USERS[2].id, CLUB_EVENTS, "ORGANIZER"),
             (DEMO_USERS[2].id, CLUB_ROBOTICS, "ORGANIZER"),
         )
+        # The Web demo signs in with @example.invalid identities created by seed_demo().
+        # When both seed routines run through Compose, give those identities the same access to
+        # the event-bearing clubs as their @demo.invalid fixture counterparts.
+        web_memberships = (
+            (demo_id("club-admin"), CLUB_EVENTS, "CLUB_ADMIN"),
+            (demo_id("organizer"), CLUB_EVENTS, "ORGANIZER"),
+            (demo_id("organizer"), CLUB_ROBOTICS, "ORGANIZER"),
+        )
+        memberships += tuple(
+            membership
+            for membership in web_memberships
+            if session.get(User, membership[0]) is not None
+        )
         for user_id, club_id, role in memberships:
             if session.get(Membership, {"user_id": user_id, "club_id": club_id}) is None:
                 session.add(
@@ -324,16 +337,19 @@ def seed_demo(session: Session, app_env: str) -> None:
     if app_env not in {"local", "test", "demo"}:
         raise ValueError("synthetic seeds are allowed only in local, test, or demo")
     now = datetime.now(UTC)
-    club_id = demo_id("club")
-    session.execute(
-        insert(Club)
-        .values(id=club_id, name="Synthetic Demo Club", is_synthetic=True, created_at=now)
-        .on_conflict_do_nothing()
-    )
-    for name, role in (
-        ("organizer", "ORGANIZER"),
-        ("club-admin", "CLUB_ADMIN"),
-        ("campus-admin", None),
+    for club_id, name in (
+        (CLUB_EVENTS, "Synthetic Events Club"),
+        (CLUB_ROBOTICS, "Synthetic Robotics Club"),
+    ):
+        session.execute(
+            insert(Club)
+            .values(id=club_id, name=name, is_synthetic=True, created_at=now)
+            .on_conflict_do_nothing()
+        )
+    for name, memberships in (
+        ("organizer", ((CLUB_EVENTS, "ORGANIZER"), (CLUB_ROBOTICS, "ORGANIZER"))),
+        ("club-admin", ((CLUB_EVENTS, "CLUB_ADMIN"),)),
+        ("campus-admin", ()),
     ):
         user_id = demo_id(name)
         email = name + "@example.invalid"
@@ -346,13 +362,13 @@ def seed_demo(session: Session, app_env: str) -> None:
                 id=user_id,
                 email=email,
                 display_name="Synthetic " + name,
-                campus_admin=role is None,
+                campus_admin=not memberships,
                 is_synthetic=True,
                 created_at=now,
             )
             .on_conflict_do_nothing()
         )
-        if role:
+        for club_id, role in memberships:
             session.execute(
                 insert(Membership)
                 .values(user_id=user_id, club_id=club_id, role=role, created_at=now)
