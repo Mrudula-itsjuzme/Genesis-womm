@@ -3,11 +3,22 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_resource_read_service, require_session_actor
+from app.api.deps import (
+    get_resource_interest_service,
+    get_resource_read_service,
+    require_session_actor,
+)
 from app.api.errors import error_responses
 from app.api.presenters import resource_out
+from app.domain.authz import Actor
 from app.domain.enums import ErrorCode, ResourceKind
-from app.schemas.resources import ResourceList, ResourceOut
+from app.schemas.resources import (
+    ResourceInterestCreate,
+    ResourceInterestOut,
+    ResourceList,
+    ResourceOut,
+)
+from app.services.resource_interests import ResourceInterestService
 from app.services.resource_reads import ResourceReadService
 
 router = APIRouter(
@@ -17,6 +28,26 @@ router = APIRouter(
 )
 
 ResourceReaderDependency = Annotated[ResourceReadService, Depends(get_resource_read_service)]
+ResourceInterestDependency = Annotated[
+    ResourceInterestService, Depends(get_resource_interest_service)
+]
+
+
+@router.post(
+    "/interests",
+    status_code=201,
+    response_model=ResourceInterestOut,
+    summary="Save a personal shared-resource interest (not a reservation)",
+    responses=error_responses(ErrorCode.UNAUTHENTICATED, ErrorCode.VALIDATION_ERROR),
+)
+def create_resource_interest(
+    payload: ResourceInterestCreate,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    interests: ResourceInterestDependency,
+) -> ResourceInterestOut:
+    return ResourceInterestOut.model_validate(
+        interests.create(actor, **payload.model_dump()), from_attributes=True
+    )
 
 
 @router.get(

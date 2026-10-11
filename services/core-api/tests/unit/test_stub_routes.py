@@ -301,6 +301,7 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
                 ("POST", "/api/v1/agent-actions/{action_id}/reject"),
                 ("GET", "/api/v1/resources"),
                 ("GET", "/api/v1/resources/{resource_id}"),
+                ("POST", "/api/v1/resources/interests"),
             }
         ):
             assert "x-implementation-status" not in op
@@ -334,6 +335,7 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
             ("POST", "/api/v1/agent-actions/{action_id}/reject"),
             ("GET", "/api/v1/resources"),
             ("GET", "/api/v1/resources/{resource_id}"),
+            ("POST", "/api/v1/resources/interests"),
         }
     }
     assert len(documented) == len(STUBS)
