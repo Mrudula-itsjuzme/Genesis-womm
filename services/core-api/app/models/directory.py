@@ -5,18 +5,20 @@ a client never reaches the database. Business timestamps are supplied by the inj
 so there are no clock-based column defaults.
 """
 
-from datetime import datetime
+from datetime import date, datetime, time
 from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
     String,
     Text,
+    Time,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -41,6 +43,23 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(200))
     campus_admin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     is_synthetic: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(Timestamp)
+
+
+class ResourceInterest(Base):
+    """A user's stated interest in a shared resource, never a reservation."""
+
+    __tablename__ = "resource_interests"
+    __table_args__ = (CheckConstraint("start_time < end_time", name="start_before_end"),)
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    requester_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    category: Mapped[str] = mapped_column(String(60))
+    purpose: Mapped[str] = mapped_column(String(160))
+    preferred_date: Mapped[date] = mapped_column(Date)
+    start_time: Mapped[time] = mapped_column(Time)
+    end_time: Mapped[time] = mapped_column(Time)
+    requirements: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(Timestamp)
 
 
