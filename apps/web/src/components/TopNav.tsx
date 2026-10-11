@@ -24,7 +24,7 @@ export default function TopNav() {
     {open && <nav aria-label="Mobile navigation" className="flex flex-col border-b bg-[#F5EEE9] p-4 xl:hidden">{navLinks}</nav>}
     {profile && <div className="absolute right-3 top-16 w-[min(22rem,calc(100vw-1.5rem))] rounded-2xl border border-stone-200 bg-white p-5 shadow-xl">
       <h2 className="font-semibold">Demo identity</h2><p className="my-2 text-xs text-gray-600">Sign in with a seeded demo email. Roles are assigned by Core.</p>
-      {session && <><p className="text-xs">{session.user.email} · {session.user.campus_admin ? 'Campus admin' : activeClub?.role ?? 'Member'}{session.user.synthetic ? ' · Synthetic demo' : ''}</p>
+      {session && <><p className="text-xs">{session.user.email} · {session.user.campus_admin ? 'Campus admin' : activeClub?.role ?? 'Member'}{session.user.synthetic ? ' · Demo data' : ''}</p>
         <label className="mt-3 block text-xs">Active club<select aria-label="Active club" value={activeClub?.club_id ?? ''} onChange={e => selectClub(e.target.value)} className="mt-1 w-full rounded-lg border p-2">{(session.user.memberships ?? []).map(c => <option key={c.club_id} value={c.club_id}>{c.club_name} · {c.role}</option>)}</select></label>
         <button onClick={logout} className="my-3 text-xs font-bold text-[#7a1b32]">Sign out</button></>}
       <form onSubmit={e => { e.preventDefault(); void switchPersona(email); }} className="space-y-3">

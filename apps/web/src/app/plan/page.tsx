@@ -61,7 +61,7 @@ function PlanForm() {
             <label>End date<input type="date" value={endDate || date} onChange={e => setEndDate(e.target.value)} className={input} /></label>
             <label>End time<input type="time" required value={end} onChange={e => setEnd(e.target.value)} className={input} /></label>
           </div>
-          <label className="block">Venue<select value={venue} onChange={e => setVenue(e.target.value)} className={input}><option value="">Unspecified — availability unknown</option>{venues.data?.items.map(v => <option key={v.id} value={v.id}>{v.name} · {v.availability_state}{v.synthetic ? ' · Synthetic demo' : ''}</option>)}</select></label>
+          <label className="block">Venue<select value={venue} onChange={e => setVenue(e.target.value)} className={input}><option value="">Unspecified — availability unknown</option>{venues.data?.items.map(v => <option key={v.id} value={v.id}>{v.name} · {v.availability_state}{v.synthetic ? ' · Demo data' : ''}</option>)}</select></label>
           <RemoteState signedIn={Boolean(token)} {...venues} />
           {venues.data && venues.data.total > venues.data.items.length && <p className="text-xs">Showing the first 100 venues. Find additional resources in the venue explorer.</p>}
           <label className="block">Expected attendance<input type="number" min="0" step="1" value={attendance} onChange={e => setAttendance(e.target.value)} className={input} /></label>
