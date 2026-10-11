@@ -101,7 +101,8 @@ services:
       APP_ENV: ${APP_ENV:-local}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # The Agent holds the LLM credential and neither of Core's signing keys.
-      AGENT_MODEL_PROVIDER: ${AGENT_MODEL_PROVIDER:-fake}
+      AGENT_MODEL_PROVIDER: fake
+      AGENT_DEMO_MODE: "true"
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
       CORE_API_URL: http://core-api:8000

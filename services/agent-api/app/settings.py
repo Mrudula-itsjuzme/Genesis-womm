@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     # `fake` is deterministic and needs no network or paid API.
     agent_model_provider: ModelProvider = "fake"
+    agent_demo_mode: bool = False
     groq_api_key: SecretStr = SecretStr("")
     groq_model: str = "llama-3.3-70b-versatile"
 

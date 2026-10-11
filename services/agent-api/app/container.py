@@ -43,7 +43,7 @@ def build_container(settings: Settings) -> Container:
             model=settings.groq_model,
         )
     else:
-        llm = FakeLlmProvider()
+        llm = FakeLlmProvider(demo_mode=settings.agent_demo_mode)
 
     # HTTP clients
     core_http = httpx.AsyncClient(
