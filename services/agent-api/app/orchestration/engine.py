@@ -234,6 +234,7 @@ class OrchestrationEngine:
     ) -> tuple[str, list[Citation]]:
         request = AgentConflictCheckRequest(
             event_id=_opt_uuid(args.get("event_id")),
+            club_id=_opt_uuid(args.get("club_id")),
             start_at=args.get("start_at"),
             end_at=args.get("end_at"),
             resource_id=_opt_uuid(args.get("resource_id")),

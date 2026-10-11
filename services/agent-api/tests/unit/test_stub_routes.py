@@ -194,6 +194,7 @@ def test_tool_call_appears_in_trace() -> None:
                     id="tc-1",
                     name="check_event_conflicts",
                     arguments={
+                        "club_id": str(uuid4()),
                         "start_at": "2026-11-20T09:00:00+05:30",
                         "end_at": "2026-11-20T17:00:00+05:30",
                     },

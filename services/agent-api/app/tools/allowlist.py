@@ -25,6 +25,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                             "UUID of an existing event to re-check. Omit for new events."
                         ),
                     },
+                    "club_id": {
+                        "type": "string",
+                        "description": "UUID of the club creating an unsaved event candidate.",
+                    },
                     "start_at": {
                         "type": "string",
                         "description": (
