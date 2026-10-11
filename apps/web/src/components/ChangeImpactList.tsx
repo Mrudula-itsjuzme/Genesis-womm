@@ -58,7 +58,19 @@ function EventWorkspace({ event, refresh }: { event: EventOut; refresh: () => vo
     finally { setBusy(false); }
   }
   return <div className="grid gap-6 lg:grid-cols-[1fr_360px]"><section className="space-y-5 rounded-2xl border bg-white p-5">
-    <div><h2 className="text-2xl font-bold">{event.title}</h2><p>{event.description}</p><p>{event.status} · Revision {event.revision}{event.synthetic ? ' · Synthetic demo' : ''}</p><p>{campusFormat(event.start_at)} – {campusFormat(event.end_at)}</p><p>Venue availability: {event.venue_availability}</p></div>
+    <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-2xl font-bold text-stone-900">{event.title}</h2>
+        <span className="rounded-full bg-[#7a1b32]/10 px-3 py-1 text-xs font-semibold text-[#7a1b32]">{event.status}</span>
+      </div>
+      <p className="mt-1 text-sm text-stone-600">{event.description ?? 'No description provided.'}</p>
+      <div className="mt-3 flex flex-wrap gap-4 text-xs font-medium text-stone-600">
+        <span>🕒 {campusFormat(event.start_at)} – {campusFormat(event.end_at)}</span>
+        <span>📍 Venue availability: {event.venue_availability}</span>
+        <span>🔢 Revision {event.revision}</span>
+        {event.synthetic && <span className="text-amber-700 font-semibold">🧪 Synthetic demo</span>}
+      </div>
+    </div>
     <section><h3 className="text-lg font-bold">Preview confirmation conflicts</h3><p className="my-2 text-sm">Advisory preview as CONFIRMED. Use the staged change form below to save and review a change.</p>
       <div className="grid gap-3 sm:grid-cols-2"><label>Proposed start date<input className="block w-full rounded border p-2" type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label>Proposed start time<input className="block w-full rounded border p-2" type="time" value={start} onChange={e => setStart(e.target.value)} /></label><label>Proposed end date<input className="block w-full rounded border p-2" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></label><label>Proposed end time<input className="block w-full rounded border p-2" type="time" value={end} onChange={e => setEnd(e.target.value)} /></label></div>
       <label className="my-3 block">Proposed venue<select className="ml-2 max-w-full rounded border p-2" value={venue} onChange={e => setVenue(e.target.value)}><option value="">Unspecified</option>{venue && !venues.data?.items.some(v => v.id === venue) && <option value={venue}>Current venue ({venue})</option>}{venues.data?.items.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label><RemoteState signedIn={Boolean(token)} {...venues} />{validation && <p role="alert">{validation}</p>}
