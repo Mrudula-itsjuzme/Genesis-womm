@@ -45,6 +45,19 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # One-shot: installs fixed synthetic records after the schema is current.
+  seed-demo:
+    build: ./services/core-api
+    command: ["python", "-m", "scripts.seed_demo"]
+    environment:
+      <<: *core-env
+      SESSION_SIGNING_KEY: ${SESSION_SIGNING_KEY:-local-only-session-key-not-a-secret-0001}
+      DELEGATION_SIGNING_KEY: ${DELEGATION_SIGNING_KEY:-local-only-delegation-key-not-a-secret-0002}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   core-api:
     build: ./services/core-api
     environment:
@@ -56,7 +69,7 @@ services:
       AGENT_API_URL: http://agent-api:8001
       CAMPUS_GAP_MINUTES: ${CAMPUS_GAP_MINUTES:-120}
     depends_on:
-      migrate:
+      seed-demo:
         condition: service_completed_successfully
     ports:
       - "${CORE_API_PORT:-8000}:8000"
