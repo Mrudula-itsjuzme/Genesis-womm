@@ -13,7 +13,7 @@ from app.domain.lifecycle import InvalidTransitionError
 from app.domain.time import Clock
 from app.services.ports import ProposalRecord, ProposalStorage, RagIngest
 
-_AWAITING_REVIEW = (ProposalStatus.SUBMITTED, ProposalStatus.UNDER_REVIEW, ProposalStatus.FACULTY_APPROVED)
+_AWAITING_REVIEW = (ProposalStatus.SUBMITTED, ProposalStatus.UNDER_REVIEW, ProposalStatus.FACULTY_APPROVED)  # Stage-specific authorization enforced by ProposalService
 PRESIGNED_URL_TTL_SECONDS = 900  # fifteen minutes: RAG fetches the file once, straight away
 CLEANUP_AFTER = timedelta(hours=24)
 
