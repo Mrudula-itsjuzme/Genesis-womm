@@ -159,6 +159,13 @@ def delete_proposal(
     payload: ProposalDeletePayload,
     chroma_store: Annotated[ChromaStore, Depends(get_chroma_store)],
 ) -> ProposalDeleteResponse:
+    # Existing data must be purged through an authenticated administrator
+    # maintenance operation, not an unauthenticated public DELETE.
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Private proposal deletion requires an authenticated maintenance endpoint.",
+    )
+
     logger.info(
         "Deleting proposal chunks for proposal %s, event %s",
         proposal_id,
