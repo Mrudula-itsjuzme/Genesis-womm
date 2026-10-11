@@ -97,6 +97,7 @@ class ToolOutcome(StrEnum):
 class Role(StrEnum):
     ORGANIZER = "ORGANIZER"
     CLUB_ADMIN = "CLUB_ADMIN"
+    FACULTY_ADVISOR = "FACULTY_ADVISOR"
     CAMPUS_ADMIN = "CAMPUS_ADMIN"
     STUDENT = "STUDENT"
 

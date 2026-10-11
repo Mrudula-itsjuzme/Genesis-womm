@@ -57,7 +57,9 @@ class Membership(Base):
     """A user's role in one club. Only ORGANIZER and CLUB_ADMIN are club roles."""
 
     __tablename__ = "memberships"
-    __table_args__ = (CheckConstraint("role IN ('ORGANIZER', 'CLUB_ADMIN')", name="club_role"),)
+    __table_args__ = (
+        CheckConstraint("role IN ('ORGANIZER', 'CLUB_ADMIN', 'FACULTY_ADVISOR')", name="club_role"),
+    )
 
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
     club_id: Mapped[UUID] = mapped_column(ForeignKey("clubs.id"), primary_key=True)
