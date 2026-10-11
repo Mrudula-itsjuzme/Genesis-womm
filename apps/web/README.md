@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CampusCue web
 
-## Getting Started
+Next.js frontend for the Core API gateway. Browser requests use same-origin `/api/v1`; Next rewrites to server-only `CORE_API_URL` (default `http://127.0.0.1:8000`). Configure this value before building a production image because rewrites are compiled into the build.
 
-First, run the development server:
+## Local demo
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+From the repository root:
+
+```powershell
+docker compose --env-file .env.example up -d --build postgres migrate minio minio-init core-api agent-api web
+docker compose --env-file .env.example exec core-api python -m scripts.seed_demo
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Use the profile menu with `organizer@example.invalid`, `club-admin@example.invalid`, or `campus-admin@example.invalid`. These are synthetic identities. Seeds add a club and two venues with UNKNOWN availability and do not create official bookings. Use the organizer to save a draft, propose it, and submit it; use the campus administrator to confirm the recorded schedule with evidence. Core checks all writes again.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The fake Agent provider is the default and may abstain. Real policy answers need the RAG service with approved indexed sources and a configured model provider. RAG model downloads are substantial; see the repository RAG guide.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Proposal PDFs use MinIO with private buckets; download links expire after 15 minutes. `MINIO_PUBLIC_ENDPOINT` must be browser reachable (localhost:9000 for a local demo). Regenerate links after expiration. Proposal review remains subject to Core authorization and RAG availability.
 
-## Learn More
+## Development and verification
 
-To learn more about Next.js, take a look at the following resources:
+Run in `apps/web`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```powershell
+npm ci
+npm run dev
+npm run lint
+npx tsc --noEmit
+npm test
+npx playwright install chromium
+npx playwright test --workers=2
+npm run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Browser tests render real pages with explicit synthetic HTTP contract fixtures; they do not prove that PostgreSQL, MinIO, or model providers are healthy. Core integration tests and a live gateway smoke check cover those boundaries separately.
 
-## Deploy on Vercel
+Generate wire types from committed OpenAPI using Core's Python environment from the repository root:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+.\services\core-api\.venv\Scripts\python.exe apps/web/scripts/export_types.py --check
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Reports are editable local drafts assembled from recorded facts; actual outcomes remain explicit placeholders. Schedule change previews are advisory and do not save edits. Core does not yet expose commitment or dependency-impact APIs. Unsupported assistant action types cannot be executed from the UI. Notification delivery is not implemented.
