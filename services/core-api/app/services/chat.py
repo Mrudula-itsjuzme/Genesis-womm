@@ -10,6 +10,9 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from app.schemas.agent import Citation, MessageText, ToolTraceEntry
 from app.services.agent_actions import AgentActionService
 from app.services.delegation import DelegationService
 from app.services.errors import AgentOutputInvalidError
@@ -19,6 +22,26 @@ from app.services.schedule_write import RequestContext
 # A turn is bounded to a handful of tool calls, so a reply naming more proposals than this is
 # not something the Agent produced honestly.
 MAX_PROPOSALS_PER_REPLY = 20
+
+
+class _ProposedActionReference(BaseModel):
+    """Only the action id is trusted as a reference to Core's own record."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    action_id: UUID
+
+
+class _AgentReplyPayload(BaseModel):
+    """The subset of an Agent response that is visible to a browser client."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    message: MessageText
+    clarifying_question: str | None = None
+    citations: list[Citation] = Field(default_factory=list)
+    proposed_actions: list[_ProposedActionReference] = Field(default_factory=list)
+    trace: list[ToolTraceEntry] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -42,8 +65,14 @@ class ChatService:
     def chat(self, ctx: RequestContext, turn: ChatTurn) -> AgentReply:
         issued = self._delegation.issue(ctx.actor, ctx.request_id)
         reply = self._gateway.chat(turn, delegation_token=issued.token, request_id=ctx.request_id)
-        mentioned = _mentioned_ids(reply.get("proposed_actions", []))
-        body = {key: value for key, value in reply.items() if key != "proposed_actions"}
+        try:
+            payload = _AgentReplyPayload.model_validate(reply)
+        except ValidationError as error:
+            raise AgentOutputInvalidError(
+                "agent reply did not match the expected schema"
+            ) from error
+        mentioned = _mentioned_ids(payload.model_dump(mode="json")["proposed_actions"])
+        body = payload.model_dump(mode="json", exclude={"proposed_actions"})
         return AgentReply(body, tuple(self._actions.owned_by(ctx.actor, mentioned)))
 
 

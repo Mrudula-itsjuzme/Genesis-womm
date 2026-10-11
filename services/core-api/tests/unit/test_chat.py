@@ -220,6 +220,36 @@ def test_a_reply_with_no_proposals_key_is_fine(rig: Rig) -> None:
     assert rig.chat.chat(ctx(ORGANIZER), TURN).proposed_actions == ()
 
 
+@pytest.mark.parametrize(
+    "bad_reply",
+    [
+        {},
+        {"message": None},
+        {"message": {"nested": "not text"}},
+        {"message": "   "},
+        {"message": "x" * 4001},
+        {"message": "valid", "citations": [{"evidence_id": "only-one-field"}]},
+        {"message": "valid", "trace": [{"tool": "check_event_conflicts"}]},
+    ],
+    ids=[
+        "missing-message",
+        "null-message",
+        "object-message",
+        "blank-message",
+        "long-message",
+        "bad-citation",
+        "bad-trace",
+    ],
+)
+def test_a_reply_with_invalid_visible_content_is_rejected(
+    rig: Rig, bad_reply: dict[str, object]
+) -> None:
+    rig.gateway.reply = bad_reply
+
+    with pytest.raises(AgentOutputInvalidError):
+        rig.chat.chat(ctx(ORGANIZER), TURN)
+
+
 # ---- failures --------------------------------------------------------------------------
 
 
