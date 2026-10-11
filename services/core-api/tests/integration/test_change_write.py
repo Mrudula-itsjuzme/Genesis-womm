@@ -6,11 +6,12 @@ import pytest
 from app.domain.enums import EventStatus
 from app.domain.lifecycle import NotAuthorizedError
 from app.domain.scheduling import Policy
+from app.repositories.changes import SqlChangeStore
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.change_queries import ChangeQueries
 from app.services.errors import InvalidRequestError, StaleRevisionError
 from app.services.schedule_write import NewEvent, RequestContext
-from tests.integration.world import PROOF, World, at
+from tests.integration.world import PROOF, World, at, confirmed
 
 pytestmark = pytest.mark.integration
 
@@ -171,3 +172,66 @@ def test_invalid_dependency_fields_do_not_write(world: World) -> None:
             field_paths=("status",),
         )
     assert world.count("event_items") == 0
+
+
+def test_apply_recomputes_dependencies_added_after_staging_and_keeps_confirmation(
+    world: World,
+) -> None:
+    event = confirmed(world).event
+    proposal = world.svc.stage_change(
+        RequestContext(world.organizer, "stage"),
+        event.id,
+        expected_revision=event.revision,
+        changes={"expected_attendance": 20},
+        reason="Estimate",
+    )
+    assert proposal.impact == []
+    item = world.svc.register_dependency(
+        RequestContext(world.organizer, "late-item"),
+        event.id,
+        kind="TASK",
+        title="Catering",
+        field_paths=("expected_attendance",),
+    )
+    result = world.svc.apply_change(
+        RequestContext(world.club_admin, "apply"), proposal.id, expected_revision=event.revision
+    )
+    assert result.event.status == EventStatus.CONFIRMED
+    assert result.event.evidence_id == event.evidence_id
+    queries = ChangeQueries(
+        lambda: SqlUnitOfWork(world.factory), policy=Policy(timedelta(minutes=120))
+    )
+    assert queries.items(world.organizer, event.id)[0].needs_revalidation
+    assert queries.get(world.organizer, proposal.id).impact[0]["dependent_id"] == str(item.id)
+
+
+def test_failed_proposal_decision_rolls_back_event_revision_and_revalidation(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    event = world.svc.create_event(
+        RequestContext(world.organizer, "draft"),
+        NewEvent(world.club_a, "Synthetic rollback", at(10), at(12)),
+    ).event
+    world.svc.register_dependency(
+        RequestContext(world.organizer, "item"),
+        event.id,
+        kind="TASK",
+        title="Speaker",
+        field_paths=("start_at",),
+    )
+    proposal = world.svc.stage_change(
+        RequestContext(world.organizer, "stage"),
+        event.id,
+        expected_revision=1,
+        changes={"start_at": at(11)},
+        reason="Correction",
+    )
+    monkeypatch.setattr(SqlChangeStore, "apply", lambda *args, **kwargs: False)
+    with pytest.raises(InvalidRequestError):
+        world.svc.apply_change(
+            RequestContext(world.club_admin, "apply"), proposal.id, expected_revision=1
+        )
+    assert world.count("event_revisions") == 1
+    assert world.count("change_proposals", "status = 'STAGED'") == 1
+    assert world.count("event_items", "needs_revalidation = true") == 0
