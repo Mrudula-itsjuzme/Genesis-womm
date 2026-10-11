@@ -5,7 +5,9 @@ from uuid import uuid4
 
 import pytest
 from pydantic import SecretStr
+from starlette.requests import Request
 
+from app.api.deps import get_change_queries
 from app.clients.delegation import InvalidDelegationTokenError, PyJwtDelegationService
 from app.container import Container, build_container
 from app.domain.authz import Actor
@@ -79,3 +81,10 @@ def test_the_app_publishes_the_agent_action_service(container: Container) -> Non
     app = create_app(settings_with_keys(), container)
 
     assert app.state.agent_actions is container.agent_actions
+
+
+def test_change_queries_are_wired_to_the_app(container: Container) -> None:
+    assert container.changes is not None
+    app = create_app(settings_with_keys(), container)
+    assert app.state.changes is container.changes
+    assert get_change_queries(Request({"type": "http", "app": app})) is container.changes

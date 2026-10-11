@@ -1,0 +1,55 @@
+import { test, expect } from '@playwright/test';
+
+test('real gateway persists a browser draft, stores PDF bytes and enforces lifecycle roles', async ({ page }) => {
+  const login = await page.request.post('/api/v1/auth/demo-login', { data: { email: 'organizer@example.invalid' } });
+  expect(login.ok()).toBe(true);
+  const session = await login.json();
+  const headers = { Authorization: 'Bearer ' + session.access_token };
+  await page.addInitScript(value => localStorage.setItem('campuscue.session.v1', JSON.stringify(value)), session);
+  await page.goto('/plan');
+  const title = 'Synthetic live QA ' + Date.now();
+  await page.getByLabel('Event title').fill(title);
+  await page.getByLabel('Start date', { exact: true }).fill('2040-10-18');
+  await page.getByLabel('Start time', { exact: true }).fill('10:00');
+  await page.getByLabel('End time', { exact: true }).fill('12:00');
+  const response = page.waitForResponse(r => r.url().endsWith('/api/v1/events') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Save event draft' }).click();
+  const createdResponse = await response; expect(createdResponse.status()).toBe(201);
+  let event = (await createdResponse.json()).event;
+  await expect(page.getByText('Saved ' + title)).toBeVisible();
+  expect(event.status).toBe('DRAFT'); expect(event.venue_availability).toBe('UNKNOWN');
+  expect(new Date(event.start_at).toISOString()).toBe('2040-10-18T04:30:00.000Z');
+  const persisted = await page.request.get('/api/v1/events/' + event.id, { headers });
+  expect((await persisted.json()).title).toBe(title);
+  const bytes = Buffer.from('%PDF-1.7\n1 0 obj<</Type/Catalog>>endobj\n%%EOF');
+  const uploaded = await page.request.post(`/api/v1/clubs/${event.club_id}/events/${event.id}/proposals`, { headers, multipart: { title: 'Synthetic QA proposal', file: { name: 'qa.pdf', mimeType: 'application/pdf', buffer: bytes } } });
+  expect(uploaded.status()).toBe(201);
+  const proposal = await uploaded.json();
+  const signed = await page.request.get(`/api/v1/proposals/${proposal.id}/download-url`, { headers });
+  expect(signed.ok()).toBe(true);
+  const url = (await signed.json()).download_url;
+  expect(new URL(url).hostname).toBe('localhost');
+  const downloaded = await page.request.get(url);
+  expect(downloaded.ok()).toBe(true); expect(await downloaded.body()).toEqual(bytes);
+  for (const target_status of ['PROPOSED', 'SUBMITTED']) {
+    const transition = await page.request.post(`/api/v1/events/${event.id}/transitions`, { headers, data: { target_status, expected_revision: event.revision } });
+    expect(transition.ok()).toBe(true); event = await transition.json();
+  }
+  const forbidden = await page.request.post(`/api/v1/events/${event.id}/transitions`, { headers, data: { target_status: 'CONFIRMED', expected_revision: event.revision } });
+  expect(forbidden.status()).toBe(403);
+  const admin = await page.request.post('/api/v1/auth/demo-login', { data: { email: 'campus-admin@example.invalid' } });
+  const adminHeaders = { Authorization: 'Bearer ' + (await admin.json()).access_token };
+  const confirmation = await page.request.post(`/api/v1/events/${event.id}/transitions`, { headers: adminHeaders, data: { target_status: 'CONFIRMED', expected_revision: event.revision, evidence: { kind: 'SYNTHETIC_QA', reference: 'Synthetic test evidence; no institutional approval', captured_at: new Date().toISOString() } } });
+  expect(confirmation.ok()).toBe(true); event = await confirmation.json(); expect(event.status).toBe('CONFIRMED');
+  const stale = await page.request.post(`/api/v1/events/${event.id}/transitions`, { headers: adminHeaders, data: { target_status: 'CANCELLED', expected_revision: event.revision - 1 } });
+  expect(stale.status()).toBe(409);
+  const cleanup = await page.request.post(`/api/v1/events/${event.id}/transitions`, { headers: adminHeaders, data: { target_status: 'CANCELLED', expected_revision: event.revision } });
+  expect(cleanup.ok()).toBe(true);
+  const chat = await page.request.post('/api/v1/agent/chat', { headers, data: { messages: [{ role: 'user', content: 'What information do you need to plan an event?' }] } });
+  expect(chat.ok()).toBe(true); const reply = await chat.json(); expect(reply.message).toBeTruthy(); expect(reply.request_id).toBeTruthy();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: '../../scratch/live-planner-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/calendar');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '../../scratch/live-calendar-mobile.png', fullPage: true });
+});

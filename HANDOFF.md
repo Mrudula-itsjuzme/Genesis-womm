@@ -1,4 +1,222 @@
-# HANDOFF: CampusCue backend and AI workstream
+# HANDOFF: CampusCue schedule changes and dependency impact
+
+> **Merge resolution: 2026-10-11.** User authorized merging PR #10. Main advanced to `9470acf` (PR #11, backend-ai) after the initial mergeability check; the first GitHub merge attempt was refused because of conflicts. Integrated the new main with a history-preserving merge. Resolutions retain Agent budget/filing guards and chat context, both synthetic demo identity sets, bucket creation and separate public/internal MinIO clients, source-built MinIO provisioning, the factory run command and seed startup. Regenerated the Core contract with the new `route_errors` declarations. `ui_mock.png` remains excluded.
+>
+> Combined-state verification, all exit 0: Core `uv run pytest -q --tb=short`: **1113 passed, 1 skipped in 163.91 s**; Agent equivalent: **348 passed in 31.01 s**. Both services' Ruff/format, mypy (Core 156, Agent 67 files) and contract drift checks pass; Core import-linter keeps all 9 boundaries. Web unit tests: **15 passed**, TypeScript/lint pass; source-built production stack builds and starts with seed initialization exit 0. Browser suite: **14 passed in 15.5 s**; live Core/MinIO/change gateway: **2 passed in 5.3 s**. Compose config and generated web-type drift pass. The tested resolution is being pushed to PR #10 for the requested merge.
+
+> **PR preparation: 2026-10-11.** Fetched `origin/main` at `a54fe1b`; `git merge --no-ff --no-commit origin/main` reported already up to date. No merge conflicts or resolution edits. User authorized pushing `feat/schedule-change-impact` and opening a PR to main. The PR includes both frontend integration and Plan 08 (64 implementation/documentation commits before this verification note).
+>
+> Fresh pre-PR verification: Core `uv run pytest -q --tb=short`: **1064 passed, 1 skipped in 152.56 s**, exit 0. Ruff check/format, mypy (152 files), import-linter (9 kept), contract/type drift and Compose configuration all exit 0. Web unit tests: **15 passed in 517.47 ms**; browser: **14 passed in 15.8 s**; live gateway: **2 passed in 6.2 s**. Web lint, TypeScript and production build exit 0. `ui_mock.png` remains untracked and excluded. Branch pushed; [PR #10](https://github.com/Mrudula-itsjuzme/Genesis-womm/pull/10) is open against main. GitHub reports MERGEABLE/CLEAN, with no configured status checks reported. Use `gh pr view feat/schedule-change-impact` to inspect it. No merge or deployment performed.
+
+> **Latest continuation: 2026-10-11.** Branch `feat/schedule-change-impact`, based on integration HEAD `32ea704`. User selected Core schedule changes and dependency impact. [Plan 08](Implementation_Plans/08-schedule-change-impact.md) is implemented. This section supersedes the older current-state notes below. Local commits only; no push or deployment.
+
+## Delivered continuation
+
+Organizers stage revision-bound schedule/venue/attendance proposals without mutating events. Club/campus administrators explicitly apply them; Core rechecks revision, conflicts and current registered dependencies under the campus lock. Event revision/audit, proposal decision and revalidation commit or roll back together. Competing applies cannot both succeed. Idempotency preserves retry outcomes.
+
+Registered organizer-reported tasks and requested commitments bind to explicit fields. Matching tasks receive a revalidation flag; live commitments become NEEDS_REVALIDATION. Closed work is excluded. Schedule/venue edits demote confirmed events to submitted and clear current verification while retaining historical evidence; attendance-only changes retain confirmation. An empty impact means no registered binding matched, not absence of real-world impact.
+
+New authenticated endpoints under `/api/v1/events/{event_id}`: POST `/impact`; GET/POST `/dependencies`; GET/POST `/change-proposals`; GET `/change-proposals/{proposal_id}`; POST `/change-proposals/{proposal_id}/apply`. Reads/writes are club-scoped; delegated actors cannot stage/apply. Omitted patch fields stay unchanged and explicit null clears nullable fields. OpenAPI and generated TypeScript types are synchronized.
+
+The Changes page shows live impact, dependency records, paginated saved proposals and role-gated human apply controls. Mutation retries use stable keys. Stale failures retain review state. Untouched timestamps retain seconds when another field changes. Migrations 0005/0006 add persistence and name the fixed rule discriminator `rule_code`; the local demo is at 0006.
+
+## Continuation verification
+
+Commands below executed in this continuation. All final commands returned exit 0.
+
+| Location / command | Evidence |
+|---|---|
+| Core `uv run pytest -q --tb=short` | **1064 passed, 1 skipped in 219.70 s**; includes real PostgreSQL rollback, fresh-dependency revalidation, authorization, migration and competing-apply coverage. Skip is the existing empty stub parameter set. |
+| Core `uv run ruff check .` / `uv run ruff format --check .` | All checks passed; 154 files formatted. |
+| Core `uv run mypy` | 152 source files, no issues. |
+| Core `uv run lint-imports` | 9 contracts kept, 0 broken. |
+| Core `uv run python -m scripts.export_contracts --check` | No contract drift. |
+| Core `uv run python ../../apps/web/scripts/export_types.py --check` | No wire-type drift. |
+| Web `npm test` | 15 passed, 0 failed/skipped; 621.63 ms. |
+| Web `npm run lint` / `npx tsc --noEmit` | No lint/type errors. |
+| Web `npm run build` | Production build passes, all 12 static page outputs generated. |
+| Web `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 npx playwright test --workers=1` | **14 passed in 33.7 s**, including untouched timestamp seconds. |
+| Web `npx playwright test --workers=1` | **14 passed in 20.4 s** against refreshed production web. |
+| Web `PLAYWRIGHT_LIVE=1 npx playwright test --workers=1` | **2 passed in 6.3 s** against refreshed production gateway/Core/PostgreSQL/MinIO; staged changes, human admin apply, dependency flags, stale revisions, PDF storage and existing lifecycle/chat smoke. |
+| Root `docker compose --env-file .env.example config --quiet` | Valid Compose configuration. |
+| Root `docker compose --env-file .env.example up -d --build postgres migrate minio minio-init core-api agent-api web` | Built and started demo, migrations/storage initialization exit 0. Core subsequently rebuilt for 0006; web refreshed for final timestamp fix. |
+| Root `docker compose --env-file .env.example exec core-api python -m alembic current` | `0006 (head)`. |
+| Root `docker compose --env-file .env.example exec core-api python -m scripts.seed_demo` | Synthetic directory ready. |
+
+Initial failures were resolved: Docker was stopped after interruption; schema naming test rejected a text `rule_id` (fixed by 0006); live-test session initialization/cleanup credentials were corrected; a browser test reproduced timestamp rounding and now passes. No final known test failures.
+
+## Continuation commits (atomic slices)
+
+| Hash | Conventional commit |
+|---|---|
+| `ddd890a` | docs(core): plan staged schedule changes and dependency impact |
+| `dfe0f9c` | feat(core): compute deterministic registered dependency impact |
+| `1e386c5` | feat(core): persist change proposals and event dependencies |
+| `77cdf4a` | feat(core): store explicit field dependencies and staged changes |
+| `4cc80bc` | feat(core): transact dependency records through the unit of work |
+| `6edbef1` | feat(core): preview authorized changes against registered dependencies |
+| `8f631a0` | feat(core): apply staged changes with atomic dependency revalidation |
+| `db3d391` | feat(contracts): define strict change and impact schemas |
+| `336c701` | feat(core): wire change queries into the application |
+| `109dd5a` | feat(core): provide request scoped change queries |
+| `744fce7` | feat(core): expose staged changes and dependency impact routes |
+| `f0cd1e5` | test(core): verify change authority rollback and fresh impact |
+| `74e5c56` | feat(frontend): add typed change and dependency clients |
+| `2dc94dd` | feat(frontend): stage changes and review registered dependency impact |
+| `7e6e7e8` | fix(core): name dependency rule codes without uuid ambiguity |
+| `051371b` | test(frontend): verify live staged change and revalidation workflow |
+| `0d582c3` | docs(core): track persisted change and dependency impact delivery |
+| `c2349bb` | fix(frontend): preserve untouched timestamps in partial changes |
+
+The final documentation commit records this handoff and Plan 08 completion; inspect `git log --oneline 32ea704..HEAD` for its hash and the complete ledger. PLAN.md, Plan 04 and IMPLEMENTATION_INDEX.md now reflect delivery.
+
+## Remaining scope and workspace
+
+Commitment timeline/evidence verification, dependency closure/reverification UI and drafted follow-ups remain future work; no inferred dependency graph or outbound messaging was added. Server reports and real RAG model/index/evaluation work remain pending. All demo records are explicitly synthetic; successful live QA events are cancelled, while failed early smoke attempts left tentative synthetic records. User-owned untracked `ui_mock.png` is preserved. No temporary source files, credentials or build artifacts were staged; ignored Playwright diagnostics remain under scratch.
+
+---
+
+# Prior handoff: CampusCue frontend/backend integration
+
+> **Current update:** 2026-10-11. This section supersedes older branch/HEAD/setup notes below. Branch: `feat/frontend-backend-integration`, based on `a54fe1b`. No push or deployment performed.
+> **Active plan:** [full frontend/backend integration](docs/superpowers/plans/2026-10-11-full-frontend-backend-integration.md). Implemented against available Core contracts; backend-dependent extensions remain.
+
+## Integration state
+
+Next.js now uses the same-origin Core gateway with generated OpenAPI types. Expiring sessions provide identity, clubs and roles; logout/identity changes clear protected data. Live calendar/details, draft creation, unsaved conflict previews, venue provenance, PDF proposals/downloads/review, multi-turn chat/citations/human action review and editable local reports are connected. Error states retain request IDs without mock fallback; requests have cancellable 60-second deadlines.
+
+Core gained authorized `POST /api/v1/events/conflict-check` for unsaved candidates using the existing deterministic service. OpenAPI and generated TS types include it. No new database migration. Authorization, scheduling enforcement and evidence remain Core-owned.
+
+MinIO uses separate public browser signing and internal RAG storage clients. Compose provisions private buckets, builds pinned MinIO sources and runs Node 24 web with a server-only Core rewrite target. Core's Makefile invokes its application factory.
+
+## Run the local demo
+
+From the repository root:
+
+```powershell
+docker compose --env-file .env.example up -d --build postgres migrate minio minio-init core-api agent-api web
+docker compose --env-file .env.example exec core-api python -m scripts.seed_demo
+```
+
+Open http://localhost:3000. Profile emails: `organizer@example.invalid`, `club-admin@example.invalid`, `campus-admin@example.invalid`. Repeatable seeds add synthetic users, a club and UNKNOWN venues, without bookings. The stack is running. Live QA left explicitly titled synthetic event/proposal records; confirmed test events were cancelled. Early failed attempts left tentative QA drafts.
+
+See [apps/web/README.md](apps/web/README.md) for setup/test commands. Rebuild web after changing `CORE_API_URL`; Next rewrites are compiled at build time.
+
+## Final verification evidence
+
+Commands were executed in this session and exit codes inspected. Core commands use `services/core-api/.venv/Scripts/`; web commands run in `apps/web`.
+
+| Command | Result |
+|---|---|
+| Core `pytest.exe -q` | Exit 0; **1,040 passed, 1 skipped in 88.92 s**; skip is an empty legacy stub-route parameter set |
+| Core `ruff.exe check .` | Exit 0; all checks pass |
+| Core `ruff.exe format --check .` | Exit 0; 142 files formatted |
+| Core `mypy.exe` | Exit 0; 140 source files, no issues |
+| Core `lint-imports.exe` | Exit 0; 9 kept, 0 broken |
+| Core `python.exe -m scripts.export_contracts --check` | Exit 0; contracts current |
+| Core `pytest.exe tests/unit/test_container_wiring.py -q` | Exit 0; 4 passed in 1.48 s after final formatting/startup correction |
+| Root `services/core-api/.venv/Scripts/python.exe apps/web/scripts/export_types.py --check` | Exit 0; no drift |
+| Web `npm run lint` / `npx tsc --noEmit` | Exit 0; no warnings/errors |
+| Web `npm test` | Exit 0; **14 passed, 0 failed/skipped in 180.48 ms** |
+| Web `npm run build` | Exit 0; optimized production build, 12 prerendered pages |
+| Web `npx playwright test --workers=1` | Exit 0; **11 passed in 5.3 s**, 0 failed/skipped, against rebuilt Docker web |
+| Web `PLAYWRIGHT_LIVE=1 npx playwright test --workers=1` | Exit 0; **1 passed in 1.5 s**; real PostgreSQL draft, PDF-byte download, role/evidence enforcement, stale revision and fake-provider chat |
+| Root `docker compose --env-file .env.example config --quiet` | Exit 0 |
+| Root `docker compose --env-file .env.example up -d --build web` | Exit 0; rebuilt web/Core/storage; migrations and bucket initialization exit 0 |
+| Root `docker compose --env-file .env.example exec core-api python -m scripts.seed_demo` | Exit 0 on repeated runs |
+| Web `npm audit --omit=dev --audit-level=high` | Exit 0; zero runtime findings |
+| Web `npm audit --audit-level=high` | Exit 1; five high development-tool findings in braces/micromatch/fast-glob/Next ESLint chain |
+
+Browser fixtures cover PDF-link failure, proposal association/review, session expiry, late replies after logout, failed action confirmation, multi-turn citations, editable local reports, calendar/ESC, mobile navigation and backend failure. Desktop/mobile screenshots were inspected under ignored `scratch/`. Concurrent Core/browser runs hit host memory limits; separate one-worker runs passed. Homepage tests wait for DOM readiness instead of external decorative image downloads.
+
+## Atomic commit ledger
+
+Exact paths are shown below. Every commit has at most three files. Several one-file documentation/configuration/inventory fixes were isolated instead of padded with unrelated edits; this deviates from the preferred strict 2–3-file minimum. No destructive history edits were used.
+
+Gate references identify localized verification used during slices. Final counts above are separate; historical per-slice counts are not inferred.
+
+- **W:** `npx eslint <affected files>`, `npx tsc --noEmit`, `npm test` in web, exit 0. Deletion slices use project lint/type checks.
+- **W14:** W with final 14 unit tests passing in 180.48 ms.
+- **G:** Core Python wire generator `--check`, exit 0; generated types compile.
+- **D:** `git diff --check` and documentation/content/link review, exit 0; no behavior change.
+- **B6/B9/B11:** passing `npx playwright test --workers=2` (6/9 tests) or `--workers=1` (11 tests). Final production B11: 5.3 s.
+- **L:** explicit live one-worker Playwright gateway test, one passed.
+- **C1:** candidate-preview route/service/conflict checks (34 targeted tests passed), static checks and contract export.
+- **C2:** MinIO unit tests, targeted ruff/type checks for signing.
+- **C3:** targeted ruff/mypy on settings/container; final full Core suite covers wiring.
+- **C4:** stub-route inventory checks; full regression corrected its expectation for the new preview route.
+- **C5:** PostgreSQL demo-seed integration test, repeatable seed counts and targeted ruff/mypy.
+- **C6:** MinIO/proposal lifecycle/service tests: 84 passed in 1.03 s; targeted ruff/mypy pass.
+- **C7:** full ruff check/format, mypy and application-factory import check; subsequent wiring test 4 passed.
+- **I1:** Compose configuration validation and setup review.
+- **I2:** Docker web production build passed, including streamed changes deep links.
+- **I3:** source MinIO client/server builds passed (35.1 s / 91.8 s), Compose validation; later live download passed.
+
+| SHA | Commit | Exact included files (1–3) | Gate reference |
+|---|---|---|---|
+| `8496631` | docs(frontend): record integration contract corrections | `docs/superpowers/plans/2026-10-11-full-frontend-backend-integration.md` | D |
+| `084a0f9` | feat(frontend): add authenticated gateway client and error tests | `apps/web/package.json`<br>`apps/web/src/lib/api/client.ts`<br>`apps/web/tests/api-client.test.mjs` | W |
+| `abf1220` | feat(frontend): proxy browser gateway requests to core | `apps/web/next.config.ts` | W |
+| `f43f7c5` | feat(frontend): generate wire types from core openapi | `apps/web/scripts/export_types.py`<br>`apps/web/src/types/core-api.ts`<br>`apps/web/tsconfig.json` | G, W |
+| `471e62a` | feat(core): expose authorized unsaved event conflict preview | `contracts/core-api.openapi.yaml`<br>`services/core-api/app/api/routes/events.py`<br>`services/core-api/tests/unit/test_candidate_preview_routes.py` | C1 |
+| `e4dea24` | feat(frontend): align endpoint clients and campus time with core | `apps/web/src/lib/api/endpoints.ts`<br>`apps/web/src/lib/campus-time.ts`<br>`apps/web/tests/api-endpoints.test.mjs` | W |
+| `253b9d0` | feat(frontend): manage expiring sessions and active club identity | `apps/web/src/context/AuthContext.tsx`<br>`apps/web/src/lib/session.ts`<br>`apps/web/tests/session.test.mjs` | W |
+| `86919b4` | feat(frontend): wire session controls and responsive navigation | `apps/web/src/app/layout.tsx`<br>`apps/web/src/components/Toast.tsx`<br>`apps/web/src/components/TopNav.tsx` | W |
+| `7146aba` | feat(frontend): handle loading failures and stale query responses | `apps/web/src/app/error.tsx`<br>`apps/web/src/components/RemoteState.tsx`<br>`apps/web/src/hooks/useRemote.ts` | W |
+| `cfe4340` | feat(frontend): load paginated campus calendar from core | `apps/web/src/components/CalendarGrid.tsx`<br>`apps/web/src/lib/calendar.ts`<br>`apps/web/tests/calendar.test.mjs` | W |
+| `33bec2c` | feat(frontend): create event drafts with live conflict advice | `apps/web/src/app/plan/page.tsx`<br>`apps/web/src/components/ConflictSidebar.tsx` | W |
+| `b0382e2` | feat(frontend): derive lifecycle controls from authorized roles | `apps/web/src/lib/lifecycle.ts`<br>`apps/web/tests/lifecycle.test.mjs` | W |
+| `761c0d3` | feat(frontend): review event schedules and authorized transitions | `apps/web/src/app/changes/page.tsx`<br>`apps/web/src/components/ChangeImpactList.tsx` | W |
+| `835001a` | feat(frontend): upload validated pdf proposals and renew downloads | `apps/web/src/components/ProposalUpload.tsx`<br>`apps/web/src/lib/proposal.ts`<br>`apps/web/tests/proposal.test.mjs` | W |
+| `28fff77` | feat(frontend): attach proposal uploads to persisted events | `apps/web/src/app/plan/page.tsx`<br>`apps/web/src/components/ChangeImpactList.tsx` | W |
+| `0d9f797` | fix(frontend): restrict untrusted source links to http | `apps/web/src/lib/source-url.ts`<br>`apps/web/tests/source-url.test.mjs` | W |
+| `e9a7f99` | feat(frontend): browse live venues with source provenance | `apps/web/src/app/venues/page.tsx`<br>`apps/web/src/components/ResourceCard.tsx` | W |
+| `e4dc32d` | feat(frontend): connect assistant citations and human action review | `apps/web/src/app/policy/page.tsx`<br>`apps/web/src/components/PolicyAssistant.tsx` | W |
+| `31ed697` | feat(frontend): build report drafts from recorded event facts | `apps/web/src/lib/report.ts`<br>`apps/web/tests/report.test.mjs` | W |
+| `12205e9` | feat(frontend): load event summaries and editable local reports | `apps/web/src/app/reports/page.tsx`<br>`apps/web/src/components/UpcomingEvents.tsx` | W |
+| `1a6ed5e` | test(frontend): configure browser integration verification | `apps/web/package-lock.json`<br>`apps/web/package.json`<br>`apps/web/playwright.config.ts` | W |
+| `fe58ea8` | fix(frontend): replace dashboard identity and inert demo controls | `apps/web/src/app/page.tsx`<br>`apps/web/src/app/settings/page.tsx` | W |
+| `66422ee` | refactor(frontend): remove obsolete clients and calendar fixtures | `apps/web/src/lib/api.ts`<br>`apps/web/src/lib/campus-calendar-data.ts`<br>`apps/web/src/types/events.ts` | W |
+| `ae53bc3` | refactor(frontend): remove unused mock workspace components | `apps/web/src/components/CommitmentBoard.tsx`<br>`apps/web/src/components/ReportsSection.tsx`<br>`apps/web/src/components/Sidebar.tsx` | W |
+| `9da78ae` | fix(frontend): open current campus calendar after hydration | `apps/web/src/app/resources/page.tsx`<br>`apps/web/src/components/CalendarGrid.tsx` | W |
+| `7cbb319` | feat(frontend): inspect live event details from the calendar | `apps/web/src/components/CalendarGrid.tsx`<br>`apps/web/src/components/EventDetailModal.tsx` | W |
+| `8e65a87` | test(frontend): verify integrated workflows and safe session expiry | `apps/web/src/context/AuthContext.tsx`<br>`apps/web/tests/browser/fixtures.ts`<br>`apps/web/tests/browser/integration.spec.ts` | W, B6 |
+| `e0395c9` | fix(core): sign proposal downloads with browser reachable storage host | `services/core-api/app/services/minio_client.py`<br>`services/core-api/tests/unit/test_minio_client.py` | C2 |
+| `969afc1` | fix(core): configure separate public proposal download endpoint | `services/core-api/app/container.py`<br>`services/core-api/app/settings.py` | C3 |
+| `bffa34d` | fix(infra): connect web gateway and provision proposal storage | `.env.example`<br>`apps/web/Dockerfile`<br>`docker-compose.yml` | I1 |
+| `65be36d` | fix(infra): build web with clean context and streamed deep links | `apps/web/.dockerignore`<br>`apps/web/Dockerfile`<br>`apps/web/src/app/changes/page.tsx` | I2 |
+| `cfe0142` | test(core): classify candidate preview as implemented | `services/core-api/tests/unit/test_stub_routes.py` | C4 |
+| `9af3860` | feat(core): seed repeatable synthetic demo identities and venues | `services/core-api/scripts/seed_demo.py`<br>`services/core-api/tests/integration/test_demo_seed.py` | C5 |
+| `adcd736` | docs(infra): document and package the seeded integration demo | `apps/web/README.md`<br>`services/core-api/.dockerignore`<br>`services/core-api/Dockerfile` | I1 |
+| `d716ff7` | fix(infra): build pinned minio sources for reproducible storage | `apps/web/README.md`<br>`docker-compose.yml`<br>`infra/minio/Dockerfile` | I3 |
+| `f3e2bf5` | fix(core): keep internal rag download links on the storage network | `services/core-api/app/container.py`<br>`services/core-api/tests/unit/test_minio_client.py` | C6 |
+| `1c216f2` | fix(frontend): reopen saved proposals for authorized review | `apps/web/playwright.config.ts`<br>`apps/web/src/components/ProposalUpload.tsx`<br>`apps/web/tests/browser/integration.spec.ts` | W, B9 |
+| `d77c50a` | fix(frontend): respect configured scheduling advice | `apps/web/src/components/ConflictSidebar.tsx`<br>`apps/web/src/components/EventDetailModal.tsx` | W |
+| `d45f218` | test(frontend): verify live gateway storage and lifecycle | `apps/web/playwright.config.ts`<br>`apps/web/tests/live/gateway.spec.ts` | W, L |
+| `e825fca` | test(frontend): cover stale actions and late identity replies | `apps/web/tests/browser/fixtures.ts`<br>`apps/web/tests/browser/integration.spec.ts` | W, B11 |
+| `987a6ae` | fix(core): use the application factory in local startup | `services/core-api/Makefile`<br>`services/core-api/app/container.py` | C7 |
+| `2a21739` | fix(frontend): bound gateway requests with cancellable timeouts | `apps/web/src/lib/api/client.ts`<br>`apps/web/tests/api-client.test.mjs` | W14 |
+| `d83a23b` | docs(frontend): document live integration checks and limits | `apps/web/README.md`<br>`apps/web/tests/live/gateway.spec.ts` | D, B11, L |
+| `e5311d1` | docs(frontend): record verified integration completion | `Implementation_Plans/04-frontend-vertical-slice.md`<br>`docs/superpowers/plans/2026-10-11-full-frontend-backend-integration.md` | D |
+
+The final HANDOFF.md/PLAN.md closure slice follows this ledger; its hash is visible in `git log -1 --oneline`. Before that slice, `git status --short` contained only `?? ui_mock.png`, a pre-existing user asset left untouched. No secrets, scratch scripts or test dumps were staged. Operational documents remain tracked.
+
+## Limits, compatibility and next step
+
+- Changes do not persist time/venue edits or enumerate dependencies. Core commitment/dependency APIs are absent; timeline/revalidation remain pending.
+- Reports are local editable drafts. Server report storage and notifications are unavailable.
+- Proposal listing is absent; reopen by saved ID. Approval-to-RAG ingestion was not exercised.
+- Fake Agent chat passed live. Real RAG model/index integration and answer quality/latency were not verified; browser citation/action fixtures are synthetic.
+- Only CREATE_EVENT_DRAFT supports action execution in this UI/Core path; unsupported types remain blocked.
+- The preview route is additive; existing creation/transition payloads remain compatible. Session/conflict/proposal types now follow Core instead of old illustrative frontend models.
+- Full npm audit reports five development-tool findings. Runtime audit reports zero. No forced framework downgrade was attempted.
+- No commits pushed, deployment performed or published history changed.
+
+**Next immediate step:** contract and implement Core schedule-change/dependency-impact APIs, then replace the unsaved preview with persisted revision-aware changes/revalidation.
+
+---
+
+# Historical backend/AI handoff (preserved)
 
 > **Updated:** 2026-10-11 (third session). Sections 1 and 'State as of 2026-10-11' are current; sections 3, 5, 7, 8, 15 and 17 were written on 2026-10-10 and are partly superseded (marked below).
 > **Branch:** `backend-ai`, code HEAD `9655858`, merged with `origin/main` (`0c8273e`), **21 local commits not pushed**. **Owner of this workstream:** Shruhath (git author `Shruhath`); the teammate Mrudula also pushes to this branch.

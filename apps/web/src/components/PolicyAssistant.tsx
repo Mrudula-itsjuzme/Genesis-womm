@@ -1,74 +1,68 @@
-import React from 'react';
-import { MessageSquare, FileText, Send, Sparkles } from 'lucide-react';
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { agentApi } from '@/lib/api/endpoints';
+import { errorMessage } from '@/lib/api/client';
+import { sourceUrl } from '@/lib/source-url';
+import type { ChatMessage, ChatResponse, AgentAction } from '@/types/core-api';
+import ConflictSidebar from './ConflictSidebar';
 
-export const PolicyAssistant: React.FC = () => {
-  return (
-    <div className="flex flex-col h-full bg-transparent">
-      <div className="px-6 py-5 border-b border-rose-100/30 bg-white/40 flex items-center shadow-sm">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7a1b32] to-[#5a1222] flex items-center justify-center mr-3 shadow-md">
-          <Sparkles className="h-4 w-4 text-white" />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 tracking-tight">Policy Assistant</h2>
-          <p className="text-[10px] uppercase tracking-wider font-bold text-[#7a1b32]">AI Powered</p>
-        </div>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="flex justify-end">
-          <div className="bg-gradient-to-br from-[#7a1b32] to-[#5a1222] text-white rounded-2xl rounded-tr-none px-5 py-4 max-w-[85%] shadow-md">
-            <p className="text-sm font-medium leading-relaxed">What do we need for an intercollege hackathon?</p>
-          </div>
-        </div>
-
-        <div className="flex justify-start">
-          <div className="bg-white text-gray-800 rounded-2xl rounded-tl-none px-5 py-4 max-w-[95%] shadow-[0_4px_20px_rgb(0,0,0,0.04)] border border-stone-100/50">
-            <div className="flex items-center mb-3 text-[#7a1b32]">
-              <Sparkles className="h-4 w-4 mr-1.5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">CampusCue Assistant</span>
-            </div>
-            <p className="text-sm mb-4 leading-relaxed font-medium">
-              Based on the current institutional guidelines, hosting an intercollege hackathon requires specific approvals and preparations:
-            </p>
-            <ol className="list-decimal pl-4 text-sm space-y-3 mb-2 font-medium">
-              <li className="pl-1">
-                <strong className="text-gray-900">Prior Approval:</strong> You must obtain written permission from the Dean of Student Affairs at least 30 days in advance.
-                <span className="inline-flex items-center ml-2 bg-[#FFF5F0] border border-rose-100 rounded-full px-2 py-0.5 text-[10px] font-bold text-[#7a1b32] cursor-help shadow-sm uppercase tracking-wider mt-1" title="Section 4.2">
-                  <FileText className="h-3 w-3 mr-1" /> OSA Handbook
-                </span>
-              </li>
-              <li className="pl-1">
-                <strong className="text-gray-900">Venue Booking:</strong> For intercollege events, you will likely need a major hall (like Sudhamani Hall). Note that these require a faculty sponsor signature.
-              </li>
-              <li className="pl-1">
-                <strong className="text-gray-900">Security Clearance:</strong> Since external students are attending, a participant list must be submitted to Campus Security 48 hours prior.
-                <span className="inline-flex items-center ml-2 bg-[#FFF5F0] border border-rose-100 rounded-full px-2 py-0.5 text-[10px] font-bold text-[#7a1b32] cursor-help shadow-sm uppercase tracking-wider mt-1" title="Section 2.1">
-                  <FileText className="h-3 w-3 mr-1" /> Security Guidelines
-                </span>
-              </li>
-              <li className="pl-1">
-                <strong className="text-gray-900">IT Support:</strong> Network requirements (Wi-Fi access for guests) must be coordinated with ICTS.
-              </li>
-            </ol>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 bg-white/60 border-t border-rose-100/30 backdrop-blur-md">
-        <div className="relative bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.04)] focus-within:ring-2 focus-within:ring-rose-500/20 focus-within:shadow-md transition-all">
-          <textarea
-            rows={2}
-            className="block w-full resize-none border-none py-4 px-4 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6 bg-transparent font-medium rounded-2xl"
-            placeholder="Ask about policies, procedures, or resources..."
-            defaultValue=""
-          />
-          <div className="absolute right-3 bottom-3">
-            <button className="rounded-xl bg-[#7a1b32] p-2 text-white hover:bg-[#5a1222] shadow-md transition-transform hover:scale-105 active:scale-95">
-              <Send className="h-4 w-4 ml-0.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+type Turn = ChatMessage & { response?: ChatResponse };
+export function PolicyAssistant() {
+  const { token } = useAuth();
+  return <Conversation key={token} />;
+}
+function Conversation() {
+  const { token } = useAuth();
+  const [turns, setTurns] = useState<Turn[]>([]); const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const alive = useRef(true); const abort = useRef<AbortController | null>(null);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; abort.current?.abort(); }; }, []);
+  async function send(event: FormEvent) {
+    event.preventDefault(); if (!token || busy || !input.trim()) return;
+    const question = input.trim();
+    const history: ChatMessage[] = [...turns.map(({ role, content }) => ({ role, content: content.slice(0, 4000) })), { role: 'user' as const, content: question }].slice(-19);
+    setBusy(true); setError(''); abort.current = new AbortController();
+    try {
+      const response = await agentApi.chat(token, history, null, abort.current.signal);
+      if (!alive.current) return;
+      setTurns(previous => [...previous, { role: 'user', content: question }, { role: 'assistant', content: response.message, response }]); setInput('');
+    } catch (err) { if (alive.current) setError(errorMessage(err)); }
+    finally { if (alive.current) setBusy(false); }
+  }
+  return <section className="rounded-2xl border bg-white p-5"><h2 className="text-xl font-bold">Ask CampusCue</h2><p className="my-3 text-sm">Answers rely on approved evidence. Review citations and action drafts before making decisions.</p>
+    {!token && <p>Sign in through the profile menu to ask a question.</p>}
+    <div aria-live="polite" className="space-y-4">{turns.map((turn, i) => <article key={i} className={'rounded-xl p-4 ' + (turn.role === 'user' ? 'bg-rose-50' : 'border bg-stone-50')}><p className="text-xs font-bold uppercase">{turn.role}</p><p className="mt-2 whitespace-pre-wrap">{turn.content}</p>
+      {turn.response?.clarifying_question && <p className="mt-3 font-semibold">{turn.response.clarifying_question}</p>}
+      {turn.response?.citations?.map(citation => { const url = sourceUrl(citation.source_url); return <blockquote key={citation.evidence_id} className="my-3 border-l-4 border-rose-200 pl-3 text-sm"><p>{citation.title} · pp. {citation.page_start}–{citation.page_end} · Version {citation.document_version}</p><p className="my-2 whitespace-pre-wrap">{citation.excerpt}</p>{url && <a href={url + (url.includes('#') ? '' : '#page=' + citation.page_start)} target="_blank" rel="noreferrer" className="underline">Open source</a>}<p className="break-all text-xs">Evidence: {citation.evidence_id}</p></blockquote>; })}
+      {turn.response && !turn.response.citations?.length && <p className="mt-2 text-xs">No document citations returned for this reply.</p>}
+      {turn.response?.proposed_actions?.map(action => <ActionReview key={action.action_id} action={action} />)}
+      {Boolean(turn.response?.trace?.length) && <details className="mt-3 text-xs"><summary>Tool activity</summary>{turn.response?.trace?.map((trace, n) => <p key={n}>{trace.tool}: {trace.outcome} · {trace.latency_ms} ms</p>)}</details>}
+      {turn.response && <p className="mt-2 text-xs">Request: {turn.response.request_id}</p>}
+    </article>)}</div>
+    <form onSubmit={send} className="mt-5 space-y-3"><label className="block">Policy question<textarea disabled={busy || !token} required maxLength={4000} value={input} onChange={e => setInput(e.target.value)} className="mt-2 w-full rounded-xl border p-3" /></label><button disabled={busy || !token || !input.trim()} className="rounded-xl bg-[#7a1b32] px-5 py-3 text-white disabled:opacity-50">{busy ? 'Asking…' : 'Ask CampusCue'}</button>{error && <p role="alert" className="text-rose-800">{error}</p>}</form>
+  </section>;
+}
+function ActionReview({ action }: { action: AgentAction }) {
+  const { token } = useAuth(); const [status, setStatus] = useState(action.status);
+  const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [created, setCreated] = useState('');
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  async function decide(confirm: boolean) {
+    if (!token || busy) return; setBusy(true); setError('');
+    try {
+      if (confirm) { const result = await agentApi.confirmAction(token, action.action_id); if (alive.current) { setStatus(result.action.status); setCreated(result.created_entity_id ?? ''); } }
+      else { const result = await agentApi.rejectAction(token, action.action_id); if (alive.current) setStatus(result.status); }
+    } catch (err) { if (alive.current) setError(errorMessage(err)); }
+    finally { if (alive.current) setBusy(false); }
+  }
+  return <section className="my-3 rounded-xl border bg-white p-4"><h3 className="font-bold">Action draft: {action.type}</h3><p>{action.summary}</p><p className="text-xs">{status}</p><details className="my-2"><summary>Review proposed fields</summary><pre className="overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(action.payload, null, 2)}</pre></details>
+    {Boolean(action.conflicts?.length) && <ConflictSidebar result={{ event_id: action.target_event_id, evaluated_as: 'DRAFT', conflicts: action.conflicts!, has_blocking: action.conflicts!.some(c => c.severity === 'blocking'), checked_at: action.created_at }} />}
+    {status === 'PROPOSED' && <div className="my-3 flex gap-3"><button disabled={busy || action.type !== 'CREATE_EVENT_DRAFT'} onClick={() => decide(true)} className="rounded border p-2">Confirm draft creation</button><button disabled={busy} onClick={() => decide(false)} className="rounded border p-2">Reject action</button></div>}
+    {action.type !== 'CREATE_EVENT_DRAFT' && <p className="text-xs">Core does not support execution of this action type yet.</p>}
+    {created && <Link className="underline" href={'/changes?eventId=' + created}>Open created event draft</Link>}
+    {error && <p role="alert">{error}</p>}
+  </section>;
+}

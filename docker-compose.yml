@@ -34,25 +34,6 @@ services:
     # Not published to the host: another local Postgres often owns 5432. Use
     # `docker compose exec postgres psql -U campuscue` instead.
 
-  minio:
-    # The historical official Docker Hub image was withdrawn; this pinned mirror preserves the
-    # published upstream 2025-09-07 release for the local demo only.
-    image: dappros/minio:RELEASE.2025-09-07T16-13-09Z
-    command: ["server", "/data", "--console-address", ":9001"]
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-campuscue_admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-campuscue_secret}
-    volumes:
-      - miniodata:/data
-    ports:
-      # Local only: the browser follows presigned download links to this address.
-      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   # One-shot: applies Core's migrations, then exits. The API never migrates at start-up.
   migrate:
     build: ./services/core-api
@@ -86,16 +67,17 @@ services:
       DELEGATION_SIGNING_KEY: ${DELEGATION_SIGNING_KEY:-local-only-delegation-key-not-a-secret-0002}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
       AGENT_API_URL: http://agent-api:8001
-      CAMPUS_GAP_MINUTES: ${CAMPUS_GAP_MINUTES:-120}
+      RAG_API_URL: http://rag-api:8002
       MINIO_ENDPOINT: minio:9000
-      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost:${MINIO_PORT:-9000}}
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-campuscue_admin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-campuscue_secret}
+      CAMPUS_GAP_MINUTES: ${CAMPUS_GAP_MINUTES:-120}
     depends_on:
       seed-demo:
         condition: service_completed_successfully
-      minio:
-        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     ports:
       - "${CORE_API_PORT:-8000}:8000"
 
@@ -133,13 +115,47 @@ services:
       - "127.0.0.1:${RAG_API_PORT:-8002}:8002"
 
   web:
-    build: ./apps/web
+    build:
+      context: ./apps/web
+      args:
+        CORE_API_URL: http://core-api:8000
     environment:
-      NEXT_PUBLIC_CORE_API_URL: http://localhost:8000
+      CORE_API_URL: http://core-api:8000
     depends_on:
       - core-api
     ports:
       - "3000:3000"
+
+  minio:
+    build:
+      context: ./infra/minio
+      target: server
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-campuscue_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-campuscue_secret}
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata:/data
+
+  minio-init:
+    build:
+      context: ./infra/minio
+      target: client
+    depends_on:
+      - minio
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-campuscue_admin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-campuscue_secret}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until mc alias set local http://minio:9000 "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY"; do sleep 1; done;
+        mc mb --ignore-existing local/campuscue-proposals-dev &&
+        mc mb --ignore-existing local/campuscue-proposals-archive-dev
+    restart: "no"
 
 volumes:
   pgdata:

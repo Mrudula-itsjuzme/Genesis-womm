@@ -20,6 +20,7 @@ from app.domain.time import SystemClock
 from app.repositories.health import SqlReadinessProbe
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.agent_actions import AgentActionService
+from app.services.change_queries import ChangeQueries
 from app.services.chat import ChatService
 from app.services.chat_context import ChatContextBuilder
 from app.services.conflict_checks import ConflictCheckService
@@ -55,6 +56,7 @@ class Container:
     agent_actions: AgentActionService | None = None
     chat: ChatService | None = None
     proposals: ProposalService | None = None
+    changes: ChangeQueries | None = None
     agent_client: httpx.Client | None = None
     rag_client: httpx.Client | None = None
     internal_api_key: str | None = None
@@ -124,22 +126,26 @@ def build_container(settings: Settings) -> Container:
         actions=agent_actions,
         context=ChatContextBuilder(lambda: SqlUnitOfWork(database_sessions), clock=SystemClock()),
     )
-    storage = MinIOProposalStorage(
-        endpoint=settings.minio_endpoint,
-        public_endpoint=settings.minio_public_endpoint,
-        access_key=settings.minio_access_key.get_secret_value(),
-        secret_key=settings.minio_secret_key.get_secret_value(),
-        proposal_bucket=settings.minio_proposal_bucket,
-        archive_bucket=settings.minio_archive_bucket,
-        use_ssl=settings.minio_use_ssl,
-    )
+
+    def proposal_storage(public_endpoint: str | None = None) -> MinIOProposalStorage:
+        return MinIOProposalStorage(
+            endpoint=settings.minio_endpoint,
+            public_endpoint=public_endpoint,
+            access_key=settings.minio_access_key.get_secret_value(),
+            secret_key=settings.minio_secret_key.get_secret_value(),
+            proposal_bucket=settings.minio_proposal_bucket,
+            archive_bucket=settings.minio_archive_bucket,
+            use_ssl=settings.minio_use_ssl,
+        )
+
+    storage = proposal_storage(settings.minio_public_endpoint)
     proposal_clock = SystemClock()
     rag_client = httpx.Client(base_url=settings.rag_api_url, timeout=10.0)
     proposals = ProposalService(
         lambda: SqlUnitOfWork(database_sessions),
         storage=storage,
         manager=ProposalLifecycleManager(
-            storage,
+            proposal_storage(),
             HttpRagIngest(rag_client),
             proposal_clock,
         ),
@@ -158,6 +164,10 @@ def build_container(settings: Settings) -> Container:
         agent_actions=agent_actions,
         chat=chat,
         proposals=proposals,
+        changes=ChangeQueries(
+            lambda: SqlUnitOfWork(database_sessions),
+            policy=Policy(campus_gap=timedelta(minutes=settings.campus_gap_minutes)),
+        ),
         agent_client=agent_client,
         rag_client=rag_client,
         internal_api_key=settings.internal_api_key.get_secret_value(),

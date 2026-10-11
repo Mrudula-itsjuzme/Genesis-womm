@@ -1,10 +1,29 @@
 from unittest.mock import MagicMock
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import pytest
 from botocore.exceptions import ClientError
 
 from app.services.minio_client import MinIOProposalStorage
+
+
+def test_public_download_host_is_signed_without_changing_internal_storage() -> None:
+    storage = MinIOProposalStorage(
+        endpoint="minio:9000",
+        public_endpoint="http://localhost:9000",
+        access_key="test_access",
+        secret_key="test_secret",
+    )
+    url = storage.generate_presigned_download_url("bucket", "proposals/test.pdf")
+    assert urlparse(url).netloc == "localhost:9000"
+    assert "X-Amz-Signature=" in url
+    assert storage.client.meta.endpoint_url == "http://minio:9000"
+    internal = MinIOProposalStorage(
+        endpoint="minio:9000", access_key="test_access", secret_key="test_secret"
+    )
+    internal_url = internal.generate_presigned_download_url("bucket", "proposals/test.pdf")
+    assert urlparse(internal_url).netloc == "minio:9000"
 
 
 @pytest.fixture

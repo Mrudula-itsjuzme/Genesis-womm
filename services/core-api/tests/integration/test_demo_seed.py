@@ -4,13 +4,14 @@ that Core itself reports (not just rows whose times happen to overlap)."""
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import Engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Engine, select, text
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.authz import Actor
 from app.domain.enums import ConflictConstraint, ConflictType, EventStatus, Role, Severity
 from app.domain.scheduling import Policy
 from app.domain.time import FixedClock
+from app.models.directory import Club, Membership, Resource, User
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.conflict_checks import ConflictCheckResult, ConflictCheckService
 from scripts.seed_demo import (
@@ -18,6 +19,7 @@ from scripts.seed_demo import (
     DEMO_USERS,
     RESOURCE_AUDITORIUM,
     RESOURCE_COURTYARD,
+    seed_demo,
     seed_demo_data,
 )
 from tests.conftest import upgrade
@@ -137,3 +139,21 @@ def test_a_venue_with_no_availability_source_says_so_instead_of_claiming_it_is_f
     assert [(c.type, c.severity) for c in result.conflicts] == [
         (ConflictType.UNKNOWN_AVAILABILITY, Severity.INFO)
     ]
+
+
+@pytest.mark.integration
+def test_demo_seed_is_repeatable_and_keeps_availability_unknown(engine: Engine) -> None:
+    upgrade(engine)
+    with Session(engine) as session:
+        seed_demo(session, "test")
+        session.commit()
+        seed_demo(session, "test")
+        session.commit()
+        users = list(session.scalars(select(User)))
+        assert len(users) == 3
+        assert all(user.is_synthetic for user in users)
+        assert len(list(session.scalars(select(Club)))) == 1
+        assert len(list(session.scalars(select(Membership)))) == 2
+        resources = list(session.scalars(select(Resource)))
+        assert len(resources) == 2
+        assert all(r.availability_state == "UNKNOWN" and r.is_synthetic for r in resources)

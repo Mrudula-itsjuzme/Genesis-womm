@@ -1,9 +1,12 @@
-import React from 'react';
+'use client';
+import { useAuth } from '@/context/AuthContext';
+import CalendarGrid from '@/components/CalendarGrid';
 import Link from 'next/link';
 import UpcomingEvents from "@/components/UpcomingEvents";
-import { Calendar, Search, MapPin, FileText, BarChart2, Plus, ArrowRight, Send, Sparkles } from 'lucide-react';
+import { Calendar, MapPin, FileText, BarChart2, Plus, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function Dashboard() {
+  const { session } = useAuth();
   return (
     <div className="min-h-screen font-sans bg-[#F5EEE9]">
       {/* Hero Section */}
@@ -22,23 +25,11 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#3e131d]/70 via-[#4a1723]/30 to-transparent z-0" />
 
         <div className="relative z-10 text-gray-900 mt-16 max-w-4xl drop-shadow-sm">
-          <h2 className="text-xl md:text-2xl font-serif italic font-light mb-1 text-white drop-shadow-md">Good evening,</h2>
-          <h1 className="text-5xl md:text-7xl font-serif mb-3 text-white drop-shadow-md tracking-tight">Mrudula</h1>
+          <h2 className="text-xl md:text-2xl font-serif italic font-light mb-1 text-white drop-shadow-md">Welcome,</h2>
+          <h1 className="text-5xl md:text-7xl font-serif mb-3 text-white drop-shadow-md tracking-tight">{session?.user.display_name ?? 'CampusCue'}</h1>
           <p className="text-lg md:text-xl font-light mb-8 text-white/90 drop-shadow-md tracking-wide">Let&apos;s make something happen on campus.</p>
 
-          {/* Main Search Bar */}
-          <div className="relative max-w-2xl bg-white/95 backdrop-blur-md rounded-full shadow-2xl flex items-center px-5 py-3.5 transition-all focus-within:ring-4 focus-within:ring-rose-500/20">
-            <Search className="w-5 h-5 text-gray-500 mr-3" />
-            <input
-              type="text"
-              placeholder="Search for venues, events, policies, or ask anything..."
-              className="flex-1 bg-transparent border-none focus:ring-0 text-gray-800 placeholder-gray-400 text-sm md:text-base outline-none"
-            />
-            <div className="hidden sm:flex items-center space-x-1 text-xs text-gray-400 font-mono px-2">
-              <kbd className="px-2 py-1 rounded bg-gray-50 border border-gray-200">Ctrl</kbd>
-              <kbd className="px-2 py-1 rounded bg-gray-50 border border-gray-200">K</kbd>
-            </div>
-          </div>
+          <Link href="/policy" className="inline-block rounded-full bg-white px-6 py-3 text-[#7a1b32]">Ask a campus question</Link>
         </div>
 
         {/* Right side floating text */}
@@ -138,7 +129,7 @@ export default function Dashboard() {
         {/* Dashboard Grid Content */}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.85fr)] lg:gap-12 items-start">
 
-          {/* My Upcoming Events List */}
+          {/* My Events List */}
           <section className="min-w-0 border-t border-[#d9c9c2] py-6 lg:border-t-0 lg:py-0" aria-labelledby="upcoming-events-heading">
             <div className="mb-6 flex items-center justify-between gap-3">
               <h3 id="upcoming-events-heading" className="text-xl font-bold tracking-tight text-gray-900">My Upcoming Events</h3>
@@ -159,48 +150,7 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            {/* Fake Mini Calendar */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-4 px-2">
-                <button className="p-1 hover:bg-rose-50 rounded-full text-gray-600 transition-colors">&lt;</button>
-                <span className="font-bold text-sm text-gray-900 tracking-tight">October 2026</span>
-                <button className="p-1 hover:bg-rose-50 rounded-full text-gray-600 transition-colors">&gt;</button>
-              </div>
-              <div className="grid grid-cols-7 text-center text-[10px] font-bold text-gray-400 mb-3 uppercase tracking-wider">
-                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-              </div>
-              <div className="grid grid-cols-7 text-center text-xs font-semibold gap-y-3">
-                <div className="text-gray-300">27</div><div className="text-gray-300">28</div><div className="text-gray-300">29</div><div className="text-gray-300">30</div>
-                <div className="py-1 text-gray-700">1</div><div className="py-1 text-gray-700">2</div><div className="py-1 text-gray-700">3</div>
-
-                <div className="py-1 text-gray-700">4</div><div className="py-1 text-gray-700">5</div><div className="py-1 text-gray-700">6</div><div className="py-1 text-gray-700">7</div>
-                <div className="py-1 flex flex-col items-center font-bold text-gray-900">8 <span className="w-1 h-1 rounded-full bg-amber-400 mt-1"></span></div>
-                <div className="py-1 text-gray-700">9</div><div className="py-1 text-gray-700">10</div>
-
-                <div className="py-1 text-gray-700">11</div>
-                <div className="py-1 flex flex-col items-center font-bold text-gray-900">12 <span className="w-1 h-1 rounded-full bg-emerald-500 mt-1"></span></div>
-                <div className="py-1 text-gray-700">13</div><div className="py-1 text-gray-700">14</div><div className="py-1 text-gray-700">15</div><div className="py-1 text-gray-700">16</div><div className="py-1 text-gray-700">17</div>
-
-                <div className="flex justify-center"><div className="w-6 h-6 flex items-center justify-center bg-[#7a1b32] text-white rounded-full font-bold shadow-md shadow-rose-900/20">18</div></div>
-                <div className="py-1 text-gray-700">19</div><div className="py-1 text-gray-700">20</div>
-                <div className="py-1 flex flex-col items-center font-bold text-gray-900">21 <span className="w-1 h-1 rounded-full bg-emerald-500 mt-1"></span></div>
-                <div className="py-1 text-gray-700">22</div><div className="py-1 text-gray-700">23</div><div className="py-1 text-gray-700">24</div>
-
-                <div className="py-1 flex flex-col items-center text-amber-600 font-bold">25 <span className="w-1 h-1 rounded-full bg-amber-400 mt-1"></span></div>
-                <div className="py-1 text-gray-700">26</div><div className="py-1 text-gray-700">27</div>
-                <div className="py-1 flex flex-col items-center font-bold text-gray-900">28 <span className="w-1 h-1 rounded-full bg-rose-400 mt-1"></span></div>
-                <div className="py-1 text-gray-700">29</div>
-                <div className="py-1 flex flex-col items-center font-bold text-gray-900">30 <span className="w-1 h-1 rounded-full bg-emerald-500 mt-1"></span></div>
-                <div className="py-1 text-gray-700">31</div>
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-4 mt-6 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Confirmed</div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Tentative</div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Planning</div>
-            </div>
+            <CalendarGrid />
           </section>
         </div>
 
@@ -216,19 +166,7 @@ export default function Dashboard() {
               </div>
               <p className="text-sm text-[#7a1b32]/80 mb-6 font-medium">Get answers from Amrita&apos;s official guidelines, venue details, and past events.</p>
 
-              <div className="relative max-w-3xl">
-                <input type="text" placeholder="Ask anything... (e.g. Can we host a food stall? / When is the next free slot at CKB?)" className="w-full bg-white rounded-full pl-6 pr-14 py-4 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/20 shadow-[0_4px_20px_rgb(122,27,50,0.08)] border-none placeholder-gray-400 font-medium transition-shadow" />
-                <button className="absolute right-2 top-2 bottom-2 w-12 bg-[#7a1b32] rounded-full flex items-center justify-center text-white hover:bg-[#5a1122] transition-colors shadow-md">
-                  <Send className="w-4 h-4 ml-0.5" />
-                </button>
-              </div>
-
-              <div className="flex gap-2 mt-5 overflow-x-auto pb-1 scrollbar-hide">
-                <span className="whitespace-nowrap px-4 py-1.5 bg-white/50 text-[#7a1b32] rounded-full text-xs font-bold cursor-pointer hover:bg-white transition-colors border border-white/50 shadow-sm backdrop-blur-sm">Can we host a food stall?</span>
-                <span className="whitespace-nowrap px-4 py-1.5 bg-white/50 text-[#7a1b32] rounded-full text-xs font-bold cursor-pointer hover:bg-white transition-colors border border-white/50 shadow-sm backdrop-blur-sm">Steps to book a venue</span>
-                <span className="whitespace-nowrap px-4 py-1.5 bg-white/50 text-[#7a1b32] rounded-full text-xs font-bold cursor-pointer hover:bg-white transition-colors border border-white/50 shadow-sm backdrop-blur-sm">What is the refund policy?</span>
-                <span className="whitespace-nowrap px-4 py-1.5 bg-white/50 text-[#7a1b32] rounded-full text-xs font-bold cursor-pointer hover:bg-white transition-colors border border-white/50 shadow-sm backdrop-blur-sm">Who to contact for technical support?</span>
-              </div>
+              <Link href="/policy" className="inline-block rounded-full bg-white px-6 py-3 text-[#7a1b32]">Open policy assistant</Link>
             </div>
           </div>
 

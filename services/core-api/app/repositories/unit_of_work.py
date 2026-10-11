@@ -12,6 +12,7 @@ from typing import Self
 from sqlalchemy.orm import Session
 
 from app.repositories.agent_actions import SqlAgentActionStore
+from app.repositories.changes import SqlChangeStore
 from app.repositories.directory import SqlActorReader, SqlClubReader, SqlResourceReader
 from app.repositories.history import SqlAuditWriter, SqlEvidenceWriter, SqlIdempotencyStore
 from app.repositories.proposals import SqlProposalStore
@@ -46,6 +47,7 @@ class SqlUnitOfWork:
         self.idempotency = SqlIdempotencyStore(self._session)
         self.agent_actions = SqlAgentActionStore(self._session)
         self.proposals = SqlProposalStore(self._session)
+        self.changes = SqlChangeStore(self._session)
         self.schedule = SqlScheduleWriters(
             lock=SqlScheduleLock(self._session),
             events=events,

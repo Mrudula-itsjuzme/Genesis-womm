@@ -1,5 +1,72 @@
 # Full Frontend & Backend Integration Plan
 
+## Execution record — 2026-10-11
+
+Status: Implemented and verified against the available Core contracts on `feat/frontend-backend-integration`. Backend-dependent extensions are explicitly deferred below.
+
+Baseline: `npm run lint` exits 0 with four existing warnings; `npx tsc --noEmit` exits 0. The live Core schemas and routes take precedence over the illustrative code below.
+
+Implementation adjustments:
+- Split Tasks 1 and 10 into at most three files per commit; use the allowed `frontend` scope.
+- Generate frontend wire types from committed Core OpenAPI and check drift. Session memberships belong to `user`; conflicts use `type`, `constraint`, and `info` severity; creation returns `event` plus conflicts.
+- Proxy browser requests through Next.js `/api/v1` to Core (server-only `CORE_API_URL`), avoiding a CORS dependency and keeping internal credentials out of the browser.
+- Add a session-authorized unsaved-candidate conflict route using the existing deterministic service; never submit a dummy event ID or save on preview.
+- Preserve actual lifecycle edges and require evidence for campus-admin confirmation. Render roles from the session, never from email text.
+- Accept PDF proposals only, up to the server's 15 MiB limit. Keep upload success separate from download-link failures and renew links on demand.
+- Keep citations and review actions attached to each assistant turn; show explicit unavailable states, ignore stale requests, and clear data on identity changes.
+- Reports contain recorded facts and missing-field placeholders only; save editable drafts locally with an explicit label. The backend has no report or dependency-impact endpoint, so the changes view is an advisory schedule preview.
+- Use meaningful production-helper and HTTP contract tests rather than the self-contained sample tests. Verify browser workflows with Playwright where available.
+- Do not run the implementation-only superpowers subskills: they are absent from the installed skill catalog. Execute the documented slices directly.
+
+Checkpoints: gateway/tests; generated contracts/endpoints; auth/navigation; toast/layout/errors; unsaved preview contract; calendar/details; proposal documents; planning; policy/actions; changes; venues; reports; offline home; browser regression and documentation.
+
+### Completed execution checklist
+
+- [x] Task 1: authenticated same-origin gateway, error envelopes, tracing, idempotency, multipart boundaries and cancellable 60-second deadlines.
+- [x] Task 2: generated Core wire schemas, drift check and typed endpoint wrappers.
+- [x] Task 3: persisted expiring sessions, membership-derived clubs/roles, identity switch and logout without stale data.
+- [x] Task 4: providers, responsive navigation, toast feedback, fixed-header clearance and Next 16 error retry.
+- [x] Task 5: paginated campus-local month/week/list calendar and live event details; lifecycle actions live in the changes workspace.
+- [x] Task 6: controlled form, Kolkata input conversion, unsaved debounced conflict preview and idempotent draft persistence.
+- [x] Task 7: PDF validation, persisted upload, browser-reachable downloads, proposal-ID lookup and authorized review.
+- [x] Task 8: bounded multi-turn chat, per-turn citations/excerpts, clarifying questions, tool traces and human action confirmation/rejection.
+- [x] Task 9: event deep links, hypothetical conflict checks, expected-revision lifecycle changes and confirmation evidence.
+- [x] Task 10: live venue provenance, user-scoped local reports, truthful dashboard/settings and removed mock clients/components.
+- [x] Task 11: loading/error/empty/session-expiry/offline states, helper tests, browser regression, live database/storage/gateway checks and setup documentation.
+
+### Verification — final code state
+
+| Check | Result |
+|---|---|
+| Core `pytest -q` | Exit 0; 1,040 passed, 1 skipped in 88.92 s; skip is an empty legacy stub-route parameter set |
+| Core `ruff check .` / `ruff format --check .` | Exit 0; all checks pass, 142 files formatted |
+| Core `mypy` / `lint-imports` | Exit 0; 140 source files, 9 architecture contracts kept |
+| Core `python -m scripts.export_contracts --check` | Exit 0; committed OpenAPI is current |
+| `python apps/web/scripts/export_types.py --check` | Exit 0; wire types have no drift |
+| Web `npm run lint` / `npx tsc --noEmit` | Exit 0; no warnings/errors |
+| Web `npm test` | Exit 0; 14 passed, 0 failed/skipped, 180.48 ms |
+| Web `npm run build` | Exit 0; optimized production build and 12 prerendered pages |
+| `npx playwright test --workers=1` against rebuilt production web | Exit 0; 11 passed, 0 failed/skipped in 5.3 s |
+| `PLAYWRIGHT_LIVE=1 npx playwright test --workers=1` | Exit 0; 1 passed in 1.5 s; real draft persistence, PDF-byte download, permissions, stale revision and fake-provider chat |
+| `docker compose --env-file .env.example config --quiet` | Exit 0; Core/Agent/web/PostgreSQL/MinIO run; seed is repeatable |
+| `npm audit --omit=dev --audit-level=high` | Exit 0; zero runtime vulnerabilities reported |
+
+Desktop/mobile screenshots were inspected. Concurrent test execution exceeded machine memory; sequential runs passed. Homepage browser checks wait for DOM readiness instead of external decorative image downloads.
+
+### Explicit boundaries and deviations
+
+- Core has no public commitment timeline, dependency-impact, report-generation or schedule-edit API. Changes are advisory and unsaved; reports are local editable drafts. These backend features were not invented.
+- The live smoke test uses the fake Agent provider. Citation/action rendering uses synthetic HTTP fixtures; real RAG answers and proposal approval-to-ingestion require configured models, RAG and approved indexed sources.
+- Core has no proposal-list API; saved proposals reopen by ID. Unsupported Agent action types remain unavailable for execution.
+- Added a backward-compatible authorized `POST /api/v1/events/conflict-check` contract. No database migration was needed.
+- Public MinIO signing and internal RAG downloads use separate clients. Compose builds pinned storage sources; seeds create identities/resources, not bookings.
+- Some one-file documentation or route-inventory corrections were committed separately; every commit contains at most three files. Exact slices are in HANDOFF.md.
+- Five high-severity development dependency findings remain in the ESLint glob dependency chain. The suggested forced downgrade is outside this change; the runtime audit reports zero.
+
+The recipes below remain historical design examples, not executable acceptance evidence. Their unchecked sample steps, illustrative schemas, filenames, tests and commit scopes are superseded by this completed execution checklist and the code.
+
+Commit ledger, gate references, setup commands and follow-up work: [HANDOFF.md](../../../HANDOFF.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Fully integrate the Next.js frontend (`apps/web`) with the authoritative backend services via the Core API Gateway (`http://localhost:8000/api/v1`), replacing all client-side mocks with live authenticated workflows, real-time conflict evaluation, PDF proposal storage, and interactive AI agent chat.

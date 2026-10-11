@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Query, Request
 
 from app.api.deps import (
+    get_change_queries,
     get_conflict_check_service,
     get_event_read_service,
     get_schedule_write_service,
@@ -14,6 +15,19 @@ from app.api.errors import route_errors
 from app.api.presenters import conflict_check_out, conflict_out, event_out
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode, EventStatus
+from app.schemas.changes import (
+    ApplyChange,
+    ChangeAppliedOut,
+    ChangeProposalList,
+    ChangeProposalOut,
+    ChangeRequest,
+    DependencyCreate,
+    DependencyList,
+    DependencyOut,
+    ImpactItem,
+    ImpactReport,
+    StageChange,
+)
 from app.schemas.events import (
     ConflictCheckOut,
     ConflictCheckRequest,
@@ -23,7 +37,11 @@ from app.schemas.events import (
     EventOut,
     TransitionRequest,
 )
+from app.services.change_ports import ChangeRecord, impact_json, record_json
+from app.services.change_queries import ChangeQueries
+from app.services.codec import conflict_from_json
 from app.services.conflict_checks import ConflictCheckService
+from app.services.errors import NotFoundError
 from app.services.event_reads import EventReadService
 from app.services.schedule_write import (
     EvidenceInput,
@@ -120,6 +138,30 @@ def list_events(
     )
 
 
+@router.post(
+    "/conflict-check",
+    response_model=ConflictCheckOut,
+    summary="Preview an unsaved event without creating a draft",
+    responses=route_errors(ErrorCode.NOT_FOUND),
+)
+def preview_candidate(
+    payload: EventCreate,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    service: Annotated[ConflictCheckService, Depends(get_conflict_check_service)],
+    as_status: EventStatus = EventStatus.DRAFT,
+) -> ConflictCheckOut:
+    return conflict_check_out(
+        service.check_candidate(
+            actor,
+            club_id=payload.club_id,
+            start_at=payload.start_at,
+            end_at=payload.end_at,
+            resource_id=payload.resource_id,
+            as_status=as_status,
+        )
+    )
+
+
 @router.get(
     "/{event_id}",
     response_model=EventOut,
@@ -205,3 +247,174 @@ def transition_event_route(
         evidence=evidence_input,
     )
     return event_out(result.event, result.venue_availability)
+
+
+def change_out(record: ChangeRecord) -> ChangeProposalOut:
+    data = record_json(record)
+    data["conflicts"] = [conflict_out(conflict_from_json(item)) for item in record.conflicts]
+    return ChangeProposalOut.model_validate(data)
+
+
+def scoped_change(
+    queries: ChangeQueries, actor: Actor, event_id: UUID, proposal_id: UUID
+) -> ChangeRecord:
+    record = queries.get(actor, proposal_id)
+    if record.event_id != event_id:
+        raise NotFoundError("change proposal", proposal_id)
+    return record
+
+
+@router.post(
+    "/{event_id}/impact", response_model=ImpactReport, responses=route_errors(ErrorCode.NOT_FOUND)
+)
+def preview_change(
+    event_id: UUID,
+    payload: ChangeRequest,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    queries: Annotated[ChangeQueries, Depends(get_change_queries)],
+) -> ImpactReport:
+    preview = queries.preview(
+        actor, event_id, payload.expected_revision, payload.changes.model_dump(exclude_unset=True)
+    )
+    return ImpactReport.model_validate(
+        {
+            "event_id": event_id,
+            "base_revision": preview.event.revision,
+            "changed_fields": sorted(preview.changes),
+            "evaluated_as": preview.candidate.status,
+            "conflicts": [conflict_out(item) for item in preview.conflicts],
+            "impact": impact_json(preview.impact),
+        }
+    )
+
+
+@router.post(
+    "/{event_id}/change-proposals",
+    status_code=201,
+    response_model=ChangeProposalOut,
+    response_model_exclude_unset=True,
+    responses=route_errors(ErrorCode.NOT_FOUND, ErrorCode.IDEMPOTENCY_MISMATCH),
+)
+def stage_change_route(
+    event_id: UUID,
+    payload: StageChange,
+    request: Request,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    service: Annotated[ScheduleWriteService, Depends(get_schedule_write_service)],
+    idempotency_key: IdempotencyKey = None,
+) -> ChangeProposalOut:
+    return change_out(
+        service.stage_change(
+            RequestContext(actor, str(request.state.request_id), idempotency_key),
+            event_id,
+            expected_revision=payload.expected_revision,
+            changes=payload.changes.model_dump(exclude_unset=True),
+            reason=payload.reason,
+        )
+    )
+
+
+@router.get(
+    "/{event_id}/change-proposals",
+    response_model=ChangeProposalList,
+    response_model_exclude_unset=True,
+    responses=route_errors(ErrorCode.NOT_FOUND),
+)
+def list_changes(
+    event_id: UUID,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    queries: Annotated[ChangeQueries, Depends(get_change_queries)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> ChangeProposalList:
+    records, total = queries.list(actor, event_id, limit, offset)
+    return ChangeProposalList(
+        items=[change_out(item) for item in records], total=total, limit=limit, offset=offset
+    )
+
+
+@router.get(
+    "/{event_id}/change-proposals/{proposal_id}",
+    response_model=ChangeProposalOut,
+    response_model_exclude_unset=True,
+    responses=route_errors(ErrorCode.NOT_FOUND),
+)
+def get_change(
+    event_id: UUID,
+    proposal_id: UUID,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    queries: Annotated[ChangeQueries, Depends(get_change_queries)],
+) -> ChangeProposalOut:
+    return change_out(scoped_change(queries, actor, event_id, proposal_id))
+
+
+@router.post(
+    "/{event_id}/change-proposals/{proposal_id}/apply",
+    response_model=ChangeAppliedOut,
+    responses=route_errors(
+        ErrorCode.NOT_FOUND, ErrorCode.CONFLICT_DETECTED, ErrorCode.IDEMPOTENCY_MISMATCH
+    ),
+)
+def apply_change_route(
+    event_id: UUID,
+    proposal_id: UUID,
+    payload: ApplyChange,
+    request: Request,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    queries: Annotated[ChangeQueries, Depends(get_change_queries)],
+    service: Annotated[ScheduleWriteService, Depends(get_schedule_write_service)],
+    idempotency_key: IdempotencyKey = None,
+) -> ChangeAppliedOut:
+    scoped_change(queries, actor, event_id, proposal_id)
+    result = service.apply_change(
+        RequestContext(actor, str(request.state.request_id), idempotency_key),
+        proposal_id,
+        expected_revision=payload.expected_revision,
+    )
+    record = queries.get(actor, proposal_id)
+    return ChangeAppliedOut(
+        event=event_out(result.event, result.venue_availability),
+        conflicts=[conflict_out(item) for item in result.conflicts],
+        impact=[ImpactItem.model_validate(item) for item in record.impact],
+    )
+
+
+@router.get(
+    "/{event_id}/dependencies",
+    response_model=DependencyList,
+    responses=route_errors(ErrorCode.NOT_FOUND),
+)
+def list_dependencies(
+    event_id: UUID,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    queries: Annotated[ChangeQueries, Depends(get_change_queries)],
+) -> DependencyList:
+    records = queries.items(actor, event_id)
+    return DependencyList(
+        items=[DependencyOut.model_validate(record_json(item)) for item in records],
+        total=len(records),
+    )
+
+
+@router.post(
+    "/{event_id}/dependencies",
+    status_code=201,
+    response_model=DependencyOut,
+    responses=route_errors(ErrorCode.NOT_FOUND, ErrorCode.IDEMPOTENCY_MISMATCH),
+)
+def register_dependency_route(
+    event_id: UUID,
+    payload: DependencyCreate,
+    request: Request,
+    actor: Annotated[Actor, Depends(require_session_actor)],
+    service: Annotated[ScheduleWriteService, Depends(get_schedule_write_service)],
+    idempotency_key: IdempotencyKey = None,
+) -> DependencyOut:
+    record = service.register_dependency(
+        RequestContext(actor, str(request.state.request_id), idempotency_key),
+        event_id,
+        kind=payload.kind,
+        title=payload.title,
+        field_paths=tuple(payload.field_paths),
+    )
+    return DependencyOut.model_validate(record_json(record))
