@@ -68,7 +68,7 @@ function EventWorkspace({ event, refresh }: { event: EventOut; refresh: () => vo
         <span>🕒 {campusFormat(event.start_at)} – {campusFormat(event.end_at)}</span>
         <span>📍 Venue availability: {event.venue_availability}</span>
         <span>🔢 Revision {event.revision}</span>
-        {event.synthetic && <span className="text-amber-700 font-semibold">🧪 Synthetic demo</span>}
+        {event.synthetic && <span className="text-amber-700 font-semibold">🧪 Demo data</span>}
       </div>
     </div>
     <section><h3 className="text-lg font-bold">Preview confirmation conflicts</h3><p className="my-2 text-sm">Advisory preview as CONFIRMED. Use the staged change form below to save and review a change.</p>
