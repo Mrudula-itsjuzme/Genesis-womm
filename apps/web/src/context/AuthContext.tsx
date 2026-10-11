@@ -39,8 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const expired = (event: Event) => { if ((event as CustomEvent).detail === session?.access_token) logout(); };
     window.addEventListener('campuscue:unauthenticated', expired);
-    const remaining = session ? Date.parse(session.expires_at) - Date.now() : null;
-    const timer = remaining === null ? null : setTimeout(logout, Math.max(0, remaining));
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    function scheduleExpiry() {
+      if (!session) return;
+      const remaining = Date.parse(session.expires_at) - Date.now();
+      if (remaining <= 0) { logout(); return; }
+      timer = setTimeout(scheduleExpiry, Math.min(remaining, 2_147_483_647));
+    }
+    scheduleExpiry();
     return () => { window.removeEventListener('campuscue:unauthenticated', expired); if (timer !== null) clearTimeout(timer); };
   }, [session, logout]);
   const clubs = session?.user.memberships ?? [];
