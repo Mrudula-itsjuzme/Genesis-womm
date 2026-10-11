@@ -16,6 +16,7 @@ import json
 import sys
 import urllib.error
 import urllib.request
+import uuid
 from datetime import date, timedelta
 from typing import Any
 
@@ -53,6 +54,31 @@ def call(
     except urllib.error.URLError as error:
         print(f"cannot reach {url}: {error.reason}. Is the stack up?")
         sys.exit(2)
+
+
+def upload_pdf(url: str, token: str, title: str, content: bytes) -> tuple[int, Any]:
+    """POST a PDF as multipart form data, the way the web app's upload form does."""
+    boundary = f"----smoke{uuid.uuid4().hex}"
+    head = (
+        f'--{boundary}\r\nContent-Disposition: form-data; name="title"\r\n\r\n{title}\r\n'
+        f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="proposal.pdf"\r\n'
+        "Content-Type: application/pdf\r\n\r\n"
+    ).encode()
+    body = head + content + f"\r\n--{boundary}--\r\n".encode()
+    request = urllib.request.Request(
+        url,
+        method="POST",
+        data=body,
+        headers={
+            "authorization": f"Bearer {token}",
+            "content-type": f"multipart/form-data; boundary={boundary}",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return response.status, json.loads(response.read())
+    except urllib.error.HTTPError as error:
+        return error.code, None
 
 
 def check(name: str, ok: bool, detail: str = "") -> bool:
@@ -241,6 +267,7 @@ def main() -> int:
         "end_at": "2026-11-20T12:00:00+05:30",
         "resource_id": AUDITORIUM,
     }
+    manual_event: dict[str, Any] | None = None
     status, saved = call(
         "POST",
         f"{CORE}/api/v1/events",
@@ -253,6 +280,7 @@ def main() -> int:
         status in (200, 201) and saved["event"]["status"] == "DRAFT",
         f"HTTP {status}",
     ):
+        manual_event = saved["event"]
         severities = {c["severity"] for c in saved["conflicts"]}
         check(
             "its collisions are warnings, never blocks", severities == {"warning"}, str(severities)
@@ -276,6 +304,51 @@ def main() -> int:
         {"Idempotency-Key": "smoke-outsider"},
     )
     check("a non-member cannot plan for someone else's club", status == 403, f"HTTP {status}")
+
+    section("10. Proposal documents")
+    if manual_event is not None:
+        document = b"%PDF-1.4\n% CampusCue smoke test proposal\n%%EOF\n"
+        route = (
+            f"{CORE}/api/v1/clubs/{manual_event['club_id']}/events/{manual_event['id']}/proposals"
+        )
+        status, uploaded = upload_pdf(route, organizer, "Smoke proposal", document)
+        if check("a member uploads a PDF", status == 201, f"HTTP {status}"):
+            proposal_id = uploaded["id"]
+            status, link = call(
+                "GET", f"{CORE}/api/v1/proposals/{proposal_id}/download-url", None, organizer
+            )
+            fetched = None
+            if status == 200:
+                try:
+                    with urllib.request.urlopen(link["download_url"], timeout=20) as download:
+                        fetched = download.read()
+                except urllib.error.URLError as error:
+                    print(f"        download failed: {error}")
+            check("the link works from the host and returns the same file", fetched == document)
+            status, _ = call(
+                "GET", f"{CORE}/api/v1/proposals/{proposal_id}", None, tokens["outsider"]
+            )
+            check("an outsider cannot read it", status == 403, f"HTTP {status}")
+            status, _ = call(
+                "PATCH",
+                f"{CORE}/api/v1/proposals/{proposal_id}/status",
+                {"action": "approve"},
+                organizer,
+            )
+            check(
+                "the organizer cannot approve their own proposal", status == 403, f"HTTP {status}"
+            )
+            status, reviewed = call(
+                "PATCH",
+                f"{CORE}/api/v1/proposals/{proposal_id}/status",
+                {"action": "approve"},
+                tokens["campus-admin"],
+            )
+            check(
+                "the campus admin approves it",
+                status == 200 and reviewed["status"] in ("APPROVED", "CHUNKED"),
+                f"HTTP {status}",
+            )
 
     return finish()
 
