@@ -88,6 +88,13 @@ def test_a_warning_is_the_users_decision_and_an_info_notice_is_not() -> None:
     assert "do not file a proposal unless the user" in prompt
 
 
+def test_the_model_says_plainly_that_it_cannot_confirm_or_book() -> None:
+    prompt = prompt_for({"messages": MESSAGES}).lower()
+
+    assert "you cannot confirm, book, approve or override" in prompt
+    assert "only a person with the right role" in prompt
+
+
 def test_the_model_never_calls_a_proposal_booked() -> None:
     prompt = prompt_for({"messages": MESSAGES}).lower()
 
