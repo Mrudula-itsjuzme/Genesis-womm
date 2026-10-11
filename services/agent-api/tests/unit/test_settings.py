@@ -93,3 +93,16 @@ def test_the_turn_deadline_must_fit_inside_cores_wait() -> None:
     # Core waits 25 s for the Agent; a longer turn would be abandoned while still running.
     with pytest.raises(ValidationError, match="TURN_DEADLINE_S"):
         make(turn_deadline_s=30.0)
+
+
+def test_the_token_budget_defaults_suit_a_small_per_minute_allowance() -> None:
+    settings = make()
+
+    assert settings.groq_reasoning_effort == "low"
+    assert settings.groq_max_completion_tokens == 1024
+    assert settings.groq_rate_limit_wait_s < settings.turn_deadline_s
+
+
+def test_an_unknown_reasoning_effort_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        make(groq_reasoning_effort="extreme")

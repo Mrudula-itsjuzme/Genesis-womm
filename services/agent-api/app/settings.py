@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # Used once when the main model is rate limited. Empty disables the fallback.
     groq_fallback_model: str = "openai/gpt-oss-20b"
     groq_timeout_s: float = Field(default=12.0, gt=0)
+    # The free tier allows about 8,000 tokens a minute, and a turn is two or three calls, so each
+    # call is told to think briefly and to answer within a bound. "" leaves the model's default.
+    groq_reasoning_effort: Literal["", "low", "medium", "high"] = "low"
+    groq_max_completion_tokens: int = Field(default=1024, ge=64)
+    # A rate limit shorter than this is waited out before falling back to the smaller model.
+    groq_rate_limit_wait_s: float = Field(default=5.0, ge=0)
 
     core_api_url: str = "http://core-api:8000"
     rag_api_url: str = "http://rag-api:8002"

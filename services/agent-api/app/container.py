@@ -43,6 +43,9 @@ def build_container(settings: Settings) -> Container:
             model=settings.groq_model,
             fallback_model=settings.groq_fallback_model,
             timeout_s=settings.groq_timeout_s,
+            reasoning_effort=settings.groq_reasoning_effort,
+            max_completion_tokens=settings.groq_max_completion_tokens,
+            rate_limit_wait_s=settings.groq_rate_limit_wait_s,
         )
     else:
         llm = FakeLlmProvider(demo_mode=settings.agent_demo_mode)
