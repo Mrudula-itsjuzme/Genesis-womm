@@ -9,7 +9,7 @@ export function allowedTransitions(status: EventStatus, club: string, user: User
   return edges[status].filter(target => {
     if (user.campus_admin) return true;
     if (target === 'CONFIRMED' || target === 'REJECTED') return false;
-    if (target === 'CANCELLED' || target === 'COMPLETED') return role === 'CLUB_ADMIN';
-    return role === 'ORGANIZER' || role === 'CLUB_ADMIN';
+    if (target === 'CANCELLED' || target === 'COMPLETED') return role === 'CLUB_ADMIN' || role === 'FACULTY_ADVISOR';
+    return role === 'ORGANIZER' || role === 'CLUB_ADMIN' || role === 'FACULTY_ADVISOR';
   });
 }
