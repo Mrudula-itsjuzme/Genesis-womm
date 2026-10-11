@@ -414,7 +414,7 @@ Do not assign dates until the hackathon schedule and team availability are confi
 
 The [frontend/backend integration](docs/superpowers/plans/2026-10-11-full-frontend-backend-integration.md) connects the existing Next.js app to Core for sessions, calendar/details, tentative drafts/conflict advice, venue provenance, PDF proposals and human-reviewed Agent actions. M7 has editable local reports with explicit missing facts. M8 has synthetic seeds, setup documentation, 11 browser regressions and one live database/storage/gateway smoke test.
 
-M5 remains incomplete: public schedule-edit, commitment timeline and dependency-impact APIs are absent, so change previews are advisory and unsaved. Server-backed reporting, real RAG model/index integration and broader M8 hardening remain pending. The entire roadmap is not marked complete. See [HANDOFF.md](HANDOFF.md) for commits, commands, results and limits.
+M5 now includes persisted schedule-change proposals, deterministic field dependency impact and atomic revalidation through Core and the Changes page (Plan 08). Organizers stage changes; club/campus administrators apply them after review. Commitment timeline/evidence verification and drafted follow-ups remain pending. Server-backed reporting, real RAG model/index integration and broader M8 hardening remain pending. The entire roadmap is not marked complete. See [HANDOFF.md](HANDOFF.md) for commits, commands, results and limits.
 
 ## 15. Definition of done
 
