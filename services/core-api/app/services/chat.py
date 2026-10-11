@@ -6,17 +6,18 @@ already been decided. So Core ignores what the reply says about them and re-load
 proposal from its own database, keeping only the signed-in person's.
 """
 
-from dataclasses import dataclass
-from typing import Annotated, Any
+from dataclasses import dataclass, replace
+from typing import Annotated, Any, Protocol
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
+from app.domain.authz import Actor
 from app.domain.enums import ToolOutcome
 from app.services.agent_actions import AgentActionService
 from app.services.delegation import DelegationService
 from app.services.errors import AgentOutputInvalidError
-from app.services.ports import AgentActionRecord, AgentGateway, ChatTurn
+from app.services.ports import AgentActionRecord, AgentGateway, ChatContext, ChatTurn
 from app.services.schedule_write import RequestContext
 
 # A turn is bounded to a handful of tool calls, so a reply naming more proposals than this is
@@ -72,6 +73,10 @@ class AgentReply:
     proposed_actions: tuple[AgentActionRecord, ...]  # Core's copies of the real ones
 
 
+class ChatContextSource(Protocol):
+    def build(self, actor: Actor) -> ChatContext: ...
+
+
 class ChatService:
     def __init__(
         self,
@@ -79,13 +84,19 @@ class ChatService:
         delegation: DelegationService,
         gateway: AgentGateway,
         actions: AgentActionService,
+        context: ChatContextSource | None = None,
     ) -> None:
         self._delegation = delegation
         self._gateway = gateway
         self._actions = actions
+        self._context = context
 
     def chat(self, ctx: RequestContext, turn: ChatTurn) -> AgentReply:
+        # Issuing the delegation is also the authorization check: nothing about the campus is
+        # looked up for someone who may not use the assistant.
         issued = self._delegation.issue(ctx.actor, ctx.request_id)
+        if self._context is not None:
+            turn = replace(turn, context=self._context.build(ctx.actor))
         reply = self._gateway.chat(turn, delegation_token=issued.token, request_id=ctx.request_id)
         try:
             payload = _AgentReplyPayload.model_validate(reply)
