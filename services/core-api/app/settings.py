@@ -43,6 +43,8 @@ class Settings(BaseSettings):
 
     rag_api_url: str = "http://rag-api:8002"
     minio_endpoint: str = "minio:9000"
+    # Where a browser reaches MinIO; download links are signed for this address.
+    minio_public_endpoint: str = "localhost:9000"
     minio_access_key: SecretStr = SecretStr(_DEFAULT_MINIO_ACCESS_KEY)
     minio_secret_key: SecretStr = SecretStr(_DEFAULT_MINIO_SECRET_KEY)
     minio_proposal_bucket: str = "campuscue-proposals-dev"

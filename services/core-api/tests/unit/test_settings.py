@@ -106,3 +106,10 @@ def test_campus_gap_must_be_positive() -> None:
 def test_database_url_must_use_psycopg_driver() -> None:
     with pytest.raises(ValidationError, match="psycopg"):
         make(database_url="postgresql://u:p@h/db")
+
+
+def test_object_storage_links_are_signed_for_the_browser_reachable_address_by_default() -> None:
+    settings = make()
+
+    assert settings.minio_endpoint == "minio:9000"
+    assert settings.minio_public_endpoint == "localhost:9000"
