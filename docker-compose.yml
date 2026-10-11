@@ -44,6 +44,9 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-campuscue_secret}
     volumes:
       - miniodata:/data
+    ports:
+      # Local only: the browser follows presigned download links to this address.
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 5s
@@ -85,6 +88,7 @@ services:
       AGENT_API_URL: http://agent-api:8001
       CAMPUS_GAP_MINUTES: ${CAMPUS_GAP_MINUTES:-120}
       MINIO_ENDPOINT: minio:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost:${MINIO_PORT:-9000}}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-campuscue_admin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-campuscue_secret}
     depends_on:
