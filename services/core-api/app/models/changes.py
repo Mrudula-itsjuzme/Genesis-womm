@@ -62,12 +62,12 @@ class EventDependency(Base):
             "field_path IN ('start_at', 'end_at', 'resource_id', 'expected_attendance')",
             name="field_path",
         ),
-        CheckConstraint("rule_id = 'FIELD_CHANGE'", name="rule_id"),
+        CheckConstraint("rule_code = 'FIELD_CHANGE'", name="rule_code"),
     )
     event_id: Mapped[UUID] = mapped_column(primary_key=True)
     dependent_id: Mapped[UUID] = mapped_column(primary_key=True)
     field_path: Mapped[str] = mapped_column(String(40), primary_key=True)
-    rule_id: Mapped[str] = mapped_column(String(40))
+    rule_code: Mapped[str] = mapped_column(String(40))
 
 
 class ChangeProposal(Base):

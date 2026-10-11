@@ -117,7 +117,7 @@ class SqlChangeStore:
                     event_id=record.event_id,
                     dependent_id=record.id,
                     field_path=path,
-                    rule_id="FIELD_CHANGE",
+                    rule_code="FIELD_CHANGE",
                 )
                 for path in record.field_paths
             ]
