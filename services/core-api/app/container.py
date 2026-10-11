@@ -122,22 +122,25 @@ def build_container(settings: Settings) -> Container:
         gateway=HttpAgentGateway(agent_client),
         actions=agent_actions,
     )
-    storage = MinIOProposalStorage(
-        endpoint=settings.minio_endpoint,
-        public_endpoint=settings.minio_public_endpoint,
-        access_key=settings.minio_access_key.get_secret_value(),
-        secret_key=settings.minio_secret_key.get_secret_value(),
-        proposal_bucket=settings.minio_proposal_bucket,
-        archive_bucket=settings.minio_archive_bucket,
-        use_ssl=settings.minio_use_ssl,
-    )
+    def proposal_storage(public_endpoint: str | None = None) -> MinIOProposalStorage:
+        return MinIOProposalStorage(
+            endpoint=settings.minio_endpoint,
+            public_endpoint=public_endpoint,
+            access_key=settings.minio_access_key.get_secret_value(),
+            secret_key=settings.minio_secret_key.get_secret_value(),
+            proposal_bucket=settings.minio_proposal_bucket,
+            archive_bucket=settings.minio_archive_bucket,
+            use_ssl=settings.minio_use_ssl,
+        )
+
+    storage = proposal_storage(settings.minio_public_endpoint)
     proposal_clock = SystemClock()
     rag_client = httpx.Client(base_url=settings.rag_api_url, timeout=10.0)
     proposals = ProposalService(
         lambda: SqlUnitOfWork(database_sessions),
         storage=storage,
         manager=ProposalLifecycleManager(
-            storage,
+            proposal_storage(),
             HttpRagIngest(rag_client),
             proposal_clock,
         ),
