@@ -42,6 +42,13 @@ class SqlProposalStore:
     def __init__(self, session: Session) -> None:
         self._session = session
 
+    def list_for_event(self, event_id: UUID) -> list[ProposalRecord]:
+        rows = self._session.scalars(
+            select(ProposalRow).where(ProposalRow.event_id == event_id)
+            .order_by(ProposalRow.revision.desc()).limit(100)
+        ).all()
+        return [_to_record(row) for row in rows]
+
     def get(self, proposal_id: UUID) -> ProposalRecord | None:
         row = self._session.scalars(
             select(ProposalRow)
