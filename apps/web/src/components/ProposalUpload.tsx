@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { proposalsApi } from '@/lib/api/endpoints';
@@ -7,13 +7,24 @@ import { errorMessage } from '@/lib/api/client';
 import { validateProposal } from '@/lib/proposal';
 import type { ProposalUploadOut, ProposalOut, ProposalStatusPatch } from '@/types/core-api';
 
-export default function ProposalUpload({ eventId, clubId }: { eventId: string; clubId: string }) {
+export default function ProposalUpload({ eventId, clubId, initialProposalId }: { eventId: string; clubId: string; initialProposalId?: string }) {
   const { token, session } = useAuth();
   const [file, setFile] = useState<File | null>(null); const [title, setTitle] = useState('');
   const [record, setRecord] = useState<ProposalUploadOut | ProposalOut | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [url, setUrl] = useState(''); const [note, setNote] = useState('');
-  const [existingId, setExistingId] = useState('');
+  const [existingId, setExistingId] = useState(initialProposalId ?? '');
+  useEffect(() => {
+    if (!token || !initialProposalId) return;
+    let active = true;
+    proposalsApi.get(token, initialProposalId).then(proposal => {
+      if (!active) return;
+      if (proposal.event_id !== eventId || proposal.club_id !== clubId) throw new Error('Document does not belong to this event.');
+      setRecord(proposal);
+      setExistingId(initialProposalId);
+    }).catch(err => { if (active) setError(errorMessage(err)); });
+    return () => { active = false; };
+  }, [token, initialProposalId, eventId, clubId]);
   const role = session?.user.memberships?.find(m => m.club_id === clubId)?.role;
   const canUpload = session?.user.campus_admin || role === 'ORGANIZER' || role === 'CLUB_ADMIN';
   async function load(event: FormEvent) {
@@ -30,7 +41,7 @@ export default function ProposalUpload({ eventId, clubId }: { eventId: string; c
     event.preventDefault(); if (!token || !file || busy) return;
     const invalid = validateProposal(file); if (invalid) { setError(invalid); return; }
     setBusy(true); setError(''); setUrl('');
-    try { setRecord(await proposalsApi.upload(token, clubId, eventId, file, title.trim())); setFile(null); }
+    try { const saved = await proposalsApi.upload(token, clubId, eventId, file, title.trim()); setRecord(saved); setExistingId(saved.id); setFile(null); }
     catch (err) { setError(errorMessage(err)); }
     finally { setBusy(false); }
   }
@@ -48,11 +59,11 @@ export default function ProposalUpload({ eventId, clubId }: { eventId: string; c
   }
   const isFacultyAdvisor = role === 'FACULTY_ADVISOR';
   const canReview = Boolean(session?.user.campus_admin || isFacultyAdvisor);
-  return <section className="mt-6 rounded-2xl border bg-white p-5"><h2 className="text-xl font-bold">Proposal document</h2><p className="my-2 text-sm">PDF only, up to 15 MiB. Uploading a proposal does not confirm the event.</p>
+  return <section className="mt-6 rounded-2xl border bg-white p-5"><h2 className="text-xl font-bold">Proposal document</h2><p className="my-2 text-sm">PDF only, up to 15 MiB. Uploading or approving this document does not confirm the event or book a venue.</p>
     <form onSubmit={load} className="my-3 flex flex-wrap items-end gap-2"><label className="block text-sm">Existing proposal ID<input value={existingId} onChange={e => setExistingId(e.target.value)} className="block rounded border p-2" /></label><button disabled={busy || !existingId.trim()} className="rounded border p-2">Load proposal</button></form><p className="mb-3 text-xs">Keep the proposal ID after uploading to reopen it for download or review.</p>
     {canUpload && !record && <form onSubmit={upload} className="space-y-3"><label className="block">Document title<input required maxLength={200} value={title} onChange={e => setTitle(e.target.value)} className="ml-2 rounded border p-2" /></label><label className="block">PDF file<input disabled={busy} type="file" accept=".pdf,application/pdf" onChange={e => { setFile(e.target.files?.[0] ?? null); setError(''); }} className="block max-w-full p-2" /></label><button disabled={busy || !file || !title.trim()} className="rounded-lg bg-[#7a1b32] px-4 py-2 text-white disabled:opacity-50">{busy ? 'Uploading…' : 'Upload proposal'}</button></form>}
     {record && <div><p role="status">Saved {record.title} · Revision {record.revision} · {record.status}</p><p className="break-all text-xs">Proposal ID: {record.id}</p><button disabled={busy} onClick={download} className="my-3 underline">Get fresh download link</button>{url && <a href={url} target="_blank" rel="noreferrer" className="ml-3 underline">Download PDF (expires in 15 minutes)</a>}
-      {canReview && <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50/70 p-4"><label className="block text-xs font-semibold text-stone-700">Review note ({isFacultyAdvisor ? 'Faculty Advisor Stage' : 'Campus Admin / OSA Final Review'})<textarea value={note} onChange={e => setNote(e.target.value)} className="mt-1 block w-full rounded border p-2 text-xs" /></label><div className="my-2 flex flex-wrap gap-3">{(['approve', 'reject', 'request_revision'] as const).map(action => <button key={action} disabled={busy} onClick={() => review(action)} className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-800 shadow-2xs hover:bg-stone-50 active:scale-[0.98]">{action.replaceAll('_', ' ')}</button>)}</div></div>}
+      {canReview && <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50/70 p-4"><label className="block text-xs font-semibold text-stone-700">Document review note ({isFacultyAdvisor ? 'Club faculty advisor' : 'Campus administrator'})<textarea value={note} onChange={e => setNote(e.target.value)} className="mt-1 block w-full rounded border p-2 text-xs" /></label><p className="mt-2 text-xs text-amber-900">Document approval does not confirm the event or reserve a venue. Proposal reviews currently share one document status; a separate multi-stage institutional workflow is not yet implemented.</p><div className="my-2 flex flex-wrap gap-3">{(['approve', 'reject', 'request_revision'] as const).map(action => <button key={action} disabled={busy} onClick={() => review(action)} className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-800 shadow-2xs hover:bg-stone-50 active:scale-[0.98]">{action.replaceAll('_', ' ')}</button>)}</div></div>}
     </div>}{error && <p role="alert" className="text-rose-800">{error}</p>}
   </section>;
 }

@@ -308,19 +308,33 @@ def test_no_link_is_made_for_someone_who_may_not_read_it(rig: Rig, actor: Actor)
 # ---- reviewing -------------------------------------------------------------------------
 
 
-def test_a_campus_admin_approves_and_rag_is_told_who_approved_it(rig: Rig) -> None:
+def test_approving_a_private_proposal_never_publishes_it_to_rag(rig: Rig) -> None:
     saved = submit(rig)
 
     reviewed = rig.svc.review(ctx(CAMPUS), saved.id, ReviewAction.APPROVE, "Looks good")
 
-    assert reviewed.status is S.CHUNKED
+    assert reviewed.status is S.APPROVED
     assert (reviewed.reviewed_by, reviewed.review_note) == (CAMPUS.user_id, "Looks good")
-    [payload] = rig.rag.ingested
-    assert payload["approved_by"] == str(CAMPUS.user_id)
-    assert payload["submitted_by"] == str(ORGANIZER.user_id)
+    assert rig.rag.ingested == []
+    assert rig.storage.presigned == []
     stored = rig.db.state.proposals[saved.id]
-    assert (stored.status, stored.rag_ingested_at) == (S.CHUNKED, NOW)
+    assert (stored.status, stored.rag_ingested_at) == (S.APPROVED, None)
     assert ("REVIEW_PROPOSAL", "SUCCESS", None, "USER") in audit(rig)
+
+
+
+def test_faculty_advisor_can_review_own_club_document_without_public_indexing(rig: Rig) -> None:
+    from app.domain.enums import Role
+
+    advisor = Actor(user_id=uuid4(), memberships={CLUB_A: Role.FACULTY_ADVISOR})
+    saved = submit(rig)
+    reviewed = rig.svc.review(ctx(advisor), saved.id, ReviewAction.APPROVE, "Reviewed for this club")
+
+    assert reviewed.status is S.APPROVED
+    assert reviewed.reviewed_by == advisor.user_id
+    assert reviewed.rag_ingested_at is None
+    assert rig.rag.ingested == []
+    assert rig.storage.presigned == []
 
 
 def test_when_rag_is_down_the_proposal_stays_approved_and_the_review_stands(rig: Rig) -> None:

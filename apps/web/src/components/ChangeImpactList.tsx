@@ -37,21 +37,21 @@ function EventSelector({ initialEventId }: { initialEventId?: string }) {
           </div>
           {session.user.campus_admin && (
             <span className="rounded-[6px] bg-purple-50 px-2.5 py-1 text-[11px] font-semibold text-purple-700 border border-purple-200 shadow-xs">
-              Authorized to confirm or reject proposals (Final Stage)
+              Campus-level event confirmation requires separate authorized evidence
             </span>
           )}
           {activeClub?.role === 'FACULTY_ADVISOR' && (
             <span className="rounded-[6px] bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 border border-blue-200 shadow-xs">
-              Stage 1 Approval Required: Review club proposals before OSA submission
+              Can review this club's uploaded proposal documents
             </span>
           )}
         </div>
 
-        {/* Advisor notification queue banner if events in the club are proposed / submitted */}
+        {/* Candidate event list only; actual proposal review status is not loaded here. */}
         {(activeClub?.role === 'FACULTY_ADVISOR' || session.user.campus_admin) && list.data && (
           (() => {
             const pendingEvents = list.data.items.filter(e =>
-              (e.status === 'PROPOSED' || e.status === 'SUBMITTED' || e.status === 'DRAFT') &&
+              (e.status === 'PROPOSED' || e.status === 'SUBMITTED') &&
               (session.user.campus_admin || e.club_id === activeClub?.club_id)
             );
             if (!pendingEvents.length) return null;
@@ -62,11 +62,11 @@ function EventSelector({ initialEventId }: { initialEventId?: string }) {
                     <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
                     <span className="font-semibold">
                       {activeClub?.role === 'FACULTY_ADVISOR'
-                        ? 'Pending Advisor Action Queue'
-                        : 'Institutional Review Queue'}
+                        ? 'Club events to inspect'
+                        : 'Submitted and proposed events'}
                     </span>
                     <span className="rounded-full bg-blue-200/80 px-2 py-0.5 text-[10px] font-bold text-blue-800">
-                      {pendingEvents.length} event{pendingEvents.length > 1 ? 's' : ''} awaiting review
+                      {pendingEvents.length} event{pendingEvents.length > 1 ? 's' : ''} listed; document review status not checked
                     </span>
                   </div>
                 </div>

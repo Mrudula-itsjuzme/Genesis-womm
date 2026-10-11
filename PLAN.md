@@ -60,6 +60,12 @@ All demo events and statuses must be explicitly labeled synthetic.
 - Student registration-risk check using seeded timetable/exam data and a mock attendance provider. A read-only Google Calendar connection may replace seeded exam data when configured.
 - Synthetic demo seed data, tests, Docker-based local development, and API documentation.
 
+### Small shared-resource planning extension
+
+Provide a request-drafting surface for shared compute/HPC/GPU access, computer labs, AV equipment and other constrained resources. The first version is **local-only**: category, purpose, preferred window and non-sensitive technical requirements can be copied into existing authorized request channels. It must not imply real-time inventory, identity federation, approved quotas, booking, GPU reservation, or actual cross-user resource pooling. A future multi-user pool requires authorized institutional owners, durable records, collision/quotas enforcement and audit trails.
+
+**Privacy gate:** Approved event proposal PDFs do not automatically flow into public RAG. Unauthenticated proposal ingest/search endpoints remain disabled until club-scoped authorization exists. Any previously indexed internal documents require separate deletion review. Do not expose student or faculty-private identifiers in public retrieval.
+
 ### If time permits
 - Volunteer shift acknowledgment and gap alerts.
 - Judging score-sheet completeness.

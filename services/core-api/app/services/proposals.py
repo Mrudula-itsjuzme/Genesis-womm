@@ -1,8 +1,8 @@
 """Submitting, reading and reviewing an event's proposal document (Implementation Plan 07).
 
-A club's organizers submit and read their proposal; only a campus admin reviews it; a delegated
-agent does none of it (spine AD-21). Identities come from the signed-in person, every refusal is
-audited, and a failing object store or RAG service never leaks detail or undoes a review.
+A club's organizers submit and read their proposal; authorized faculty advisors or
+campus administrators review it. Proposals remain private operational documents:
+approval never automatically indexes their contents in a retrieval service.
 """
 
 from collections.abc import Callable
@@ -177,8 +177,9 @@ class ProposalService:
         except (ServiceError, TransitionError) as refusal:
             self._record_refusal(ctx, "REVIEW_PROPOSAL", proposal_id, refusal)
             raise
-        if action is ReviewAction.APPROVE:
-            record = self._hand_to_rag(ctx, record)
+        # Never auto-ingest organizer-uploaded proposals into RAG. These may contain
+        # faculty/student identifiers, contacts, budgets and other private material.
+        # An explicitly approved, access-scoped ingestion flow must be separate.
         return record
 
     def _review(

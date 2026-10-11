@@ -38,6 +38,14 @@ def ingest_proposal(
     chroma_store: Annotated[ChromaStore, Depends(get_chroma_store)],
     dense_retriever: Annotated[DenseRetriever, Depends(get_dense_retriever)],
 ) -> ProposalIngestResponse:
+    # Private event proposals can contain student and faculty personal data.
+    # Do not accept unauthenticated presigned URLs or index private files until a
+    # dedicated authenticated service-to-service route and ACLs exist.
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Private proposal ingestion is disabled pending authenticated access controls.",
+    )
+
     request_id = getattr(request.state, "request_id", None)
     logger.info(
         "Ingesting proposal %s for event %s (rev %s) [req: %s]",
@@ -151,6 +159,13 @@ def delete_proposal(
     payload: ProposalDeletePayload,
     chroma_store: Annotated[ChromaStore, Depends(get_chroma_store)],
 ) -> ProposalDeleteResponse:
+    # Existing data must be purged through an authenticated administrator
+    # maintenance operation, not an unauthenticated public DELETE.
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Private proposal deletion requires an authenticated maintenance endpoint.",
+    )
+
     logger.info(
         "Deleting proposal chunks for proposal %s, event %s",
         proposal_id,

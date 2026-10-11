@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.api.deps import get_chroma_store, get_dense_retriever, get_sparse_retriever
 from app.retrieval.chroma import ChromaStore
@@ -26,17 +26,13 @@ def search(
 ) -> SearchResponse:
     req_id = getattr(req.state, "request_id", None)
 
-    # Scoped proposals collection search
+    # Public retrieval has no authenticated club-scoped identity. Fail closed.
+    # A future internal Core proxy may expose authorized per-club searches.
     if request.collection == "proposals" or request.event_id is not None:
-        where_filter = {"event_id": request.event_id} if request.event_id else None
-        query_emb = dense_engine.encode([request.query])[0]
-        proposal_chunks = chroma_store.search(
-            query_embedding=query_emb,
-            top_k=request.top_k,
-            collection_name="proposals",
-            where=where_filter,
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Private proposal search requires an authenticated, club-scoped endpoint.",
         )
-        return SearchResponse(query=request.query, candidates=proposal_chunks, request_id=req_id)
 
     # Campus policy corpus hybrid search
     dense_res = dense_engine.search(request.query, top_k=request.top_k * 2)
