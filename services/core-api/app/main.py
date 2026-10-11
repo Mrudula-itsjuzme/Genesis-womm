@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.errors import install_error_handlers
@@ -53,6 +54,14 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         app.state.internal_api_key = container.internal_api_key
 
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.cors_allowed_origins),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID"],
+        expose_headers=["X-Request-ID"],
+    )
     install_error_handlers(app)
     app.include_router(health.router)
     for router in (

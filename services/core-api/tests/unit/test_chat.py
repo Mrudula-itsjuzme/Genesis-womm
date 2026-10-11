@@ -14,7 +14,7 @@ import pytest
 
 from app.clients.delegation import PyJwtDelegationService
 from app.domain.authz import Actor
-from app.domain.enums import AgentActionStatus, AgentActionType, AvailabilityState
+from app.domain.enums import AgentActionStatus, AgentActionType, AvailabilityState, Role
 from app.domain.lifecycle import NotAuthorizedError
 from app.domain.scheduling import Policy
 from app.domain.time import FixedClock
@@ -23,7 +23,7 @@ from app.services.chat import MAX_PROPOSALS_PER_REPLY, ChatService
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
 from app.services.errors import AgentOutputInvalidError, AgentUnavailableError
-from app.services.ports import ChatTurn
+from app.services.ports import ChatClub, ChatContext, ChatTurn
 from app.services.schedule_write import RequestContext, ScheduleWriteService
 from tests.fakes import InMemoryDatabase, SequentialIds
 from tests.unit.test_schedule_write import (
@@ -220,6 +220,36 @@ def test_a_reply_with_no_proposals_key_is_fine(rig: Rig) -> None:
     assert rig.chat.chat(ctx(ORGANIZER), TURN).proposed_actions == ()
 
 
+@pytest.mark.parametrize(
+    "bad_reply",
+    [
+        {},
+        {"message": None},
+        {"message": {"nested": "not text"}},
+        {"message": "   "},
+        {"message": "x" * 4001},
+        {"message": "valid", "citations": [{"evidence_id": "only-one-field"}]},
+        {"message": "valid", "trace": [{"tool": "check_event_conflicts"}]},
+    ],
+    ids=[
+        "missing-message",
+        "null-message",
+        "object-message",
+        "blank-message",
+        "long-message",
+        "bad-citation",
+        "bad-trace",
+    ],
+)
+def test_a_reply_with_invalid_visible_content_is_rejected(
+    rig: Rig, bad_reply: dict[str, object]
+) -> None:
+    rig.gateway.reply = bad_reply
+
+    with pytest.raises(AgentOutputInvalidError):
+        rig.chat.chat(ctx(ORGANIZER), TURN)
+
+
 # ---- failures --------------------------------------------------------------------------
 
 
@@ -238,3 +268,46 @@ def test_a_turn_writes_nothing_by_itself(rig: Rig) -> None:
     assert rig.db.commits == commits
     assert rig.db.state.events == {}
     assert rig.db.state.audit == []
+
+
+# ---- the context the assistant is given --------------------------------------------------
+
+
+@dataclass
+class FakeContextSource:
+    built: ChatContext
+    asked_for: list[Actor] = field(default_factory=list)
+
+    def build(self, actor: Actor) -> ChatContext:
+        self.asked_for.append(actor)
+        return self.built
+
+
+def with_context(rig: Rig, source: FakeContextSource) -> ChatService:
+    return ChatService(
+        delegation=DelegationService(rig.db.uow, PyJwtDelegationService(KEY)),
+        gateway=rig.gateway,
+        actions=rig.actions,
+        context=source,
+    )
+
+
+def test_the_turn_carries_the_context_core_built_for_that_person(rig: Rig) -> None:
+    built = ChatContext(now=NOW, clubs=(ChatClub(CLUB_A, "Robotics", Role.ORGANIZER),), venues=())
+    source = FakeContextSource(built)
+
+    with_context(rig, source).chat(ctx(ORGANIZER), TURN)
+
+    [(turn, _, _)] = rig.gateway.calls
+    assert turn == ChatTurn(messages=TURN.messages, event_id=None, context=built)
+    assert source.asked_for == [ORGANIZER]
+
+
+def test_nothing_is_looked_up_for_someone_who_may_not_start_a_turn(rig: Rig) -> None:
+    source = FakeContextSource(ChatContext(now=NOW, clubs=(), venues=()))
+
+    with pytest.raises(NotAuthorizedError):
+        with_context(rig, source).chat(ctx(STRANGER), TURN)
+
+    assert source.asked_for == []
+    assert rig.gateway.calls == []

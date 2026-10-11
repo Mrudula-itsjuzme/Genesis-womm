@@ -22,6 +22,7 @@ from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.agent_actions import AgentActionService
 from app.services.change_queries import ChangeQueries
 from app.services.chat import ChatService
+from app.services.chat_context import ChatContextBuilder
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
@@ -123,6 +124,7 @@ def build_container(settings: Settings) -> Container:
         delegation=delegation,
         gateway=HttpAgentGateway(agent_client),
         actions=agent_actions,
+        context=ChatContextBuilder(lambda: SqlUnitOfWork(database_sessions), clock=SystemClock()),
     )
 
     def proposal_storage(public_endpoint: str | None = None) -> MinIOProposalStorage:

@@ -45,6 +45,19 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # One-shot: installs fixed synthetic records after the schema is current.
+  seed-demo:
+    build: ./services/core-api
+    command: ["python", "-m", "scripts.seed_demo"]
+    environment:
+      <<: *core-env
+      SESSION_SIGNING_KEY: ${SESSION_SIGNING_KEY:-local-only-session-key-not-a-secret-0001}
+      DELEGATION_SIGNING_KEY: ${DELEGATION_SIGNING_KEY:-local-only-delegation-key-not-a-secret-0002}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   core-api:
     build: ./services/core-api
     environment:
@@ -61,7 +74,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-campuscue_secret}
       CAMPUS_GAP_MINUTES: ${CAMPUS_GAP_MINUTES:-120}
     depends_on:
-      migrate:
+      seed-demo:
         condition: service_completed_successfully
       minio-init:
         condition: service_completed_successfully
@@ -74,8 +87,14 @@ services:
       APP_ENV: ${APP_ENV:-local}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # The Agent holds the LLM credential and neither of Core's signing keys.
+      # groq uses the real model (needs GROQ_API_KEY); fake is deterministic and offline. Set
+      # AGENT_DEMO_MODE=true with fake for the scripted walkthrough that needs no network.
       AGENT_MODEL_PROVIDER: ${AGENT_MODEL_PROVIDER:-fake}
+      AGENT_DEMO_MODE: ${AGENT_DEMO_MODE:-false}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Keep these defaults equal to services/agent-api/app/settings.py.
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      GROQ_FALLBACK_MODEL: ${GROQ_FALLBACK_MODEL:-openai/gpt-oss-20b}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
       CORE_API_URL: http://core-api:8000
       RAG_API_URL: http://rag-api:8002
@@ -116,7 +135,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-campuscue_admin}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-campuscue_secret}
     ports:
-      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
       - "127.0.0.1:9001:9001"
     volumes:
       - miniodata:/data

@@ -145,6 +145,7 @@ class _Events:
         resource_id: UUID | None,
         starts_after: datetime | None,
         starts_before: datetime | None,
+        draft_clubs: frozenset[UUID] | None,
         limit: int,
         offset: int,
     ) -> tuple[list[EventRecord], int]:
@@ -152,7 +153,12 @@ class _Events:
             event
             for event in self._work.events.values()
             if (
-                (club_id is None or event.club_id == club_id)
+                (
+                    draft_clubs is None
+                    or event.status is not EventStatus.DRAFT
+                    or event.club_id in draft_clubs
+                )
+                and (club_id is None or event.club_id == club_id)
                 and (status is None or event.status is status)
                 and (resource_id is None or event.resource_id == resource_id)
                 and (starts_after is None or event.start_at >= starts_after)

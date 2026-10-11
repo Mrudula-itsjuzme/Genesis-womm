@@ -41,9 +41,14 @@ def build_container(settings: Settings) -> Container:
         llm = GroqProvider(
             api_key=settings.groq_api_key.get_secret_value(),
             model=settings.groq_model,
+            fallback_model=settings.groq_fallback_model,
+            timeout_s=settings.groq_timeout_s,
+            reasoning_effort=settings.groq_reasoning_effort,
+            max_completion_tokens=settings.groq_max_completion_tokens,
+            rate_limit_wait_s=settings.groq_rate_limit_wait_s,
         )
     else:
-        llm = FakeLlmProvider()
+        llm = FakeLlmProvider(demo_mode=settings.agent_demo_mode)
 
     # HTTP clients
     core_http = httpx.AsyncClient(
@@ -67,6 +72,7 @@ def build_container(settings: Settings) -> Container:
         max_tool_calls=settings.max_tool_calls,
         tool_timeout_s=settings.tool_timeout_s,
         max_tool_bytes=settings.max_tool_bytes,
+        turn_deadline_s=settings.turn_deadline_s,
     )
 
     container = Container(readiness=readiness, engine=engine)

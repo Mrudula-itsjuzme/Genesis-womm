@@ -11,7 +11,7 @@ from app.api.deps import (
     get_schedule_write_service,
     require_session_actor,
 )
-from app.api.errors import stub_errors
+from app.api.errors import route_errors
 from app.api.presenters import conflict_check_out, conflict_out, event_out
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode, EventStatus
@@ -71,7 +71,7 @@ IdempotencyKey = Annotated[
         "Saves a DRAFT. Drafts and proposals always save; conflicts are returned alongside. "
         "A proposal is not a venue booking."
     ),
-    responses=stub_errors(ErrorCode.IDEMPOTENCY_MISMATCH),
+    responses=route_errors(ErrorCode.IDEMPOTENCY_MISMATCH),
 )
 def create_event(
     payload: EventCreate,
@@ -107,7 +107,7 @@ def create_event(
     "",
     response_model=EventList,
     summary="List events visible to the caller",
-    responses=stub_errors(),
+    responses=route_errors(),
 )
 def list_events(
     actor: Annotated[Actor, Depends(require_session_actor)],
@@ -142,7 +142,7 @@ def list_events(
     "/conflict-check",
     response_model=ConflictCheckOut,
     summary="Preview an unsaved event without creating a draft",
-    responses=stub_errors(ErrorCode.NOT_FOUND),
+    responses=route_errors(ErrorCode.NOT_FOUND),
 )
 def preview_candidate(
     payload: EventCreate,
@@ -166,7 +166,7 @@ def preview_candidate(
     "/{event_id}",
     response_model=EventOut,
     summary="Get one event",
-    responses=stub_errors(ErrorCode.NOT_FOUND),
+    responses=route_errors(ErrorCode.NOT_FOUND),
 )
 def get_event(
     event_id: UUID,
@@ -185,7 +185,7 @@ def get_event(
         "Advisory: runs the same engine as a write but without the campus lock, so the result "
         "can go stale. Writes re-check inside the transaction."
     ),
-    responses=stub_errors(ErrorCode.NOT_FOUND),
+    responses=route_errors(ErrorCode.NOT_FOUND),
 )
 def check_event_conflicts(
     event_id: UUID,
@@ -215,7 +215,7 @@ def check_event_conflicts(
     response_model=EventOut,
     summary="Move an event along its lifecycle",
     description="Only a confirmation can be blocked by a conflict.",
-    responses=stub_errors(ErrorCode.NOT_FOUND, ErrorCode.CONFLICT_DETECTED),
+    responses=route_errors(ErrorCode.NOT_FOUND, ErrorCode.CONFLICT_DETECTED),
 )
 def transition_event_route(
     event_id: UUID,
@@ -265,7 +265,7 @@ def scoped_change(
 
 
 @router.post(
-    "/{event_id}/impact", response_model=ImpactReport, responses=stub_errors(ErrorCode.NOT_FOUND)
+    "/{event_id}/impact", response_model=ImpactReport, responses=route_errors(ErrorCode.NOT_FOUND)
 )
 def preview_change(
     event_id: UUID,
@@ -293,7 +293,7 @@ def preview_change(
     status_code=201,
     response_model=ChangeProposalOut,
     response_model_exclude_unset=True,
-    responses=stub_errors(ErrorCode.NOT_FOUND, ErrorCode.IDEMPOTENCY_MISMATCH),
+    responses=route_errors(ErrorCode.NOT_FOUND, ErrorCode.IDEMPOTENCY_MISMATCH),
 )
 def stage_change_route(
     event_id: UUID,
@@ -318,7 +318,7 @@ def stage_change_route(
     "/{event_id}/change-proposals",
     response_model=ChangeProposalList,
     response_model_exclude_unset=True,
-    responses=stub_errors(ErrorCode.NOT_FOUND),
+    responses=route_errors(ErrorCode.NOT_FOUND),
 )
 def list_changes(
     event_id: UUID,
@@ -337,7 +337,7 @@ def list_changes(
     "/{event_id}/change-proposals/{proposal_id}",
     response_model=ChangeProposalOut,
     response_model_exclude_unset=True,
-    responses=stub_errors(ErrorCode.NOT_FOUND),
+    responses=route_errors(ErrorCode.NOT_FOUND),
 )
 def get_change(
     event_id: UUID,
@@ -351,7 +351,7 @@ def get_change(
 @router.post(
     "/{event_id}/change-proposals/{proposal_id}/apply",
     response_model=ChangeAppliedOut,
-    responses=stub_errors(
+    responses=route_errors(
         ErrorCode.NOT_FOUND, ErrorCode.CONFLICT_DETECTED, ErrorCode.IDEMPOTENCY_MISMATCH
     ),
 )
@@ -382,7 +382,7 @@ def apply_change_route(
 @router.get(
     "/{event_id}/dependencies",
     response_model=DependencyList,
-    responses=stub_errors(ErrorCode.NOT_FOUND),
+    responses=route_errors(ErrorCode.NOT_FOUND),
 )
 def list_dependencies(
     event_id: UUID,
@@ -400,7 +400,7 @@ def list_dependencies(
     "/{event_id}/dependencies",
     status_code=201,
     response_model=DependencyOut,
-    responses=stub_errors(ErrorCode.NOT_FOUND, ErrorCode.IDEMPOTENCY_MISMATCH),
+    responses=route_errors(ErrorCode.NOT_FOUND, ErrorCode.IDEMPOTENCY_MISMATCH),
 )
 def register_dependency_route(
     event_id: UUID,

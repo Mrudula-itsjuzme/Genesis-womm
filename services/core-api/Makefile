@@ -2,7 +2,7 @@
 
 UV ?= uv
 
-.PHONY: sync test integration lint typecheck layers contracts verify verify-fast run
+.PHONY: sync test integration lint typecheck layers contracts verify verify-fast run demo-seed
 
 sync:
 	$(UV) sync
@@ -34,3 +34,6 @@ verify: verify-fast integration
 
 run:
 	$(UV) run uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
+
+demo-seed:
+	$(UV) run python -m scripts.seed_demo

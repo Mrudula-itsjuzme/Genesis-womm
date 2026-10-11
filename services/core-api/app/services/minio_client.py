@@ -4,6 +4,11 @@ from hashlib import sha256
 from typing import Any
 from uuid import UUID
 
+from botocore.exceptions import ClientError
+
+# What an S3-compatible store answers when a bucket does not exist yet.
+_NO_SUCH_BUCKET = {"404", "NoSuchBucket", "NotFound"}
+
 
 class MinIOProposalStorage:
     """Encapsulates MinIO operations for uploading, presigning, and archiving proposal PDFs."""
@@ -18,6 +23,7 @@ class MinIOProposalStorage:
         use_ssl: bool = False,
         client: Any = None,
         public_endpoint: str | None = None,
+        presign_client: Any = None,
     ) -> None:
         self.endpoint = endpoint
         self.access_key = access_key
@@ -26,15 +32,20 @@ class MinIOProposalStorage:
         self.archive_bucket = archive_bucket
         self.use_ssl = use_ssl
         self._client = client
+        # Links are signed for the address a browser can reach, which inside Docker is not the
+        # address Core uses. Signing is local, so this client never connects anywhere.
         self.public_endpoint = public_endpoint
-        self._download_client: Any = None
+        self._presign_client = presign_client
+        self._known_buckets: set[str] = set()
 
-    def _s3_client(self, endpoint: str) -> Any:
+    def _make_client(self, endpoint: str) -> Any:
+        # Lazy import and initialization of boto3
         import boto3
         from botocore.client import Config
 
-        protocol = "https" if self.use_ssl else "http"
-        endpoint_url = endpoint if endpoint.startswith("http") else f"{protocol}://{endpoint}"
+        endpoint_url = endpoint
+        if not endpoint.startswith("http"):
+            endpoint_url = f"{'https' if self.use_ssl else 'http'}://{endpoint}"
         return boto3.client(
             "s3",
             endpoint_url=endpoint_url,
@@ -47,8 +58,36 @@ class MinIOProposalStorage:
     @property
     def client(self) -> Any:
         if self._client is None:
-            self._client = self._s3_client(self.endpoint)
+            self._client = self._make_client(self.endpoint)
         return self._client
+
+    @property
+    def presign_client(self) -> Any:
+        if self._presign_client is None:
+            self._presign_client = (
+                self._make_client(self.public_endpoint) if self.public_endpoint else self.client
+            )
+        return self._presign_client
+
+    def _ensure_bucket(self, name: str) -> None:
+        """A fresh object store has no buckets: create the one about to be used, once."""
+        if name in self._known_buckets:
+            return
+        try:
+            self.client.head_bucket(Bucket=name)
+        except ClientError as error:
+            if str(error.response.get("Error", {}).get("Code", "")) not in _NO_SUCH_BUCKET:
+                raise
+            try:
+                self.client.create_bucket(Bucket=name)
+            except ClientError as created:
+                # Another request created it between the check and now.
+                if str(created.response.get("Error", {}).get("Code", "")) not in {
+                    "BucketAlreadyOwnedByYou",
+                    "BucketAlreadyExists",
+                }:
+                    raise
+        self._known_buckets.add(name)
 
     def build_object_key(
         self, club_id: UUID, event_id: UUID, proposal_id: UUID, revision: int
@@ -96,6 +135,7 @@ class MinIOProposalStorage:
             }
         )
 
+        self._ensure_bucket(self.proposal_bucket)
         self.client.put_object(
             Bucket=self.proposal_bucket,
             Key=key,
@@ -113,12 +153,7 @@ class MinIOProposalStorage:
         expires_in_seconds: int = 900,
     ) -> str:
         """Generates a short-lived presigned GET URL (default 15 minutes TTL)."""
-        signer = self.client
-        if self.public_endpoint:
-            if self._download_client is None:
-                self._download_client = self._s3_client(self.public_endpoint)
-            signer = self._download_client
-        url: str = signer.generate_presigned_url(
+        url: str = self.presign_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": bucket, "Key": object_key},
             ExpiresIn=expires_in_seconds,
@@ -136,6 +171,7 @@ class MinIOProposalStorage:
         destination_bucket = dest_bucket or self.archive_bucket
         destination_key = dest_key or source_key.replace("proposals/", "proposals-archive/")
 
+        self._ensure_bucket(destination_bucket)
         copy_source = {"Bucket": source_bucket, "Key": source_key}
         self.client.copy_object(
             CopySource=copy_source,

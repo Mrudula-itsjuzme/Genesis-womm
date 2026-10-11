@@ -13,7 +13,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 AppEnv = Literal["local", "test", "demo"]
 
 _MIN_KEY_LENGTH = 32
-_LOCAL_ONLY_PREFIX = "local-only"
+_DEVELOPMENT_SECRET_PREFIXES = ("local-only", "dev-", "development-", "changeme")
+_DEFAULT_MINIO_ACCESS_KEY = "campuscue_admin"
+_DEFAULT_MINIO_SECRET_KEY = "campuscue" + "_secret"
 
 
 class Settings(BaseSettings):
@@ -25,6 +27,7 @@ class Settings(BaseSettings):
 
     app_env: AppEnv = "local"
     log_level: str = "INFO"
+    cors_allowed_origins: tuple[str, ...] = ("http://localhost:3000",)
     # CampusCue planning rule, not verified institutional policy.
     campus_gap_minutes: int = Field(default=120, ge=1)
 
@@ -40,9 +43,10 @@ class Settings(BaseSettings):
 
     rag_api_url: str = "http://rag-api:8002"
     minio_endpoint: str = "minio:9000"
-    minio_public_endpoint: str | None = None
-    minio_access_key: SecretStr = SecretStr("campuscue_admin")
-    minio_secret_key: SecretStr = SecretStr("campuscue_secret")
+    # Where a browser reaches MinIO; download links are signed for this address.
+    minio_public_endpoint: str = "localhost:9000"
+    minio_access_key: SecretStr = SecretStr(_DEFAULT_MINIO_ACCESS_KEY)
+    minio_secret_key: SecretStr = SecretStr(_DEFAULT_MINIO_SECRET_KEY)
     minio_proposal_bucket: str = "campuscue-proposals-dev"
     minio_archive_bucket: str = "campuscue-proposals-archive-dev"
     minio_use_ssl: bool = False
@@ -77,8 +81,14 @@ class Settings(BaseSettings):
                 ("DELEGATION_SIGNING_KEY", delegation),
                 ("INTERNAL_API_KEY", internal),
             ):
-                if key.startswith(_LOCAL_ONLY_PREFIX):
-                    raise ValueError(f"{name} still has the local-only placeholder value in demo")
+                if key.casefold().startswith(_DEVELOPMENT_SECRET_PREFIXES):
+                    raise ValueError(
+                        f"{name} still has a local-only or development placeholder value in demo"
+                    )
+            if self.minio_access_key.get_secret_value() == _DEFAULT_MINIO_ACCESS_KEY:
+                raise ValueError("MINIO_ACCESS_KEY has the default value in demo")
+            if self.minio_secret_key.get_secret_value() == _DEFAULT_MINIO_SECRET_KEY:
+                raise ValueError("MINIO_SECRET_KEY has the default value in demo")
 
         if self.agent_client_timeout_s <= self.agent_turn_deadline_s:
             raise ValueError("AGENT_CLIENT_TIMEOUT_S must exceed AGENT_TURN_DEADLINE_S")

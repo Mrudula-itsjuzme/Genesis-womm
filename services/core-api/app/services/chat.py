@@ -6,25 +6,75 @@ already been decided. So Core ignores what the reply says about them and re-load
 proposal from its own database, keeping only the signed-in person's.
 """
 
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, replace
+from typing import Annotated, Any, Protocol
 from uuid import UUID
 
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
+
+from app.domain.authz import Actor
+from app.domain.enums import ToolOutcome
 from app.services.agent_actions import AgentActionService
 from app.services.delegation import DelegationService
 from app.services.errors import AgentOutputInvalidError
-from app.services.ports import AgentActionRecord, AgentGateway, ChatTurn
+from app.services.ports import AgentActionRecord, AgentGateway, ChatContext, ChatTurn
 from app.services.schedule_write import RequestContext
 
 # A turn is bounded to a handful of tool calls, so a reply naming more proposals than this is
 # not something the Agent produced honestly.
 MAX_PROPOSALS_PER_REPLY = 20
+_MESSAGE_TEXT = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)
+]
+
+
+class _Citation(BaseModel):
+    evidence_id: str
+    document_id: str
+    title: str
+    source_url: str
+    page_start: int
+    page_end: int
+    excerpt: str
+    document_version: str
+
+
+class _ToolTraceEntry(BaseModel):
+    tool: str
+    args: dict[str, Any]
+    outcome: ToolOutcome
+    latency_ms: int
+    request_id: str
+
+
+class _ProposedActionReference(BaseModel):
+    """Only the action id is trusted as a reference to Core's own record."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    action_id: UUID
+
+
+class _AgentReplyPayload(BaseModel):
+    """The subset of an Agent response that is visible to a browser client."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    message: _MESSAGE_TEXT
+    clarifying_question: str | None = None
+    citations: list[_Citation] = Field(default_factory=list)
+    proposed_actions: list[_ProposedActionReference] = Field(default_factory=list)
+    trace: list[_ToolTraceEntry] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class AgentReply:
     body: dict[str, Any]  # the Agent's reply minus its own account of proposals
     proposed_actions: tuple[AgentActionRecord, ...]  # Core's copies of the real ones
+
+
+class ChatContextSource(Protocol):
+    def build(self, actor: Actor) -> ChatContext: ...
 
 
 class ChatService:
@@ -34,16 +84,32 @@ class ChatService:
         delegation: DelegationService,
         gateway: AgentGateway,
         actions: AgentActionService,
+        context: ChatContextSource | None = None,
     ) -> None:
         self._delegation = delegation
         self._gateway = gateway
         self._actions = actions
+        self._context = context
+
+    @property
+    def context_source(self) -> ChatContextSource | None:
+        return self._context
 
     def chat(self, ctx: RequestContext, turn: ChatTurn) -> AgentReply:
+        # Issuing the delegation is also the authorization check: nothing about the campus is
+        # looked up for someone who may not use the assistant.
         issued = self._delegation.issue(ctx.actor, ctx.request_id)
+        if self._context is not None:
+            turn = replace(turn, context=self._context.build(ctx.actor))
         reply = self._gateway.chat(turn, delegation_token=issued.token, request_id=ctx.request_id)
-        mentioned = _mentioned_ids(reply.get("proposed_actions", []))
-        body = {key: value for key, value in reply.items() if key != "proposed_actions"}
+        try:
+            payload = _AgentReplyPayload.model_validate(reply)
+        except ValidationError as error:
+            raise AgentOutputInvalidError(
+                "agent reply did not match the expected schema"
+            ) from error
+        mentioned = _mentioned_ids(payload.model_dump(mode="json")["proposed_actions"])
+        body = payload.model_dump(mode="json", exclude={"proposed_actions"})
         return AgentReply(body, tuple(self._actions.owned_by(ctx.actor, mentioned)))
 
 

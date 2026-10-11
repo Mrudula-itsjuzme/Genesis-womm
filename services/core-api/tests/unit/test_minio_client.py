@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 import pytest
+from botocore.exceptions import ClientError
 
 from app.services.minio_client import MinIOProposalStorage
 
@@ -134,3 +135,130 @@ def test_archive_proposal(storage: MinIOProposalStorage, mock_s3_client: MagicMo
         Bucket=source_bucket,
         Key=source_key,
     )
+
+
+# ---- a fresh object store has no buckets -------------------------------------------------
+
+
+def missing_bucket() -> ClientError:
+    return ClientError({"Error": {"Code": "404", "Message": "Not Found"}}, "HeadBucket")
+
+
+def upload(storage: MinIOProposalStorage) -> None:
+    storage.upload_proposal(
+        club_id=uuid4(),
+        event_id=uuid4(),
+        proposal_id=uuid4(),
+        revision=1,
+        file_bytes=b"%PDF-1.4 sample",
+    )
+
+
+def test_a_missing_bucket_is_created_before_the_first_upload(
+    storage: MinIOProposalStorage, mock_s3_client: MagicMock
+) -> None:
+    mock_s3_client.head_bucket.side_effect = missing_bucket()
+
+    upload(storage)
+
+    mock_s3_client.create_bucket.assert_called_once_with(Bucket="campuscue-proposals-dev")
+    names = [call[0] for call in mock_s3_client.method_calls]
+    assert names.index("create_bucket") < names.index("put_object")
+
+
+def test_an_existing_bucket_is_left_alone(
+    storage: MinIOProposalStorage, mock_s3_client: MagicMock
+) -> None:
+    upload(storage)
+
+    mock_s3_client.create_bucket.assert_not_called()
+
+
+def test_a_bucket_is_checked_once_not_on_every_upload(
+    storage: MinIOProposalStorage, mock_s3_client: MagicMock
+) -> None:
+    upload(storage)
+    upload(storage)
+
+    mock_s3_client.head_bucket.assert_called_once()
+
+
+def test_a_bucket_another_request_just_created_is_not_an_error(
+    storage: MinIOProposalStorage, mock_s3_client: MagicMock
+) -> None:
+    mock_s3_client.head_bucket.side_effect = missing_bucket()
+    mock_s3_client.create_bucket.side_effect = ClientError(
+        {"Error": {"Code": "BucketAlreadyOwnedByYou"}}, "CreateBucket"
+    )
+
+    upload(storage)
+
+    mock_s3_client.put_object.assert_called_once()
+
+
+def test_a_refused_bucket_check_is_not_papered_over_with_a_create(
+    storage: MinIOProposalStorage, mock_s3_client: MagicMock
+) -> None:
+    mock_s3_client.head_bucket.side_effect = ClientError(
+        {"Error": {"Code": "403", "Message": "Forbidden"}}, "HeadBucket"
+    )
+
+    with pytest.raises(ClientError):
+        upload(storage)
+
+    mock_s3_client.create_bucket.assert_not_called()
+    mock_s3_client.put_object.assert_not_called()
+
+
+def test_the_archive_bucket_is_ensured_before_a_file_is_moved_into_it(
+    storage: MinIOProposalStorage, mock_s3_client: MagicMock
+) -> None:
+    mock_s3_client.head_bucket.side_effect = missing_bucket()
+
+    storage.archive_proposal("campuscue-proposals-dev", "proposals/a/b/c/v1.pdf")
+
+    mock_s3_client.create_bucket.assert_called_once_with(Bucket="campuscue-proposals-archive-dev")
+
+
+# ---- links the browser can follow --------------------------------------------------------
+
+
+def test_download_links_are_signed_for_the_address_a_browser_can_reach() -> None:
+    internal, browser_facing = MagicMock(), MagicMock()
+    browser_facing.generate_presigned_url.return_value = "http://localhost:9000/b/k?sig=1"
+    storage = MinIOProposalStorage(
+        endpoint="minio:9000",
+        access_key="a",
+        secret_key="s",
+        client=internal,
+        presign_client=browser_facing,
+    )
+
+    link = storage.generate_presigned_download_url("bucket", "key", expires_in_seconds=60)
+
+    assert link == "http://localhost:9000/b/k?sig=1"
+    browser_facing.generate_presigned_url.assert_called_once()
+    internal.generate_presigned_url.assert_not_called()
+
+
+def test_without_a_public_address_links_use_the_internal_client(
+    storage: MinIOProposalStorage, mock_s3_client: MagicMock
+) -> None:
+    storage.generate_presigned_download_url("bucket", "key")
+
+    mock_s3_client.generate_presigned_url.assert_called_once()
+
+
+def test_a_real_signed_link_points_at_the_public_address_not_the_internal_one() -> None:
+    storage = MinIOProposalStorage(
+        endpoint="minio:9000",
+        public_endpoint="localhost:9000",
+        access_key="a" * 8,
+        secret_key="s" * 16,
+    )
+
+    link = storage.generate_presigned_download_url("bucket", "proposals/x.pdf", 60)
+
+    assert link.startswith("http://localhost:9000/bucket/proposals/x.pdf?")
+    assert "X-Amz-Signature=" in link
+    assert "minio:9000" not in link

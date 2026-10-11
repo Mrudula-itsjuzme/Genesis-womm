@@ -125,12 +125,49 @@ def test_event_listing_filters_orders_and_counts_before_pagination(
         resource_id=None,
         starts_after=None,
         starts_before=None,
+        draft_clubs=None,
         limit=1,
         offset=1,
     )
 
     assert total == 2
     assert [item.id for item in items] == [late.id]
+
+
+def test_drafts_of_other_clubs_are_left_out_of_both_the_page_and_the_total(
+    session: Session, world: World
+) -> None:
+    store = SqlEventStore(session)
+    other_club = make_club(session.connection())
+    mine = world.event(title="Mine", status=EventStatus.DRAFT)
+    theirs_draft = world.event(title="Their draft", club_id=other_club, status=EventStatus.DRAFT)
+    theirs_public = world.event(
+        title="Their public",
+        club_id=other_club,
+        status=EventStatus.PROPOSED,
+        start_at=START + timedelta(days=1),
+        end_at=END + timedelta(days=1),
+    )
+    for record in (mine, theirs_draft, theirs_public):
+        store.insert(record)
+
+    def titles(clubs: frozenset[UUID] | None, limit: int = 10) -> tuple[list[str], int]:
+        items, total = store.list_events(
+            club_id=None,
+            status=None,
+            resource_id=None,
+            starts_after=None,
+            starts_before=None,
+            draft_clubs=clubs,
+            limit=limit,
+            offset=0,
+        )
+        return sorted(item.title for item in items), total
+
+    assert titles(frozenset({world.club})) == (["Mine", "Their public"], 2)
+    assert titles(frozenset()) == (["Their public"], 1)
+    assert titles(None) == (["Mine", "Their draft", "Their public"], 3)
+    assert titles(frozenset({world.club}), limit=1)[1] == 2
 
 
 def test_an_update_at_the_expected_revision_persists(session: Session, world: World) -> None:

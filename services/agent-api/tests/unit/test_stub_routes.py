@@ -194,6 +194,7 @@ def test_tool_call_appears_in_trace() -> None:
                     id="tc-1",
                     name="check_event_conflicts",
                     arguments={
+                        "club_id": str(uuid4()),
                         "start_at": "2026-11-20T09:00:00+05:30",
                         "end_at": "2026-11-20T17:00:00+05:30",
                     },
@@ -219,6 +220,38 @@ def test_tool_call_appears_in_trace() -> None:
     assert entry["tool"] == "check_event_conflicts"
     assert entry["outcome"] == "OK"
     assert "message" in body
+
+
+def test_filed_draft_is_returned_as_a_proposal_not_a_completed_event() -> None:
+    responses = [
+        LlmResponse(
+            text=None,
+            tool_calls=[ToolCall(id="tc-check", name="check_event_conflicts", arguments={})],
+        ),
+        LlmResponse(
+            text=None,
+            tool_calls=[
+                ToolCall(
+                    id="tc-draft",
+                    name="file_event_draft_proposal",
+                    arguments={"summary": "Propose a demo", "payload": {}},
+                )
+            ],
+        ),
+        LlmResponse(text="I proposed a draft for human confirmation.", tool_calls=[]),
+    ]
+    client = _make_client(llm_responses=responses)
+
+    response = client.post(
+        "/v1/agent/chat",
+        json={"messages": [MESSAGE]},
+        headers={REQUEST_ID_HEADER: "req-draft-1"},
+    )
+
+    assert response.status_code == 200, response.text
+    [action] = response.json()["proposed_actions"]
+    assert action["status"] == "PROPOSED"
+    assert action["requires_human_review"] is True
 
 
 def test_disallowed_tool_is_rejected_with_trace() -> None:
