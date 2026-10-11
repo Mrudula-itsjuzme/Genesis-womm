@@ -20,6 +20,7 @@ from app.domain.time import SystemClock
 from app.repositories.health import SqlReadinessProbe
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.agent_actions import AgentActionService
+from app.services.change_queries import ChangeQueries
 from app.services.chat import ChatService
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
@@ -54,6 +55,7 @@ class Container:
     agent_actions: AgentActionService | None = None
     chat: ChatService | None = None
     proposals: ProposalService | None = None
+    changes: ChangeQueries | None = None
     agent_client: httpx.Client | None = None
     rag_client: httpx.Client | None = None
     internal_api_key: str | None = None
@@ -160,6 +162,10 @@ def build_container(settings: Settings) -> Container:
         agent_actions=agent_actions,
         chat=chat,
         proposals=proposals,
+        changes=ChangeQueries(
+            lambda: SqlUnitOfWork(database_sessions),
+            policy=Policy(campus_gap=timedelta(minutes=settings.campus_gap_minutes)),
+        ),
         agent_client=agent_client,
         rag_client=rag_client,
         internal_api_key=settings.internal_api_key.get_secret_value(),
