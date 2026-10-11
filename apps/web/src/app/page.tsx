@@ -127,63 +127,63 @@ export default function Dashboard() {
         </div>
 
         {/* Dashboard Grid Content */}
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.85fr)] lg:gap-12 items-start">
-
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 items-start mb-8">
           {/* My Events List */}
-          <section className="min-w-0 border-t border-[#d9c9c2] py-6 lg:border-t-0 lg:py-0" aria-labelledby="upcoming-events-heading">
-            <div className="mb-6 flex items-center justify-between gap-3">
+          <section className="min-w-0" aria-labelledby="upcoming-events-heading">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <h3 id="upcoming-events-heading" className="text-xl font-bold tracking-tight text-gray-900">My Upcoming Events</h3>
               <Link href="/calendar" className="flex items-center text-xs font-bold uppercase tracking-wider text-[#7a1b32] transition-colors hover:text-rose-900">
                 View Calendar <ArrowRight className="ml-1 h-3 w-3" />
               </Link>
             </div>
-
             <UpcomingEvents />
           </section>
 
-          {/* Campus Calendar */}
-          <section className="min-w-0 border-t border-[#d9c9c2] py-6 lg:border-t-0 lg:py-0" aria-labelledby="campus-calendar-heading">
-            <div className="mb-6 flex items-center justify-between gap-3">
-              <h3 id="campus-calendar-heading" className="text-lg font-bold tracking-tight text-gray-900">Campus Calendar</h3>
-              <Link href="/plan" className="flex items-center gap-1 rounded-full bg-[#7a1b32] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-[#5a1122]">
-                <Plus className="w-3 h-3" /> New Event
+          {/* Quick Help & Action Highlights */}
+          <section className="space-y-4">
+            <div className="bg-gradient-to-r from-[#FDE8E9] via-[#F6DCE0] to-[#EED3D9] rounded-[10px] p-6 shadow-xs border border-rose-100/60 flex flex-col justify-between h-[210px]">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-[#7a1b32]" />
+                  <h3 className="text-xl font-serif font-bold text-[#7a1b32]">Ask CampusCue</h3>
+                </div>
+                <p className="text-xs text-[#7a1b32]/85 font-medium leading-relaxed">
+                  Get answers from Amrita&apos;s official student affairs guidelines, venue allocation rules, and scheduling policies.
+                </p>
+              </div>
+              <Link href="/policy" className="inline-block self-start rounded-[10px] bg-white px-5 py-2.5 text-xs font-bold text-[#7a1b32] shadow-xs transition-all hover:bg-stone-50 active:scale-[0.98]">
+                Open policy assistant →
               </Link>
             </div>
 
-            <CalendarGrid />
+            <div className="bg-white rounded-[10px] p-5 shadow-xs border border-stone-200/80 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">Institutional Operations</p>
+                <p className="text-sm font-semibold text-stone-800 mt-0.5">Need to review event changes or resolve conflict impact?</p>
+              </div>
+              <Link href="/changes" className="rounded-[10px] border border-stone-200 bg-stone-50 px-3.5 py-2 text-xs font-semibold text-[#7a1b32] transition hover:bg-rose-50 active:scale-[0.98]">
+                Review Changes →
+              </Link>
+            </div>
           </section>
         </div>
 
-        {/* Row 2: Ask CampusCue · Promo */}
-        <div className="grid grid-cols-1 lg:grid-cols-[19fr_10fr] gap-6 items-stretch mt-6">
-          {/* Ask CampusCue Banner */}
-          <div className="bg-gradient-to-r from-[#FDE8E9] via-[#F6DCE0] to-[#EED3D9] rounded-3xl p-8 border-none relative overflow-hidden flex items-center shadow-sm h-56">
-
-            <div className="relative z-10 w-full pr-12">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-6 h-6 text-[#7a1b32]" />
-                <h3 className="text-2xl font-serif font-bold text-[#7a1b32]">Ask CampusCue</h3>
-              </div>
-              <p className="text-sm text-[#7a1b32]/80 mb-6 font-medium">Get answers from Amrita&apos;s official guidelines, venue details, and past events.</p>
-
-              <Link href="/policy" className="inline-block rounded-full bg-white px-6 py-3 text-[#7a1b32]">Open policy assistant</Link>
+        {/* Campus Calendar: Full Width Dedicated Showcase */}
+        <section className="rounded-[10px] border border-stone-200/80 bg-white/95 p-6 shadow-sm backdrop-blur-xl" aria-labelledby="campus-calendar-heading">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-3">
+            <div>
+              <h3 id="campus-calendar-heading" className="text-xl font-bold tracking-tight text-gray-900">Campus Master Calendar</h3>
+              <p className="text-xs text-stone-500 mt-0.5">Comprehensive schedule of institutional bookings, proposals, and club workshops.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link href="/plan" className="flex items-center gap-1 rounded-[10px] bg-[#7a1b32] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-all duration-150 hover:bg-[#5a1122] active:scale-[0.98]">
+                <Plus className="w-3 h-3" /> New Event
+              </Link>
             </div>
           </div>
 
-          {/* Promo block */}
-          <div className="bg-white rounded-3xl p-6 relative overflow-hidden h-56 flex items-center shadow-sm border-none">
-            <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')" }}></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/80 to-transparent z-0" />
-            <div className="absolute inset-0 bg-gradient-to-l from-[#F5EEE9]/95 via-[#F5EEE9]/80 to-transparent z-0" />
-            <div className="relative z-10 flex-1 flex flex-col justify-center items-end pr-4 mt-12">
-              <p className="text-[#7a1b32] font-serif text-xl leading-snug text-right max-w-[150px] drop-shadow-sm font-bold">
-                Events build the campus we remember.
-              </p>
-              <div className="w-12 h-1 bg-[#7a1b32] mt-4 rounded-full opacity-50"></div>
-            </div>
-          </div>
-        </div>
-
+          <CalendarGrid />
+        </section>
       </div>
     </div>
   );
