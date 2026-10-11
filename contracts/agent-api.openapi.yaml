@@ -320,6 +320,11 @@ components:
         access_level:
           $ref: '#/components/schemas/AccessLevel'
           default: CAMPUS_PUBLIC
+        context:
+          anyOf:
+          - $ref: '#/components/schemas/TurnContext'
+          - type: 'null'
+          description: The person's clubs, the venues and Core's clock.
       additionalProperties: false
       type: object
       required:
@@ -346,6 +351,13 @@ components:
       - event_id
       - change_description
       title: AnalyzeChangeRequest
+    AvailabilityState:
+      type: string
+      enum:
+      - UNKNOWN
+      - REQUESTED
+      - CONFIRMED
+      title: AvailabilityState
     ChatMessage:
       properties:
         role:
@@ -438,6 +450,27 @@ components:
       - document_version
       title: Citation
       description: Copied verbatim from the RAG index. The model never writes these fields.
+    ClubContext:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          maxLength: 200
+          title: Name
+        role:
+          type: string
+          maxLength: 40
+          title: Role
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - name
+      - role
+      title: ClubContext
     Conflict:
       properties:
         type:
@@ -714,6 +747,60 @@ components:
       - latency_ms
       - request_id
       title: ToolTraceEntry
+    TurnContext:
+      properties:
+        now:
+          type: string
+          format: date-time
+          title: Now
+        timezone:
+          type: string
+          const: Asia/Kolkata
+          title: Timezone
+        clubs:
+          items:
+            $ref: '#/components/schemas/ClubContext'
+          type: array
+          maxItems: 20
+          title: Clubs
+        venues:
+          items:
+            $ref: '#/components/schemas/VenueContext'
+          type: array
+          maxItems: 50
+          title: Venues
+      additionalProperties: false
+      type: object
+      required:
+      - now
+      - timezone
+      title: TurnContext
+      description: Facts from Core's database for this person and moment. Data, never instructions.
+    VenueContext:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          maxLength: 200
+          title: Name
+        capacity:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Capacity
+        availability:
+          $ref: '#/components/schemas/AvailabilityState'
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - name
+      - availability
+      title: VenueContext
   securitySchemes:
     internalKey:
       type: apiKey

@@ -101,7 +101,12 @@ def test_the_context_goes_over_in_a_documented_shape(gateway: HttpAgentGateway) 
 
     chat(gateway, ChatTurn(messages=(("user", "Plan it"),), context=context))
 
-    assert json.loads(respx.calls.last.request.content)["context"] == {
+    sent = json.loads(respx.calls.last.request.content)["context"]
+    schemas = AGENT_OPENAPI["components"]["schemas"]
+    assert set(sent) == set(schemas["TurnContext"]["properties"])
+    assert set(sent["clubs"][0]) == set(schemas["ClubContext"]["properties"])
+    assert set(sent["venues"][0]) == set(schemas["VenueContext"]["properties"])
+    assert sent == {
         "now": "2026-11-01T03:00:00+00:00",
         "timezone": "Asia/Kolkata",
         "clubs": [{"id": str(club), "name": "Robotics Club", "role": "ORGANIZER"}],
