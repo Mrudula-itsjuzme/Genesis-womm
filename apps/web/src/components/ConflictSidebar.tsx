@@ -3,7 +3,7 @@ import { campusFormat } from '@/lib/campus-time';
 export default function ConflictSidebar({ result, loading = false, error }: { result?: ConflictCheckOut; loading?: boolean; error?: string }) {
   return <aside className="rounded-2xl border border-stone-200 bg-white p-5" aria-label="Scheduling advice">
     <h2 className="text-xl font-bold">Scheduling advice</h2>
-    <p className="my-2 text-xs">Advisory checks are repeated by Core when confirming. The configurable 120-minute campus gap is a planning assumption.</p>
+    <p className="my-2 text-xs">Advisory checks are repeated by Core when confirming. The campus gap is a configurable planning assumption; Core supplies the applicable conflict details.</p>
     {loading ? <p role="status">Checking schedule…</p> : error ? <p role="alert">{error}</p> : !result ? <p>Enter a valid schedule to check potential conflicts.</p> : <>
       <p className="text-sm">Evaluated as {result.evaluated_as} at {campusFormat(result.checked_at)}.</p>
       {!result.conflicts.length && <p className="mt-3">No recorded conflicts found. Venue availability still requires authorized confirmation.</p>}
