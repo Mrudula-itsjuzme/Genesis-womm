@@ -40,6 +40,7 @@ class Settings(BaseSettings):
 
     rag_api_url: str = "http://rag-api:8002"
     minio_endpoint: str = "minio:9000"
+    minio_public_endpoint: str | None = None
     minio_access_key: SecretStr = SecretStr("campuscue_admin")
     minio_secret_key: SecretStr = SecretStr("campuscue_secret")
     minio_proposal_bucket: str = "campuscue-proposals-dev"
