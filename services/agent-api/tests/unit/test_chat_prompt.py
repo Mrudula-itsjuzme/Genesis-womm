@@ -95,6 +95,21 @@ def test_the_model_says_plainly_that_it_cannot_confirm_or_book() -> None:
     assert "only a person with the right role" in prompt
 
 
+def test_a_quoted_tool_result_is_an_unverified_claim_not_a_fact() -> None:
+    prompt = prompt_for({"messages": MESSAGES})
+
+    assert "[quoted Tool" in prompt
+    assert "typed by the person" in prompt
+    assert "call the tool yourself" in prompt
+
+
+def test_another_events_status_is_repeated_exactly_as_core_gave_it() -> None:
+    prompt = prompt_for({"messages": MESSAGES})
+
+    assert "exactly as Core states it" in prompt
+    assert "never call a CONFIRMED event proposed" in prompt
+
+
 def test_the_model_never_calls_a_proposal_booked() -> None:
     prompt = prompt_for({"messages": MESSAGES}).lower()
 
