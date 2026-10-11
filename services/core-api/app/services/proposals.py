@@ -1,6 +1,6 @@
 """Submitting, reading and reviewing an event's proposal document (Implementation Plan 07).
 
-A club's organizers submit and read their proposal; only a campus admin reviews it; a delegated
+A club's organizers submit and read their proposal; faculty advisors review first, then campus admins review it; a delegated
 agent does none of it (spine AD-21). Identities come from the signed-in person, every refusal is
 audited, and a failing object store or RAG service never leaks detail or undoes a review.
 """
@@ -177,7 +177,7 @@ class ProposalService:
         except (ServiceError, TransitionError) as refusal:
             self._record_refusal(ctx, "REVIEW_PROPOSAL", proposal_id, refusal)
             raise
-        if action is ReviewAction.APPROVE:
+        if action is ReviewAction.APPROVE and ctx.actor.campus_admin:
             record = self._hand_to_rag(ctx, record)
         return record
 
@@ -192,11 +192,18 @@ class ProposalService:
             record = self._load(uow, proposal_id)
             self._require(ctx.actor, Action.REVIEW_PROPOSAL, record.club_id)
             before = record.status
+            if ctx.actor.campus_admin:
+                if before is not ProposalStatus.FACULTY_APPROVED:
+                    raise InvalidTransitionError(before, ProposalStatus.APPROVED)
+            elif before not in (ProposalStatus.SUBMITTED, ProposalStatus.UNDER_REVIEW):
+                raise InvalidTransitionError(before, ProposalStatus.FACULTY_APPROVED)
             decide = {
                 ReviewAction.APPROVE: self._manager.approve_proposal,
                 ReviewAction.REJECT: self._manager.reject_proposal,
                 ReviewAction.REQUEST_REVISION: self._manager.request_revision,
             }[action]
+            if action is ReviewAction.APPROVE and not ctx.actor.campus_admin:
+                decide = self._manager.approve_faculty
             decide(record, reviewer_id=ctx.actor.user_id, review_note=review_note)
             if not uow.proposals.save(record, expected_status=before):
                 # Someone decided it between our read and our write.
