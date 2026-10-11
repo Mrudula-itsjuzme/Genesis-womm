@@ -47,6 +47,7 @@ test('real gateway persists a browser draft, stores PDF bytes and enforces lifec
   expect(cleanup.ok()).toBe(true);
   const chat = await page.request.post('/api/v1/agent/chat', { headers, data: { messages: [{ role: 'user', content: 'What information do you need to plan an event?' }] } });
   expect(chat.ok()).toBe(true); const reply = await chat.json(); expect(reply.message).toBeTruthy(); expect(reply.request_id).toBeTruthy();
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: '../../scratch/live-planner-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/calendar');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -36,10 +36,22 @@ npm run build
 
 Browser tests render real pages with explicit synthetic HTTP contract fixtures; they do not prove that PostgreSQL, MinIO, or model providers are healthy. Core integration tests and a live gateway smoke check cover those boundaries separately.
 
+With the Compose stack running and the demo directory seeded, run the real gateway test:
+
+```powershell
+$env:PLAYWRIGHT_LIVE='1'
+npx playwright test --workers=1
+Remove-Item Env:PLAYWRIGHT_LIVE
+```
+
+This creates explicitly titled synthetic QA records, uploads and downloads actual PDF bytes, checks lifecycle permissions and stale revisions, and cancels the confirmed test event. Records remain in the local audit history. It tests the configured fake Agent response, not RAG answer quality. Screenshots are written to ignored `scratch/`.
+
+To test a separately running development server, set `PLAYWRIGHT_BASE_URL` to its URL (for example `http://127.0.0.1:3002`). Use one browser worker on machines with limited memory and run the Core suite separately. The client bounds requests at 60 seconds and retains navigation/session cancellation.
+
 Generate wire types from committed OpenAPI using Core's Python environment from the repository root:
 
 ```powershell
 .\services\core-api\.venv\Scripts\python.exe apps/web/scripts/export_types.py --check
 ```
 
-Reports are editable local drafts assembled from recorded facts; actual outcomes remain explicit placeholders. Schedule change previews are advisory and do not save edits. Core does not yet expose commitment or dependency-impact APIs. Unsupported assistant action types cannot be executed from the UI. Notification delivery is not implemented.
+Reports are editable local drafts assembled from recorded facts; actual outcomes remain explicit placeholders. Schedule change previews are advisory and do not save edits. Core does not yet expose commitment or dependency-impact APIs. Unsupported assistant action types cannot be executed from the UI. Notification delivery is not implemented. Keep an uploaded proposal's ID to reopen it in the changes workspace; Core has no proposal-list endpoint.
