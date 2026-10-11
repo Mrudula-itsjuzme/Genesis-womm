@@ -13,7 +13,7 @@ from app.domain.lifecycle import InvalidTransitionError
 from app.domain.time import Clock
 from app.services.ports import ProposalRecord, ProposalStorage, RagIngest
 
-_AWAITING_REVIEW = (ProposalStatus.SUBMITTED, ProposalStatus.UNDER_REVIEW)
+_AWAITING_REVIEW = (ProposalStatus.SUBMITTED, ProposalStatus.UNDER_REVIEW, ProposalStatus.FACULTY_APPROVED)
 PRESIGNED_URL_TTL_SECONDS = 900  # fifteen minutes: RAG fetches the file once, straight away
 CLEANUP_AFTER = timedelta(hours=24)
 
@@ -25,6 +25,11 @@ class ProposalLifecycleManager:
         self._storage = storage
         self._rag = rag
         self._clock = clock
+
+    def approve_faculty(
+        self, proposal: ProposalRecord, reviewer_id: UUID, review_note: str | None = None
+    ) -> ProposalRecord:
+        return self._decide(proposal, ProposalStatus.FACULTY_APPROVED, reviewer_id, review_note)
 
     def approve_proposal(
         self, proposal: ProposalRecord, reviewer_id: UUID, review_note: str | None = None
@@ -48,7 +53,10 @@ class ProposalLifecycleManager:
         reviewer_id: UUID,
         review_note: str | None,
     ) -> ProposalRecord:
-        if proposal.status not in _AWAITING_REVIEW:
+        if proposal.status not in _AWAITING_REVIEW or (
+            proposal.status == ProposalStatus.FACULTY_APPROVED
+            and outcome == ProposalStatus.FACULTY_APPROVED
+        ):
             raise InvalidTransitionError(proposal.status, outcome)
         proposal.status = outcome
         proposal.reviewed_by = reviewer_id
