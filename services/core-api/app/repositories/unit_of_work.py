@@ -16,6 +16,7 @@ from app.repositories.changes import SqlChangeStore
 from app.repositories.directory import SqlActorReader, SqlClubReader, SqlResourceReader
 from app.repositories.history import SqlAuditWriter, SqlEvidenceWriter, SqlIdempotencyStore
 from app.repositories.proposals import SqlProposalStore
+from app.repositories.resource_interests import SqlResourceInterestStore
 from app.repositories.scheduling import (
     SqlEventStore,
     SqlOverrideStore,
@@ -48,6 +49,7 @@ class SqlUnitOfWork:
         self.agent_actions = SqlAgentActionStore(self._session)
         self.proposals = SqlProposalStore(self._session)
         self.changes = SqlChangeStore(self._session)
+        self.resource_interests = SqlResourceInterestStore(self._session)
         self.schedule = SqlScheduleWriters(
             lock=SqlScheduleLock(self._session),
             events=events,
