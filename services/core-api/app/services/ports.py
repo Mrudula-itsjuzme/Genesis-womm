@@ -481,11 +481,37 @@ class AgentActionUnitOfWork(Protocol):
 
 
 @dataclass(frozen=True)
+class ChatClub:
+    id: UUID
+    name: str
+    role: Role
+
+
+@dataclass(frozen=True)
+class ChatVenue:
+    id: UUID
+    name: str
+    capacity: int | None
+    availability: AvailabilityState
+
+
+@dataclass(frozen=True)
+class ChatContext:
+    """What Core tells the assistant before it answers: the time, the person's clubs and the
+    venues. It has real ids, so the model never has to invent one."""
+
+    now: datetime
+    clubs: tuple[ChatClub, ...]
+    venues: tuple[ChatVenue, ...]
+
+
+@dataclass(frozen=True)
 class ChatTurn:
     """What a person said to the planning assistant: bounded history, newest last."""
 
     messages: tuple[tuple[Literal["user", "assistant"], str], ...]
     event_id: UUID | None = None
+    context: ChatContext | None = None
 
 
 class AgentGateway(Protocol):
