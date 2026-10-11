@@ -17,6 +17,8 @@ The fake Agent provider is the default and may abstain. Real policy answers need
 
 Proposal PDFs use MinIO with private buckets; download links expire after 15 minutes. `MINIO_PUBLIC_ENDPOINT` must be browser reachable (localhost:9000 for a local demo). Regenerate links after expiration. Proposal review remains subject to Core authorization and RAG availability.
 
+Compose builds the pinned MinIO community server and client sources because the historical public images and binary downloads are unavailable. The first build downloads Go modules and takes longer; subsequent builds use Docker's cache. Source commits are checked in `infra/minio/Dockerfile`.
+
 ## Development and verification
 
 Run in `apps/web`:
