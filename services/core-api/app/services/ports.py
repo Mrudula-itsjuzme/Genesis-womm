@@ -228,9 +228,16 @@ class EventReader(Protocol):
         resource_id: UUID | None,
         starts_after: datetime | None,
         starts_before: datetime | None,
+        draft_clubs: frozenset[UUID] | None,
         limit: int,
         offset: int,
-    ) -> tuple[list[EventRecord], int]: ...
+    ) -> tuple[list[EventRecord], int]:
+        """One page of matching events and how many match in all.
+
+        Drafts are private to their club: ``draft_clubs`` names the clubs whose drafts the caller
+        may see (``None`` means every club's). Applying it here keeps pages and the total honest.
+        """
+        ...
 
     def list_scheduling_candidates(
         self, *, starts_before: datetime, ends_after: datetime
