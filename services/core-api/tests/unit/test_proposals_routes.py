@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient
 from app.api.routes.proposals import upload_proposal
 from app.container import Container
 from app.domain.authz import Actor
-from app.domain.enums import AvailabilityState, ProposalStatus
+from app.domain.enums import AvailabilityState, ProposalStatus, Role
 from app.domain.scheduling import Policy
 from app.domain.time import FixedClock
 from app.main import create_app
@@ -72,6 +72,7 @@ class FakeSessions:
             "organizer": identity(ORGANIZER, "organizer"),
             "other": identity(OTHER_CLUB, "other"),
             "campus": identity(CAMPUS, "campus"),
+            "faculty": identity(Actor(user_id=UUID(int=998), memberships={CLUB_A: Role.FACULTY_ADVISOR}), "faculty"),
         }
 
     def resolve_access_token(self, token: str) -> UserIdentity | None:
@@ -314,12 +315,16 @@ def review(rig: Rig, pid: UUID, body: dict[str, Any], actor_name: str = "campus"
 def test_a_campus_admin_approves_and_the_reviewer_is_really_them(rig: Rig) -> None:
     pid = rig.submitted()
 
-    response = review(rig, pid, {"action": "approve", "review_note": "Approved by faculty"})
+    faculty = review(rig, pid, {"action": "approve"}, actor_name="faculty")
+    assert faculty.status_code == 200
+    assert faculty.json()["status"] == "FACULTY_APPROVED"
+    assert rig.rag.ingested == []
+    response = review(rig, pid, {"action": "approve", "review_note": "Approved by campus"})
 
     assert response.status_code == 200, response.text
     out = ProposalOut.model_validate(response.json())
     assert out.status is ProposalStatus.CHUNKED
-    assert (out.reviewed_by, out.review_note) == (CAMPUS.user_id, "Approved by faculty")
+    assert (out.reviewed_by, out.review_note) == (CAMPUS.user_id, "Approved by campus")
     assert rig.rag.ingested[0]["approved_by"] == str(CAMPUS.user_id)
 
 
@@ -327,13 +332,14 @@ def test_when_rag_is_down_the_approval_still_stands(rig: Rig) -> None:
     rig.rag.accepts = False
     pid = rig.submitted()
 
+    assert review(rig, pid, {"action": "approve"}, actor_name="faculty").status_code == 200
     response = review(rig, pid, {"action": "approve"})
 
     assert response.status_code == 200
     assert response.json()["status"] == "APPROVED"
 
 
-def test_only_a_campus_admin_can_review(rig: Rig) -> None:
+def test_only_faculty_or_campus_admin_can_review(rig: Rig) -> None:
     pid = rig.submitted()
 
     for token in ("organizer", "other"):
@@ -343,9 +349,17 @@ def test_only_a_campus_admin_can_review(rig: Rig) -> None:
     assert rig.rag.ingested == []
 
 
+def test_campus_approval_requires_faculty_first(rig: Rig) -> None:
+    pid = rig.submitted()
+    response = review(rig, pid, {"action": "approve"})
+    assert response.status_code == 409
+    assert response.json()["code"] == "INVALID_TRANSITION"
+    assert rig.rag.ingested == []
+
+
 def test_a_decided_proposal_cannot_be_decided_again(rig: Rig) -> None:
     pid = rig.submitted()
-    review(rig, pid, {"action": "reject"})
+    review(rig, pid, {"action": "reject"}, actor_name="faculty")
 
     response = review(rig, pid, {"action": "approve"})
 
