@@ -44,15 +44,22 @@ The intended integrated workflow uses Docker Compose. Each service also supports
 
 ### Run the stack
 
-PostgreSQL 18, a one-shot migration, Core on `:8000`, Agent on `127.0.0.1:8001`:
+The default local demo uses the deterministic offline planner and seeded demo identities, so no
+API key is required. PostgreSQL 18, Core on `:8000`, Agent on `127.0.0.1:8001`, RAG on
+`127.0.0.1:8002`, and Web on `:3000` are started by Compose:
 
 ```bash
-cp .env.example .env        # development-only placeholders; add GROQ_API_KEY only if you use AGENT_MODEL_PROVIDER=groq
-docker compose up --build
+cp .env.example .env        # only if .env does not already exist
+docker compose up -d --build
+docker compose ps           # wait for core-api and agent-api to become healthy
+open http://localhost:3000  # sign in as organizer@example.invalid; no password
 curl localhost:8000/health   # liveness
 curl localhost:8000/ready    # database reachable and migrations applied
 docker compose down -v       # also drops the database volume
 ```
+
+For the hosted-model assistant, set `AGENT_MODEL_PROVIDER=groq` and `GROQ_API_KEY` in your
+local `.env`, then run `docker compose up -d --build agent-api rag-api`. Do not commit `.env`.
 
 ### Test individual services
 
