@@ -368,6 +368,10 @@ class _Proposals:
     def __init__(self, db: InMemoryDatabase, work: State) -> None:
         self._db, self._work = db, work
 
+    def list_for_event(self, event_id: UUID) -> list[ProposalRecord]:
+        records = [replace(p) for p in self._work.proposals.values() if p.event_id == event_id]
+        return sorted(records, key=lambda p: p.revision, reverse=True)[:100]
+
     def get(self, proposal_id: UUID) -> ProposalRecord | None:
         self._db.log.append("read:proposal")
         stored = self._work.proposals.get(proposal_id)
