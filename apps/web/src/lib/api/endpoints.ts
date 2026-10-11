@@ -1,6 +1,6 @@
 import { apiClient } from './client.ts';
 import type { ChangeRequest, StageChange, ApplyChange, ChangeProposalOut, ChangeProposalList, ChangeAppliedOut, ImpactReport, DependencyCreate, DependencyOut, DependencyList } from '../../types/core-api.ts';
-import type { SessionOut, EventCreate, EventCreatedOut, EventOut, EventList, EventStatus, ConflictCheckRequest, ConflictCheckOut, TransitionRequest, ResourceList, ResourceKind, ResourceOut, ChatMessage, ChatResponse, AgentAction, AgentActionConfirmOut, ProposalUploadOut, ProposalOut, ProposalDownloadUrlOut, ProposalStatusPatch, OverrideRequest, OverrideOut } from '../../types/core-api.ts';
+import type { SessionOut, EventCreate, EventCreatedOut, EventOut, EventList, EventStatus, ConflictCheckRequest, ConflictCheckOut, TransitionRequest, ResourceList, ResourceKind, ResourceOut, ResourceInterestCreate, ResourceInterestOut, ChatMessage, ChatResponse, AgentAction, AgentActionConfirmOut, ProposalUploadOut, ProposalOut, ProposalDownloadUrlOut, ProposalStatusPatch, OverrideRequest, OverrideOut } from '../../types/core-api.ts';
 export const authApi = { demoLogin: (email: string) => apiClient<SessionOut>('auth/demo-login', { method: 'POST', body: JSON.stringify({ email }) }) };
 export type EventFilters = { club_id?: string; status?: EventStatus; starts_after?: string; starts_before?: string; limit?: number; offset?: number };
 export const eventsApi = {
@@ -14,6 +14,7 @@ export const eventsApi = {
 export const resourcesApi = {
   list: (token: string, params: { kind?: ResourceKind; q?: string; limit?: number; offset?: number } = {}, signal?: AbortSignal) => apiClient<ResourceList>('resources', { token, params, signal }),
   get: (token: string, id: string) => apiClient<ResourceOut>(`resources/${id}`, { token }),
+  createInterest: (token: string, payload: ResourceInterestCreate) => apiClient<ResourceInterestOut>('resources/interests', { token, method: 'POST', body: JSON.stringify(payload) }),
 };
 export const agentApi = {
   chat: (token: string, messages: ChatMessage[], eventId?: string | null, signal?: AbortSignal) => apiClient<ChatResponse>('agent/chat', { token, method: 'POST', body: JSON.stringify({ messages, event_id: eventId ?? null }), signal }),

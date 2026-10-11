@@ -867,6 +867,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/resources/interests:
+    post:
+      tags:
+      - resources
+      summary: Save a personal shared-resource interest (not a reservation)
+      operationId: create_resource_interest_api_v1_resources_interests_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceInterestCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceInterestOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - sessionBearer: []
   /api/v1/resources:
     get:
       tags:
@@ -3140,6 +3173,107 @@ components:
       - expected_head
       title: ReadyOut
       description: 'Core can do its own job: database reachable and migration head applied.'
+    ResourceInterestCreate:
+      properties:
+        category:
+          type: string
+          enum:
+          - HPC / GPU compute
+          - Computer lab
+          - AV / recording kit
+          - Workshop equipment
+          - Other shared resource
+          - Er kit
+          - Bio signal
+          - Eeg kit
+          - Hardware sensors and kit
+          - Power extensions
+          - Wifi support
+          - Lab suport
+          - 3d printing
+          - Vlsi boards
+          title: Category
+        purpose:
+          type: string
+          maxLength: 160
+          minLength: 1
+          title: Purpose
+        preferred_date:
+          type: string
+          format: date
+          title: Preferred Date
+        start_time:
+          type: string
+          format: time
+          title: Start Time
+        end_time:
+          type: string
+          format: time
+          title: End Time
+        requirements:
+          anyOf:
+          - type: string
+            maxLength: 400
+          - type: 'null'
+          title: Requirements
+      additionalProperties: false
+      type: object
+      required:
+      - category
+      - purpose
+      - preferred_date
+      - start_time
+      - end_time
+      title: ResourceInterestCreate
+    ResourceInterestOut:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        requester_id:
+          type: string
+          format: uuid
+          title: Requester Id
+        category:
+          type: string
+          title: Category
+        purpose:
+          type: string
+          title: Purpose
+        preferred_date:
+          type: string
+          format: date
+          title: Preferred Date
+        start_time:
+          type: string
+          format: time
+          title: Start Time
+        end_time:
+          type: string
+          format: time
+          title: End Time
+        requirements:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Requirements
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - requester_id
+      - category
+      - purpose
+      - preferred_date
+      - start_time
+      - end_time
+      - requirements
+      - created_at
+      title: ResourceInterestOut
     ResourceKind:
       type: string
       enum:
@@ -3247,6 +3381,7 @@ components:
       enum:
       - ORGANIZER
       - CLUB_ADMIN
+      - FACULTY_ADVISOR
       - CAMPUS_ADMIN
       - STUDENT
       title: Role
