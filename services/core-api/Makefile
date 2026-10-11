@@ -33,4 +33,4 @@ verify-fast: lint typecheck layers test contracts
 verify: verify-fast integration
 
 run:
-	$(UV) run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+	$(UV) run uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --reload

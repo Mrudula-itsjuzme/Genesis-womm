@@ -122,6 +122,7 @@ def build_container(settings: Settings) -> Container:
         gateway=HttpAgentGateway(agent_client),
         actions=agent_actions,
     )
+
     def proposal_storage(public_endpoint: str | None = None) -> MinIOProposalStorage:
         return MinIOProposalStorage(
             endpoint=settings.minio_endpoint,
