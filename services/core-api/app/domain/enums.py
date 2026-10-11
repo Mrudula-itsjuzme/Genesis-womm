@@ -137,7 +137,7 @@ class ErrorCode(StrEnum):
 
 
 class ProposalStatus(StrEnum):
-    """Proposal lifecycle. Ingestion into RAG requires APPROVED status."""
+    """Proposal lifecycle. Faculty review precedes the campus document decision."""
 
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
