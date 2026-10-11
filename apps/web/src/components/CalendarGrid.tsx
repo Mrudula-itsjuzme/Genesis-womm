@@ -198,8 +198,7 @@ export default function CalendarGrid() {
                             🕒 {campusFormat(event.start_at)} – {campusFormat(event.end_at)}
                           </p>
                           <p className="mt-0.5 text-xs text-stone-500">
-                            {event.status} · Venue availability: {event.venue_availability}
-                            {event.synthetic ? ' · Synthetic demo' : ''}
+                            Status: {event.status}
                           </p>
                         </div>
                         <span className="self-start sm:self-center rounded-[6px] bg-white/90 border border-stone-200 px-2.5 py-1 text-xs font-bold text-stone-700 shadow-xs">
@@ -246,7 +245,6 @@ export default function CalendarGrid() {
                                 <p className="mt-1 text-[11px] text-stone-600">
                                   {campusFormat(event.start_at, { timeStyle: 'short' })} · {event.status}
                                 </p>
-                                {event.synthetic && <p className="text-[10px] opacity-75 mt-0.5">Synthetic demo</p>}
                               </button>
                             ))}
                           </div>

@@ -24,16 +24,6 @@ function getStatusBadge(status: string) {
   }
 }
 
-function getVenueBadge(availability?: string) {
-  switch (availability) {
-    case 'CONFIRMED':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200/80';
-    case 'REQUESTED':
-      return 'bg-amber-50 text-amber-700 border-amber-200/80';
-    default:
-      return 'bg-stone-50 text-stone-600 border-stone-200/80';
-  }
-}
 
 export default function UpcomingEvents() {
   const { token, activeClub } = useAuth();
@@ -68,20 +58,6 @@ function UpcomingList() {
                   >
                     {event.status}
                   </span>
-                  {event.venue_availability && (
-                    <span
-                      className={`inline-flex items-center rounded-[6px] border px-2 py-0.5 text-[10px] font-medium ${getVenueBadge(
-                        event.venue_availability
-                      )}`}
-                    >
-                      Venue: {event.venue_availability}
-                    </span>
-                  )}
-                  {event.synthetic && (
-                    <span className="inline-flex items-center rounded-[6px] border border-stone-200/70 bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-500">
-                      Demo
-                    </span>
-                  )}
                 </div>
 
                 <Link

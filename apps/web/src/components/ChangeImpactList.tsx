@@ -83,9 +83,7 @@ function EventWorkspace({ event, refresh }: { event: EventOut; refresh: () => vo
       <p className="mt-1 text-sm text-stone-600">{event.description ?? 'No description provided.'}</p>
       <div className="mt-3 flex flex-wrap gap-4 text-xs font-medium text-stone-600">
         <span>🕒 {campusFormat(event.start_at)} – {campusFormat(event.end_at)}</span>
-        <span>📍 Venue availability: {event.venue_availability}</span>
         <span>🔢 Revision {event.revision}</span>
-        {event.synthetic && <span className="text-amber-700 font-semibold">🧪 Synthetic demo</span>}
       </div>
     </div>
     <section><h3 className="text-lg font-bold tracking-tight text-stone-900">Preview confirmation conflicts</h3><p className="my-2 text-sm text-stone-600">Advisory preview as CONFIRMED. Use the staged change form below to save and review a change.</p>
