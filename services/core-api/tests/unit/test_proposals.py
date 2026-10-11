@@ -309,6 +309,20 @@ def test_no_link_is_made_for_someone_who_may_not_read_it(rig: Rig, actor: Actor)
 # ---- reviewing -------------------------------------------------------------------------
 
 
+def test_proposals_are_listed_only_to_members_of_the_event_club(rig: Rig) -> None:
+    first = submit(rig)
+    second = submit(rig)
+    items = rig.svc.list_for_event(ORGANIZER, rig.event)
+    assert [item.id for item in items] == [second.id, first.id]
+    assert [item.id for item in rig.svc.list_for_event(CAMPUS, rig.event)] == [second.id, first.id]
+    with pytest.raises(NotAuthorizedError):
+        rig.svc.list_for_event(OTHER_CLUB, rig.event)
+    with pytest.raises(NotFoundError):
+        rig.svc.list_for_event(ORGANIZER, uuid4())
+
+
+
+
 def faculty_approve(rig: Rig, proposal_id: UUID) -> None:
     result = rig.svc.review(ctx(FACULTY), proposal_id, ReviewAction.APPROVE, 'Faculty reviewed')
     assert result.status is S.FACULTY_APPROVED
