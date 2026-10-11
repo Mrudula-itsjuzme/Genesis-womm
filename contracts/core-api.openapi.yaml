@@ -482,6 +482,469 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/events/{event_id}/impact:
+    post:
+      tags:
+      - events
+      summary: Preview Change
+      operationId: preview_change_api_v1_events__event_id__impact_post
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImpactReport'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/events/{event_id}/change-proposals:
+    post:
+      tags:
+      - events
+      summary: Stage Change Route
+      operationId: stage_change_route_api_v1_events__event_id__change_proposals_post
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          description: Makes a retried POST safe.
+          title: Idempotency-Key
+        description: Makes a retried POST safe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StageChange'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeProposalOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR / IDEMPOTENCY_MISMATCH
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      tags:
+      - events
+      summary: List Changes
+      operationId: list_changes_api_v1_events__event_id__change_proposals_get
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeProposalList'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/events/{event_id}/change-proposals/{proposal_id}:
+    get:
+      tags:
+      - events
+      summary: Get Change
+      operationId: get_change_api_v1_events__event_id__change_proposals__proposal_id__get
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      - name: proposal_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Proposal Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeProposalOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/events/{event_id}/change-proposals/{proposal_id}/apply:
+    post:
+      tags:
+      - events
+      summary: Apply Change Route
+      operationId: apply_change_route_api_v1_events__event_id__change_proposals__proposal_id__apply_post
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      - name: proposal_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Proposal Id
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          description: Makes a retried POST safe.
+          title: Idempotency-Key
+        description: Makes a retried POST safe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyChange'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeAppliedOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR / IDEMPOTENCY_MISMATCH
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: CONFLICT_DETECTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/events/{event_id}/dependencies:
+    get:
+      tags:
+      - events
+      summary: List Dependencies
+      operationId: list_dependencies_api_v1_events__event_id__dependencies_get
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DependencyList'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags:
+      - events
+      summary: Register Dependency Route
+      operationId: register_dependency_route_api_v1_events__event_id__dependencies_post
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Event Id
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          description: Makes a retried POST safe.
+          title: Idempotency-Key
+        description: Makes a retried POST safe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DependencyCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DependencyOut'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: FORBIDDEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: VALIDATION_ERROR / IDEMPOTENCY_MISMATCH
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: NOT_IMPLEMENTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/resources:
     get:
       tags:
@@ -1459,6 +1922,17 @@ components:
       type: object
       title: AgentConflictCheckRequest
       description: 'Facade input: check a saved event, or a candidate that is not saved yet.'
+    ApplyChange:
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1.0
+          title: Expected Revision
+      additionalProperties: false
+      type: object
+      required:
+      - expected_revision
+      title: ApplyChange
     AvailabilityState:
       type: string
       enum:
@@ -1483,6 +1957,161 @@ components:
       required:
       - file
       title: Body_upload_proposal_api_v1_clubs__club_id__events__event_id__proposals_post
+    ChangeAppliedOut:
+      properties:
+        event:
+          $ref: '#/components/schemas/EventOut'
+        conflicts:
+          items:
+            $ref: '#/components/schemas/Conflict'
+          type: array
+          title: Conflicts
+        impact:
+          items:
+            $ref: '#/components/schemas/ImpactItem'
+          type: array
+          title: Impact
+      type: object
+      required:
+      - event
+      - conflicts
+      - impact
+      title: ChangeAppliedOut
+    ChangeFields:
+      properties:
+        start_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start At
+        end_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End At
+        resource_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Resource Id
+        expected_attendance:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Expected Attendance
+      additionalProperties: false
+      type: object
+      title: ChangeFields
+    ChangeProposalList:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ChangeProposalOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: ChangeProposalList
+    ChangeProposalOut:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        event_id:
+          type: string
+          format: uuid
+          title: Event Id
+        base_revision:
+          type: integer
+          title: Base Revision
+        reason:
+          type: string
+          title: Reason
+        status:
+          type: string
+          enum:
+          - STAGED
+          - APPLIED
+          title: Status
+        changes:
+          $ref: '#/components/schemas/ChangeFields'
+        conflicts:
+          items:
+            $ref: '#/components/schemas/Conflict'
+          type: array
+          title: Conflicts
+        impact:
+          items:
+            $ref: '#/components/schemas/ImpactItem'
+          type: array
+          title: Impact
+        requested_by:
+          type: string
+          format: uuid
+          title: Requested By
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        applied_by:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Applied By
+        applied_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Applied At
+      type: object
+      required:
+      - id
+      - event_id
+      - base_revision
+      - reason
+      - status
+      - changes
+      - conflicts
+      - impact
+      - requested_by
+      - created_at
+      - applied_by
+      - applied_at
+      title: ChangeProposalOut
+    ChangeRequest:
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1.0
+          title: Expected Revision
+        changes:
+          $ref: '#/components/schemas/ChangeFields'
+      additionalProperties: false
+      type: object
+      required:
+      - expected_revision
+      - changes
+      title: ChangeRequest
     ChatMessage:
       properties:
         role:
@@ -1806,6 +2435,113 @@ components:
       required:
       - email
       title: DemoLoginRequest
+    DependencyCreate:
+      properties:
+        kind:
+          type: string
+          enum:
+          - COMMITMENT
+          - TASK
+          title: Kind
+        title:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Title
+        field_paths:
+          items:
+            type: string
+            enum:
+            - start_at
+            - end_at
+            - resource_id
+            - expected_attendance
+          type: array
+          maxItems: 4
+          minItems: 1
+          title: Field Paths
+      additionalProperties: false
+      type: object
+      required:
+      - kind
+      - title
+      - field_paths
+      title: DependencyCreate
+    DependencyList:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/DependencyOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - total
+      title: DependencyList
+    DependencyOut:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        event_id:
+          type: string
+          format: uuid
+          title: Event Id
+        kind:
+          type: string
+          enum:
+          - COMMITMENT
+          - TASK
+          title: Kind
+        title:
+          type: string
+          title: Title
+        status:
+          type: string
+          title: Status
+        needs_revalidation:
+          type: boolean
+          title: Needs Revalidation
+        reported_by:
+          type: string
+          format: uuid
+          title: Reported By
+        field_paths:
+          items:
+            type: string
+            enum:
+            - start_at
+            - end_at
+            - resource_id
+            - expected_attendance
+          type: array
+          title: Field Paths
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - event_id
+      - kind
+      - title
+      - status
+      - needs_revalidation
+      - reported_by
+      - field_paths
+      - created_at
+      - updated_at
+      title: DependencyOut
     ErrorCode:
       type: string
       enum:
@@ -2090,6 +2826,95 @@ components:
       - version
       title: HealthOut
       description: Process liveness. Says nothing about dependencies.
+    ImpactItem:
+      properties:
+        dependent_id:
+          type: string
+          format: uuid
+          title: Dependent Id
+        dependent_kind:
+          type: string
+          enum:
+          - COMMITMENT
+          - TASK
+          title: Dependent Kind
+        title:
+          type: string
+          title: Title
+        status:
+          type: string
+          title: Status
+        changed_fields:
+          items:
+            type: string
+            enum:
+            - start_at
+            - end_at
+            - resource_id
+            - expected_attendance
+          type: array
+          title: Changed Fields
+        reason:
+          type: string
+          title: Reason
+        revalidation_required:
+          type: boolean
+          title: Revalidation Required
+      type: object
+      required:
+      - dependent_id
+      - dependent_kind
+      - title
+      - status
+      - changed_fields
+      - reason
+      - revalidation_required
+      title: ImpactItem
+    ImpactReport:
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          title: Event Id
+        base_revision:
+          type: integer
+          title: Base Revision
+        changed_fields:
+          items:
+            type: string
+            enum:
+            - start_at
+            - end_at
+            - resource_id
+            - expected_attendance
+          type: array
+          title: Changed Fields
+        evaluated_as:
+          $ref: '#/components/schemas/EventStatus'
+        conflicts:
+          items:
+            $ref: '#/components/schemas/Conflict'
+          type: array
+          title: Conflicts
+        impact:
+          items:
+            $ref: '#/components/schemas/ImpactItem'
+          type: array
+          title: Impact
+        advisory:
+          type: boolean
+          const: true
+          title: Advisory
+          default: true
+      type: object
+      required:
+      - event_id
+      - base_revision
+      - changed_fields
+      - evaluated_as
+      - conflicts
+      - impact
+      title: ImpactReport
     MembershipOut:
       properties:
         club_id:
@@ -2540,6 +3365,26 @@ components:
       - info
       title: Severity
       description: Lowercase on the wire, as in contracts/CONTRACTS.md.
+    StageChange:
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1.0
+          title: Expected Revision
+        changes:
+          $ref: '#/components/schemas/ChangeFields'
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 1
+          title: Reason
+      additionalProperties: false
+      type: object
+      required:
+      - expected_revision
+      - changes
+      - reason
+      title: StageChange
     ToolOutcome:
       type: string
       enum:

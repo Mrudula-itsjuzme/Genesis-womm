@@ -281,6 +281,7 @@ def test_every_unimplemented_route_is_marked_as_a_stub(openapi: dict[str, Any]) 
         if (
             path in {"/health", "/ready"}
             or "/proposals" in path
+            or any(part in path for part in ("/change-proposals", "/dependencies", "/impact"))
             or (method, path)
             in {
                 ("POST", "/api/v1/auth/demo-login"),
@@ -313,6 +314,7 @@ def test_stubs_cover_exactly_the_documented_routes(openapi: dict[str, Any]) -> N
         for method, path, _ in _operations(openapi)
         if path not in {"/health", "/ready"}
         and "/proposals" not in path
+        and not any(part in path for part in ("/change-proposals", "/dependencies", "/impact"))
         and (method, path)
         not in {
             ("POST", "/api/v1/auth/demo-login"),
@@ -384,6 +386,17 @@ def test_event_create_exposes_no_status_field(openapi: dict[str, Any]) -> None:
     properties = openapi["components"]["schemas"]["EventCreate"]["properties"]
     assert "status" not in properties
     assert openapi["components"]["schemas"]["EventCreate"]["additionalProperties"] is False
+
+
+def test_staged_change_routes_document_strict_patches_and_safe_retries(
+    openapi: dict[str, Any],
+) -> None:
+    paths = openapi["paths"]
+    for suffix in ("change-proposals", "change-proposals/{proposal_id}/apply", "dependencies"):
+        parameters = paths[f"/api/v1/events/{{event_id}}/{suffix}"]["post"]["parameters"]
+        assert any(p["name"] == "Idempotency-Key" for p in parameters)
+    properties = openapi["components"]["schemas"]["ChangeFields"]["properties"]
+    assert set(properties) == {"start_at", "end_at", "resource_id", "expected_attendance"}
 
 
 def test_the_shared_enums_are_exported_once(openapi: dict[str, Any]) -> None:
