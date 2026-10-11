@@ -51,7 +51,40 @@ function Conversation() {
         ⚠️ Test Conflicting Slot
       </button>
     </div>
-    <form onSubmit={send} className="mt-3 space-y-3"><label className="block text-sm font-medium text-stone-700">Policy question<textarea disabled={busy || !token} required maxLength={4000} value={input} onChange={e => setInput(e.target.value)} className="mt-2 w-full rounded-[10px] border border-stone-300/80 bg-white p-3 text-sm transition-all focus:border-[#7a1b32] focus:outline-none focus:ring-2 focus:ring-[#7a1b32]/15" /></label><button disabled={busy || !token || !input.trim()} className="rounded-[10px] bg-[#7a1b32] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 ease-out hover:bg-[#631628] active:scale-[0.98] disabled:opacity-50">{busy ? 'Asking…' : 'Ask CampusCue'}</button>{error && <p role="alert" className="text-sm font-medium text-rose-800">{error}</p>}</form>
+    <form onSubmit={send} className="mt-3 space-y-3">
+      <label className="block text-sm font-medium text-stone-700">Policy question
+        <textarea
+          disabled={busy || !token}
+          required
+          maxLength={4000}
+          rows={3}
+          placeholder="Ask anything about student affairs, venue permissions, budget policies, or event planning... (e.g., What are the rules for organizing a workshop after 8 PM?)"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault();
+              send(e);
+            }
+          }}
+          className="mt-2 w-full rounded-[10px] border border-stone-300/80 bg-white p-3 text-sm transition-all focus:border-[#7a1b32] focus:outline-none focus:ring-2 focus:ring-[#7a1b32]/15"
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          disabled={busy || !token || !input.trim()}
+          className="rounded-[10px] bg-[#7a1b32] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 ease-out hover:bg-[#631628] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy ? 'Asking…' : 'Ask CampusCue'}
+        </button>
+        {!input.trim() && token && (
+          <span className="text-xs text-stone-400 font-medium">
+            Type a question above or click one of the demo prompts to enable.
+          </span>
+        )}
+      </div>
+      {error && <p role="alert" className="text-sm font-medium text-rose-800">{error}</p>}
+    </form>
   </section>;
 }
 function ActionReview({ action }: { action: AgentAction }) {
