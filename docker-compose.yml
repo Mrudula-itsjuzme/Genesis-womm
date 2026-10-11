@@ -34,6 +34,20 @@ services:
     # Not published to the host: another local Postgres often owns 5432. Use
     # `docker compose exec postgres psql -U campuscue` instead.
 
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-campuscue_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-campuscue_secret}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # One-shot: applies Core's migrations, then exits. The API never migrates at start-up.
   migrate:
     build: ./services/core-api
@@ -68,9 +82,14 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
       AGENT_API_URL: http://agent-api:8001
       CAMPUS_GAP_MINUTES: ${CAMPUS_GAP_MINUTES:-120}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-campuscue_admin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-campuscue_secret}
     depends_on:
       seed-demo:
         condition: service_completed_successfully
+      minio:
+        condition: service_healthy
     ports:
       - "${CORE_API_PORT:-8000}:8000"
 
@@ -112,3 +131,4 @@ services:
 
 volumes:
   pgdata:
+  miniodata:
