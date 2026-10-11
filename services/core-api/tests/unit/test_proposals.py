@@ -322,6 +322,21 @@ def test_approving_a_private_proposal_never_publishes_it_to_rag(rig: Rig) -> Non
     assert ("REVIEW_PROPOSAL", "SUCCESS", None, "USER") in audit(rig)
 
 
+
+def test_faculty_advisor_can_review_own_club_document_without_public_indexing(rig: Rig) -> None:
+    from app.domain.enums import Role
+
+    advisor = Actor(user_id=uuid4(), memberships={CLUB_A: Role.FACULTY_ADVISOR})
+    saved = submit(rig)
+    reviewed = rig.svc.review(ctx(advisor), saved.id, ReviewAction.APPROVE, "Reviewed for this club")
+
+    assert reviewed.status is S.APPROVED
+    assert reviewed.reviewed_by == advisor.user_id
+    assert reviewed.rag_ingested_at is None
+    assert rig.rag.ingested == []
+    assert rig.storage.presigned == []
+
+
 def test_when_rag_is_down_the_proposal_stays_approved_and_the_review_stands(rig: Rig) -> None:
     rig.rag.accepts = False
     saved = submit(rig)
