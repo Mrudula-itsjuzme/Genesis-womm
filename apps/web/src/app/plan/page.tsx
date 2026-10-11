@@ -7,6 +7,7 @@ import { useRemote } from '@/hooks/useRemote';
 import { eventsApi, resourcesApi, proposalsApi } from '@/lib/api/endpoints';
 import { errorMessage } from '@/lib/api/client';
 import { toCampusISO, validateEventPlan } from '@/lib/campus-time';
+import { validateProposal } from '@/lib/proposal';
 import type { EventCreate, EventCreatedOut } from '@/types/core-api';
 import ConflictSidebar from '@/components/ConflictSidebar';
 import RemoteState from '@/components/RemoteState';
@@ -93,15 +94,17 @@ function PlanFacilityBookingForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<EventCreatedOut | null>(null);
+  const [approvalUploaded, setApprovalUploaded] = useState(false);
+  const [approvalUploadError, setApprovalUploadError] = useState('');
   const pending = useRef<{ payload: string; key: string } | null>(null);
 
   const venues = useRemote(token, signal => resourcesApi.list(token!, { kind: 'VENUE', limit: 100 }, signal));
 
   // Compute total expected attendance from participant breakdown
-  const natM = parseInt(nationalMale || '0', 10);
-  const natF = parseInt(nationalFemale || '0', 10);
-  const intlM = parseInt(intlMale || '0', 10);
-  const intlF = parseInt(intlFemale || '0', 10);
+  const natM = Number(nationalMale || '0');
+  const natF = Number(nationalFemale || '0');
+  const intlM = Number(intlMale || '0');
+  const intlF = Number(intlFemale || '0');
   const totalParticipants = natM + natF + intlM + intlF;
 
   // Build candidate event object for core-api
@@ -109,6 +112,13 @@ function PlanFacilityBookingForm() {
   let validation = '';
   try {
     if (activeClub && date && start && end && title) {
+      if (![natM, natF, intlM, intlF].every(n => Number.isInteger(n) && n >= 0)) {
+        throw new Error('Participant counts must be non-negative whole numbers.');
+      }
+      if (approvalFile) {
+        const invalidFile = validateProposal(approvalFile);
+        if (invalidFile) throw new Error(invalidFile);
+      }
       // Assemble full structured description preserving all AMRITA Facility Booking items
       const fullDescription = [
         description.trim(),
@@ -163,20 +173,40 @@ function PlanFacilityBookingForm() {
     try {
       const result = await eventsApi.create(token, candidate, pending.current.key);
       setCreated(result);
+      setApprovalUploadError('');
 
       // If user attached academic approval PDF, automatically upload proposal to the created event
       if (approvalFile) {
         try {
           await proposalsApi.upload(token, activeClub.club_id, result.event.id, approvalFile, `Dean Academic Approval - ${title.trim()}`);
-          toast('success', 'Event & Approval Submitted', 'Saved event draft and uploaded Dean Academic Approval copy.');
+          setApprovalUploaded(true);
+          toast('success', 'Draft and document saved', 'The document was uploaded to CampusCue. No official booking or approval was made.');
         } catch (uploadErr) {
-          toast('info', 'Draft Saved', `Event saved, but proposal upload note: ${errorMessage(uploadErr)}`);
+          setApprovalUploadError(errorMessage(uploadErr));
+          toast('info', 'Draft saved; document needs attention', 'The event was saved. Retry the document upload below.');
         }
       } else {
         toast('success', 'Event draft saved', 'A draft proposal is not a confirmed booking.');
       }
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function retryApprovalUpload() {
+    if (!token || !activeClub || !created || !approvalFile || saving || approvalUploaded) return;
+    const invalid = validateProposal(approvalFile);
+    if (invalid) { setApprovalUploadError(invalid); return; }
+    setSaving(true);
+    setApprovalUploadError('');
+    try {
+      await proposalsApi.upload(token, activeClub.club_id, created.event.id, approvalFile, `Dean Academic Approval - ${title.trim()}`);
+      setApprovalUploaded(true);
+      toast('success', 'Document uploaded', 'The PDF was saved in CampusCue; this is not official institutional approval.');
+    } catch (err) {
+      setApprovalUploadError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -200,10 +230,13 @@ function PlanFacilityBookingForm() {
             </h1>
             <p className="text-sm font-semibold text-stone-700">Coimbatore Campus · Events Department</p>
             <p className="mt-1 text-sm font-medium text-[#7a1b32]">
-              Revised Form : Facility booking for events - Coimbatore campus (To be submitted to Events Dept)
+              CampusCue draft based on the campus facility request format
             </p>
           </div>
         </div>
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          This is a CampusCue planning draft. Saving it does not submit a request to the Events Department, reserve a venue, or establish institutional approval.
+        </p>
       </div>
 
       {!token ? (
@@ -377,10 +410,10 @@ function PlanFacilityBookingForm() {
                 {/* 7. Hall(s) required for the Event */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-stone-800">
-                    7. Hall(s) required for the Event <span className="text-rose-600">*</span>
+                    7. Preferred hall(s) (optional while planning)
                   </label>
                   <p className="text-xs text-stone-500">
-                    Select primary venue for deterministic schedule conflict verification against campus booking engine.
+                    Select a preferred venue to check conflicts against CampusCue records. Availability is unknown until confirmed by an authorized campus source.
                   </p>
                   <select value={venue} onChange={e => setVenue(e.target.value)} className={inputStyle}>
                     <option value="">Select Hall / Venue</option>
@@ -789,7 +822,7 @@ function PlanFacilityBookingForm() {
                   disabled={!payload || saving}
                   className="w-full rounded-[10px] bg-[#7a1b32] px-6 py-3.5 text-base font-bold text-white shadow-sm transition-all duration-150 ease-out hover:bg-[#631628] active:scale-[0.98] disabled:opacity-50"
                 >
-                  {saving ? 'Submitting Facility Booking…' : 'Submit Facility Booking Form'}
+                  {saving ? 'Saving event draft…' : 'Save event request draft'}
                 </button>
               </fieldset>
 
@@ -798,15 +831,28 @@ function PlanFacilityBookingForm() {
               {created && (
                 <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50/90 p-5 text-sm text-emerald-950 space-y-2">
                   <div className="flex items-center gap-2 font-bold text-emerald-900">
-                    <span>✓ Facility Booking Form Submitted</span>
+                    <span>✓ CampusCue event draft saved</span>
                     <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-xs text-emerald-800">{created.event.status}</span>
                   </div>
                   <p className="text-xs text-emerald-800">
-                    Draft recorded for <strong>{created.event.title}</strong>. A tentative proposal is not a confirmed booking. It now enters the two-stage review pipeline (Faculty Advisor → Campus Director / OSA Approval).
+                    Draft recorded for <strong>{created.event.title}</strong>. This is not an official facility request, a booking, or an approval. Any faculty or institutional review must be tracked separately.
                   </p>
                   <Link className="inline-block text-xs font-bold text-[#7a1b32] underline hover:text-[#631628]" href={'/changes?eventId=' + created.event.id}>
-                    Open Event Workspace and Track Approval Stages →
+                    Open event workspace →
                   </Link>
+                </div>
+              )}
+              {created && approvalFile && (
+                <div className="rounded-xl border border-stone-200 bg-white p-4 text-sm" aria-live="polite">
+                  <p className="font-semibold text-stone-900">
+                    Academic approval PDF: {approvalUploaded ? 'Uploaded to CampusCue' : 'Not uploaded'}
+                  </p>
+                  {approvalUploadError && <p role="alert" className="mt-2 text-rose-800">{approvalUploadError}</p>}
+                  {!approvalUploaded && (
+                    <button type="button" disabled={saving} onClick={retryApprovalUpload} className="mt-2 rounded-lg bg-[#7a1b32] px-4 py-2 font-semibold text-white disabled:opacity-50">
+                      {saving ? 'Uploading PDF…' : 'Retry PDF upload'}
+                    </button>
+                  )}
                 </div>
               )}
             </form>
