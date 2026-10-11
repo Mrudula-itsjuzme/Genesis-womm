@@ -221,6 +221,34 @@ def test_tool_call_appears_in_trace() -> None:
     assert "message" in body
 
 
+def test_filed_draft_is_returned_as_a_proposal_not_a_completed_event() -> None:
+    responses = [
+        LlmResponse(
+            text=None,
+            tool_calls=[
+                ToolCall(
+                    id="tc-draft",
+                    name="file_event_draft_proposal",
+                    arguments={"summary": "Propose a demo", "payload": {}},
+                )
+            ],
+        ),
+        LlmResponse(text="I proposed a draft for human confirmation.", tool_calls=[]),
+    ]
+    client = _make_client(llm_responses=responses)
+
+    response = client.post(
+        "/v1/agent/chat",
+        json={"messages": [MESSAGE]},
+        headers={REQUEST_ID_HEADER: "req-draft-1"},
+    )
+
+    assert response.status_code == 200, response.text
+    [action] = response.json()["proposed_actions"]
+    assert action["status"] == "PROPOSED"
+    assert action["requires_human_review"] is True
+
+
 def test_disallowed_tool_is_rejected_with_trace() -> None:
     """Engine rejects a tool not on the allowlist; outcome=INVALID_ARGUMENTS in trace."""
     llm_responses = [

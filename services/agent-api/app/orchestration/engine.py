@@ -36,6 +36,7 @@ from app.schemas.chat import (
     ToolTraceEntry,
 )
 from app.schemas.core import (
+    AgentAction,
     AgentActionCreate,
     AgentConflictCheckRequest,
 )
@@ -78,6 +79,7 @@ class OrchestrationEngine:
         mutable = list(messages)
         trace: list[ToolTraceEntry] = []
         citations: list[Citation] = []
+        proposed_actions: list[AgentAction] = []
         tool_calls_used = 0
 
         while True:
@@ -90,7 +92,7 @@ class OrchestrationEngine:
                     message=text,
                     clarifying_question=self._extract_clarifying(text),
                     citations=citations,
-                    proposed_actions=[],
+                    proposed_actions=proposed_actions,
                     trace=trace,
                     request_id=ctx.request_id,
                 )
@@ -104,7 +106,7 @@ class OrchestrationEngine:
                         "Please refine your request and try again."
                     ),
                     citations=citations,
-                    proposed_actions=[],
+                    proposed_actions=proposed_actions,
                     trace=trace,
                     request_id=ctx.request_id,
                 )
@@ -118,8 +120,10 @@ class OrchestrationEngine:
             # Dispatch each tool call
             for tc in response.tool_calls:
                 tool_calls_used += 1
-                result_text, _outcome, new_citations = await self._dispatch(tc, ctx, trace)
+                result_text, _outcome, new_citations, action = await self._dispatch(tc, ctx, trace)
                 citations.extend(new_citations)
+                if action is not None:
+                    proposed_actions.append(action)
                 # Append tool result as user message (standard ReAct pattern)
                 mutable.append(ChatMessage(role="user", content=f"[Tool {tc.name}]: {result_text}"))
 
@@ -132,7 +136,7 @@ class OrchestrationEngine:
         tc: ToolCall,
         ctx: CallContext,
         trace: list[ToolTraceEntry],
-    ) -> tuple[str, ToolOutcome, list[Citation]]:
+    ) -> tuple[str, ToolOutcome, list[Citation], AgentAction | None]:
         """Dispatch one tool call; always appends a trace entry."""
         start_instant = self._clock.now()
 
@@ -149,10 +153,10 @@ class OrchestrationEngine:
                     request_id=ctx.request_id,
                 )
             )
-            return f"Error: tool '{tc.name}' is not on the allowlist.", outcome, []
+            return f"Error: tool '{tc.name}' is not on the allowlist.", outcome, [], None
 
         try:
-            result, new_citations = await asyncio.wait_for(
+            result, new_citations, action = await asyncio.wait_for(
                 self._call_tool(tc, ctx),
                 timeout=self._tool_timeout_s,
             )
@@ -163,10 +167,12 @@ class OrchestrationEngine:
         except TimeoutError:
             result = f"Error: {tc.name} timed out after {self._tool_timeout_s}s."
             new_citations = []
+            action = None
             outcome = ToolOutcome.TIMEOUT
         except DeniedError as e:
             result = f"Error: permission denied — {e}"
             new_citations = []
+            action = None
             outcome = ToolOutcome.DENIED
         except (
             DependencyUnavailableError,
@@ -176,6 +182,7 @@ class OrchestrationEngine:
         ) as e:
             result = f"Error: {tc.name} failed — {e}"
             new_citations = []
+            action = None
             outcome = ToolOutcome.ERROR
 
         latency = int((self._clock.now() - start_instant).total_seconds() * 1000)
@@ -190,19 +197,24 @@ class OrchestrationEngine:
                 request_id=ctx.request_id,
             )
         )
-        return result, outcome, new_citations
+        return result, outcome, new_citations, action
 
-    async def _call_tool(self, tc: ToolCall, ctx: CallContext) -> tuple[str, list[Citation]]:
+    async def _call_tool(
+        self, tc: ToolCall, ctx: CallContext
+    ) -> tuple[str, list[Citation], AgentAction | None]:
         args = tc.arguments
 
         if tc.name == "check_event_conflicts":
-            return await self._check_conflicts(args, ctx)
+            result, citations = await self._check_conflicts(args, ctx)
+            return result, citations, None
 
         if tc.name == "get_event_details":
-            return await self._get_event(args, ctx)
+            result, citations = await self._get_event(args, ctx)
+            return result, citations, None
 
         if tc.name == "search_campus_policy":
-            return await self._search_policy(args, ctx)
+            result, citations = await self._search_policy(args, ctx)
+            return result, citations, None
 
         if tc.name == "file_event_draft_proposal":
             return await self._file_draft(args, ctx)
@@ -280,7 +292,7 @@ class OrchestrationEngine:
 
     async def _file_draft(
         self, args: dict[str, Any], ctx: CallContext
-    ) -> tuple[str, list[Citation]]:
+    ) -> tuple[str, list[Citation], AgentAction]:
         action_create = AgentActionCreate(
             type=AgentActionType.CREATE_EVENT_DRAFT,
             summary=str(args["summary"]),
@@ -292,11 +304,12 @@ class OrchestrationEngine:
             f"Draft proposal filed (action_id={action.action_id}, status={action.status}). "
             "Nothing is booked — a human must confirm this proposal.",
             [],
+            action,
         )
 
     async def _file_change(
         self, args: dict[str, Any], ctx: CallContext
-    ) -> tuple[str, list[Citation]]:
+    ) -> tuple[str, list[Citation], AgentAction]:
         action_create = AgentActionCreate(
             type=AgentActionType.REQUEST_EVENT_CHANGE,
             summary=str(args["summary"]),
@@ -310,6 +323,7 @@ class OrchestrationEngine:
             f"Change proposal filed (action_id={action.action_id}, status={action.status}). "
             "Nothing changes — a human must confirm this proposal.",
             [],
+            action,
         )
 
     # ------------------------------------------------------------------
