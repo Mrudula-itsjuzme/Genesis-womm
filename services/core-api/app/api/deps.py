@@ -14,6 +14,7 @@ from app.api.errors import ApiError
 from app.domain.authz import Actor
 from app.domain.enums import ErrorCode
 from app.services.agent_actions import AgentActionService
+from app.services.change_queries import ChangeQueries
 from app.services.chat import ChatService
 from app.services.conflict_checks import ConflictCheckService
 from app.services.delegation import DelegationService
@@ -107,6 +108,13 @@ def get_proposal_service(request: Request) -> ProposalService:
     if service is None:
         raise RuntimeError("proposal service is not configured")
     return cast(ProposalService, service)
+
+
+def get_change_queries(request: Request) -> ChangeQueries:
+    service = getattr(request.app.state, "changes", None)
+    if service is None:
+        raise RuntimeError("change queries are not configured")
+    return cast(ChangeQueries, service)
 
 
 def require_session_actor(
