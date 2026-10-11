@@ -30,6 +30,7 @@ from app.services.minio_client import MinIOProposalStorage
 from app.services.proposal_lifecycle import ProposalLifecycleManager
 from app.services.proposals import ProposalService
 from app.services.readiness import ReadinessService
+from app.services.resource_interests import ResourceInterestService
 from app.services.resource_reads import ResourceReadService
 from app.services.schedule_write import ScheduleWriteService
 from app.services.sessions import SessionService
@@ -57,6 +58,7 @@ class Container:
     chat: ChatService | None = None
     proposals: ProposalService | None = None
     changes: ChangeQueries | None = None
+    resource_interests: ResourceInterestService | None = None
     agent_client: httpx.Client | None = None
     rag_client: httpx.Client | None = None
     internal_api_key: str | None = None
@@ -104,6 +106,9 @@ def build_container(settings: Settings) -> Container:
     )
     event_reads = EventReadService(lambda: SqlUnitOfWork(database_sessions))
     resource_reads = ResourceReadService(lambda: SqlUnitOfWork(database_sessions))
+    resource_interests = ResourceInterestService(
+        lambda: SqlUnitOfWork(database_sessions), clock=SystemClock(), ids=UuidSource()
+    )
     delegation = DelegationService(
         lambda: SqlUnitOfWork(database_sessions),
         PyJwtDelegationService(settings.delegation_signing_key.get_secret_value()),
@@ -159,6 +164,7 @@ def build_container(settings: Settings) -> Container:
         schedule_write=schedule_write,
         event_reads=event_reads,
         resource_reads=resource_reads,
+        resource_interests=resource_interests,
         conflict_checks=conflict_checks,
         delegation=delegation,
         agent_actions=agent_actions,

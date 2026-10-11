@@ -43,6 +43,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.state.schedule_write = container.schedule_write
     app.state.event_reads = container.event_reads
     app.state.resource_reads = container.resource_reads
+    app.state.resource_interests = container.resource_interests
     app.state.conflict_checks = container.conflict_checks
     app.state.delegation = container.delegation
     app.state.agent_actions = container.agent_actions

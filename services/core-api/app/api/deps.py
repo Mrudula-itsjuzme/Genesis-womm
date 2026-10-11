@@ -21,6 +21,7 @@ from app.services.delegation import DelegationService
 from app.services.event_reads import EventReadService
 from app.services.proposals import ProposalService
 from app.services.readiness import ReadinessService
+from app.services.resource_interests import ResourceInterestService
 from app.services.resource_reads import ResourceReadService
 from app.services.schedule_write import ScheduleWriteService
 from app.services.sessions import SessionService
@@ -101,6 +102,13 @@ def get_resource_read_service(request: Request) -> ResourceReadService:
     if service is None:
         raise RuntimeError("resource read service is not configured")
     return cast(ResourceReadService, service)
+
+
+def get_resource_interest_service(request: Request) -> ResourceInterestService:
+    service = getattr(request.app.state, "resource_interests", None)
+    if service is None:
+        raise RuntimeError("resource interest service is not configured")
+    return cast(ResourceInterestService, service)
 
 
 def get_proposal_service(request: Request) -> ProposalService:
