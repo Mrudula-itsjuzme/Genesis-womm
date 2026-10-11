@@ -53,3 +53,18 @@ test('administrator apply requires a click and stale errors retain the proposal'
   await expect(page.getByText(/Reload the current event revision/)).toBeVisible();
   await expect(page.getByText('Saved timing correction · STAGED')).toBeVisible(); expect(applies).toBe(1);
 });
+
+test('attendance edits preserve recorded timestamp seconds', async ({ page }) => {
+  await gateway(page);
+  await page.route('**/events/' + eventId, route => route.fulfill({ json: { ...event, start_at: '2026-10-18T04:30:45Z', end_at: '2026-10-18T06:30:30Z' } }));
+  await page.route('**/dependencies', route => route.fulfill({ json: { items: [], total: 0 } }));
+  await page.route('**/change-proposals*', route => route.fulfill({ json: { items: [], total: 0 } }));
+  let patch: unknown;
+  await page.route('**/impact', async route => {
+    patch = route.request().postDataJSON().changes;
+    await route.fulfill({ json: { event_id: eventId, base_revision: 1, changed_fields: Object.keys(patch as object), evaluated_as: 'DRAFT', advisory: true, conflicts: [], impact: [] } });
+  });
+  await page.goto('/changes?eventId=' + eventId);
+  await page.getByLabel('Change attendance estimate').fill('20');
+  await expect.poll(() => patch).toEqual({ expected_attendance: 20 });
+});

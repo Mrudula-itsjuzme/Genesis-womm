@@ -41,7 +41,8 @@ export default function ChangeProposalPanel({ event, refresh }: { event: EventOu
   let changes: ChangeFields = {}, validation = '';
   try {
     const [day, time] = start.split('T'), [lastDay, lastTime] = end.split('T');
-    const startAt = toCampusISO(day, time), endAt = toCampusISO(lastDay, lastTime);
+    const startAt = start === begin.date + 'T' + begin.time ? event.start_at : toCampusISO(day, time);
+    const endAt = end === finish.date + 'T' + finish.time ? event.end_at : toCampusISO(lastDay, lastTime);
     if (Date.parse(startAt) >= Date.parse(endAt)) throw new Error('End must be after start.');
     if (Date.parse(startAt) !== Date.parse(event.start_at)) changes.start_at = startAt;
     if (Date.parse(endAt) !== Date.parse(event.end_at)) changes.end_at = endAt;
