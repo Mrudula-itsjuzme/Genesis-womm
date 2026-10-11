@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gateway, event, eventId, check, session } from './fixtures';
+import { gateway, event, eventId, check, session, action } from './fixtures';
 
 test('planner previews unsaved schedules and sends an idempotent campus-time draft', async ({ page }) => {
   await gateway(page);
@@ -47,7 +47,7 @@ test('report drafts remain editable and user-scoped', async ({ page }) => {
 test('mobile navigation works and backend failures never display mock events', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await gateway(page);
   await page.route('**/api/v1/events*', route => route.fulfill({ status: 503, json: { code: 'DEPENDENCY_UNAVAILABLE', message: 'Core unavailable', details: [], request_id: 'offline-request' } }));
-  await page.goto('/'); await expect(page.getByText(/Core unavailable/).first()).toBeVisible(); await expect(page.getByText('WOMM Orientation')).not.toBeVisible();
+  await page.goto('/', { waitUntil: 'domcontentloaded' }); await expect(page.getByText(/Core unavailable/).first()).toBeVisible(); await expect(page.getByText('WOMM Orientation')).not.toBeVisible();
   await page.getByRole('button', { name: 'Open navigation' }).click(); await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link', { name: 'Reports' }).click(); await expect(page).toHaveURL(/reports/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -80,4 +80,29 @@ test('campus administrators can reopen and review a saved proposal', async ({ pa
   await page.getByLabel('Existing proposal ID').fill('known-id'); await page.getByRole('button', { name: 'Load proposal', exact: true }).click();
   await page.getByLabel('Review note').fill('Please include the agenda'); await page.getByRole('button', { name: 'request revision', exact: true }).click();
   await expect(page.getByText(/Saved Reopened proposal.*REVISION_REQUESTED/)).toBeVisible();
+});
+
+test('action drafts require a click and retain review state after a conflict', async ({ page }) => {
+  await gateway(page); let confirmations = 0;
+  await page.route('**/agent/chat', route => route.fulfill({ json: { message: 'A draft is proposed for review.', request_id: 'action-chat', citations: [], proposed_actions: [action], trace: [] } }));
+  await page.route('**/agent-actions/*/confirm', async route => { confirmations++; await route.fulfill({ status: 409, json: { code: 'REVISION_CONFLICT', message: 'Action is stale; review the current record.', details: [], request_id: 'action-conflict' } }); });
+  await page.goto('/policy'); await page.getByLabel('Policy question').fill('Draft this event'); await page.getByRole('button', { name: 'Ask CampusCue', exact: true }).click();
+  await expect(page.getByText('Action draft: CREATE_EVENT_DRAFT')).toBeVisible(); expect(confirmations).toBe(0);
+  await page.getByRole('button', { name: 'Confirm draft creation' }).click();
+  await expect(page.getByText(/Action is stale/)).toBeVisible(); expect(confirmations).toBe(1);
+  await expect(page.getByText('PROPOSED', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open created event draft' })).not.toBeVisible();
+});
+
+test('signing out during an assistant request discards the late reply', async ({ page }) => {
+  await gateway(page);
+  let release: () => void = () => {};
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  let requested = false;
+  await page.route('**/agent/chat', async route => { requested = true; await pending; await route.fulfill({ json: { message: 'Old identity private reply', request_id: 'late-chat', citations: [], proposed_actions: [], trace: [] } }).catch(() => {}); });
+  await page.goto('/policy'); await page.getByLabel('Policy question').fill('Private request'); await page.getByRole('button', { name: 'Ask CampusCue', exact: true }).click();
+  await expect.poll(() => requested).toBe(true);
+  await page.getByRole('button', { name: 'Demo Organizer', exact: true }).click(); await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  release(); await expect(page.getByText('Sign in through the profile menu to ask a question.')).toBeVisible();
+  await expect(page.getByText('Old identity private reply')).not.toBeVisible(); await expect(page.getByLabel('Policy question')).toBeDisabled();
 });
