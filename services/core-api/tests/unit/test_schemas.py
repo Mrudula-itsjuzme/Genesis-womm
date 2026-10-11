@@ -14,6 +14,7 @@ from app.schemas.events import (
     EventCreate,
     EventOut,
 )
+from app.schemas.resources import ResourceInterestCreate
 
 CLUB = uuid4()
 
@@ -34,6 +35,39 @@ def test_event_create_accepts_a_minimal_proposal_and_trims_the_title() -> None:
     assert event.title == "Robotics Demo Day"
     assert event.resource_id is None
     assert event.audience_tags == []
+
+
+def test_resource_interest_is_bounded_and_never_accepts_a_requester_from_the_client() -> None:
+    interest = ResourceInterestCreate.model_validate(
+        {
+            "category": "Eeg kit",
+            "purpose": "  Compare an EEG signal-processing prototype  ",
+            "preferred_date": "2026-10-20",
+            "start_time": "10:00",
+            "end_time": "12:00",
+            "requirements": "  Two channels only  ",
+        }
+    )
+
+    assert interest.purpose == "Compare an EEG signal-processing prototype"
+    assert interest.requirements == "Two channels only"
+    for invalid in (
+        {"category": "Private faculty GPU"},
+        {"end_time": "10:00"},
+        {"purpose": " "},
+        {"requester_id": str(uuid4())},
+    ):
+        with pytest.raises(ValidationError):
+            ResourceInterestCreate.model_validate(
+                {
+                    "category": "Eeg kit",
+                    "purpose": "prototype",
+                    "preferred_date": "2026-10-20",
+                    "start_time": "10:00",
+                    "end_time": "12:00",
+                    **invalid,
+                }
+            )
 
 
 def test_demo_login_is_strict_and_session_output_is_typed() -> None:

@@ -1,17 +1,19 @@
 """One real transaction: all of it commits, or none of it does (spine AD-8)."""
 
-from datetime import timedelta
+from datetime import date, time, timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.enums import EventStatus
+from app.models.directory import ResourceInterest
 from app.repositories.scheduling import CAMPUS_SCHEDULE_LOCK_KEY
 from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.ports import AuditRecord, EventRecord, EvidenceData, StoredResponse
+from app.services.resource_interests import ResourceInterestRecord
 from tests.conftest import upgrade
 from tests.integration.support import (
     END,
@@ -96,6 +98,45 @@ def test_committed_work_is_visible_to_the_next_transaction(seeded: Seeded, engin
         uow.commit()
     with seeded.uow() as uow:
         assert uow.events.get(record.id) == record
+
+
+def test_committed_resource_interest_is_visible_to_the_next_transaction(
+    seeded: Seeded, engine: Engine
+) -> None:
+    record = ResourceInterestRecord(
+        id=uuid4(),
+        requester_id=seeded.user,
+        category="Bio signal",
+        purpose="Validate a wearable prototype",
+        preferred_date=date(2026, 10, 20),
+        start_time=time(10, 0),
+        end_time=time(12, 0),
+        requirements="Two channels",
+        created_at=NOW,
+    )
+
+    with seeded.uow() as uow:
+        uow.resource_interests.add(record)
+        uow.commit()
+    with Session(engine) as session:
+        stored = session.scalar(select(ResourceInterest).where(ResourceInterest.id == record.id))
+
+    assert stored is not None
+    assert (
+        stored.requester_id,
+        stored.category,
+        stored.preferred_date,
+        stored.start_time,
+        stored.end_time,
+        stored.requirements,
+    ) == (
+        record.requester_id,
+        record.category,
+        record.preferred_date,
+        record.start_time,
+        record.end_time,
+        record.requirements,
+    )
 
 
 def test_leaving_without_committing_discards_everything(seeded: Seeded, engine: Engine) -> None:
