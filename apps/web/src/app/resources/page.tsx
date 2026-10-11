@@ -46,7 +46,7 @@ const sourceGroups = [
 
 export default function ResourcesPage() {
   return (
-    <div className="mt-16 min-h-[calc(100vh-4rem)] bg-[#F5EEE9] px-5 py-7 sm:px-8 lg:px-10">
+    <div className="min-h-[calc(100vh-4rem)] bg-[#F5EEE9] px-5 py-7 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8 border-b border-rose-200/70 pb-6">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7a1b32]">Campus reference library</p>
