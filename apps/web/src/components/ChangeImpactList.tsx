@@ -10,6 +10,7 @@ import type { EventOut, EventStatus } from '@/types/core-api';
 import ConflictSidebar from './ConflictSidebar';
 import RemoteState from './RemoteState';
 import ProposalUpload from './ProposalUpload';
+import ChangeProposalPanel from './ChangeProposalPanel';
 
 export default function ChangeImpactList({ initialEventId }: { initialEventId?: string }) {
   const { token } = useAuth();
@@ -58,7 +59,7 @@ function EventWorkspace({ event, refresh }: { event: EventOut; refresh: () => vo
   }
   return <div className="grid gap-6 lg:grid-cols-[1fr_360px]"><section className="space-y-5 rounded-2xl border bg-white p-5">
     <div><h2 className="text-2xl font-bold">{event.title}</h2><p>{event.description}</p><p>{event.status} · Revision {event.revision}{event.synthetic ? ' · Synthetic demo' : ''}</p><p>{campusFormat(event.start_at)} – {campusFormat(event.end_at)}</p><p>Venue availability: {event.venue_availability}</p></div>
-    <section><h3 className="text-lg font-bold">Preview a schedule change</h3><p className="my-2 text-sm">Advisory preview as CONFIRMED. These edits are not saved. Commitment and dependency impact are not available from Core yet.</p>
+    <section><h3 className="text-lg font-bold">Preview confirmation conflicts</h3><p className="my-2 text-sm">Advisory preview as CONFIRMED. Use the staged change form below to save and review a change.</p>
       <div className="grid gap-3 sm:grid-cols-2"><label>Proposed start date<input className="block w-full rounded border p-2" type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label>Proposed start time<input className="block w-full rounded border p-2" type="time" value={start} onChange={e => setStart(e.target.value)} /></label><label>Proposed end date<input className="block w-full rounded border p-2" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></label><label>Proposed end time<input className="block w-full rounded border p-2" type="time" value={end} onChange={e => setEnd(e.target.value)} /></label></div>
       <label className="my-3 block">Proposed venue<select className="ml-2 max-w-full rounded border p-2" value={venue} onChange={e => setVenue(e.target.value)}><option value="">Unspecified</option>{venue && !venues.data?.items.some(v => v.id === venue) && <option value={venue}>Current venue ({venue})</option>}{venues.data?.items.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label><RemoteState signedIn={Boolean(token)} {...venues} />{validation && <p role="alert">{validation}</p>}
     </section>
@@ -68,5 +69,6 @@ function EventWorkspace({ event, refresh }: { event: EventOut; refresh: () => vo
       {failure && <div role="alert"><p>{failure.message}</p>{Boolean(failure.details?.length) && <details><summary>Core validation details</summary><pre className="max-w-full overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(failure.details, null, 2)}</pre></details>}<button className="mt-2 underline" onClick={refresh}>Reload current event</button></div>}
     </section>
     <ProposalUpload key={token + event.id} eventId={event.id} clubId={event.club_id} />
+    <ChangeProposalPanel event={event} refresh={refresh} />
   </section><ConflictSidebar {...preview} result={preview.data} error={preview.error} /></div>;
 }
