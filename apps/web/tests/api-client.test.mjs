@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { apiClient, ApiResponseError } from '../src/lib/api/client.ts';
+import { apiClient, ApiResponseError, errorMessage } from '../src/lib/api/client.ts';
 
 test('gateway sends auth, idempotency and tracing without leaking options', async () => {
   const original = globalThis.fetch;
@@ -48,5 +48,19 @@ test('non-json gateway failures are explicit and do not invent scheduling confli
   try {
     globalThis.fetch = async () => new Response('Bad Gateway', { status: 502 });
     await assert.rejects(apiClient('events'), (error) => error instanceof ApiResponseError && error.status === 502 && error.code === 'HTTP_ERROR');
+  } finally { globalThis.fetch = original; }
+});
+
+test('gateway bounds stalled requests and preserves caller cancellation', async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async (_, init) => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => resolve(Response.json({})), 100);
+      const abort = () => { clearTimeout(timer); reject(init.signal.reason); };
+      if (init.signal.aborted) abort(); else init.signal.addEventListener('abort', abort, { once: true });
+    });
+    await assert.rejects(apiClient('events', { timeoutMs: 10 }), error => error.name === 'TimeoutError' && errorMessage(error) === 'Request timed out. Please retry.');
+    const controller = new AbortController(); controller.abort();
+    await assert.rejects(apiClient('events', { signal: controller.signal }), error => error.name === 'AbortError');
   } finally { globalThis.fetch = original; }
 });

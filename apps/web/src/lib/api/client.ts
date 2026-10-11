@@ -1,6 +1,7 @@
 export interface RequestOptions extends RequestInit {
   token?: string | null;
   idempotencyKey?: string;
+  timeoutMs?: number;
   params?: Record<string, string | number | boolean | null | undefined>;
 }
 
@@ -27,7 +28,7 @@ export function parseErrorEnvelope(status: number, data: unknown, requestId = 'u
 }
 
 export async function apiClient<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { token, idempotencyKey, params, ...init } = options;
+  const { token, idempotencyKey, params, timeoutMs = 60000, ...init } = options;
   const base = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params ?? {})) {
@@ -38,7 +39,9 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
   if (idempotencyKey) headers.set('Idempotency-Key', idempotencyKey);
   headers.set('X-Request-ID', crypto.randomUUID());
   if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
-  const res = await fetch(`${base.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}${query.size ? `?${query}` : ''}`, { ...init, headers, cache: 'no-store' });
+  const deadline = AbortSignal.timeout(timeoutMs);
+  const signal = init.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
+  const res = await fetch(`${base.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}${query.size ? `?${query}` : ''}`, { ...init, signal, headers, cache: 'no-store' });
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null);
     if (res.status === 401 && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('campuscue:unauthenticated', { detail: token }));
@@ -48,5 +51,6 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
 }
 
 export function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.name === 'TimeoutError') return 'Request timed out. Please retry.';
   return error instanceof ApiResponseError ? `${error.message} (request ${error.requestId})` : error instanceof Error ? error.message : 'Request unavailable. Please retry.';
 }
