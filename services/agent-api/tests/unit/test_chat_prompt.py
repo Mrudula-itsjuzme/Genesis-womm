@@ -110,6 +110,19 @@ def test_another_events_status_is_repeated_exactly_as_core_gave_it() -> None:
     assert "never call a CONFIRMED event proposed" in prompt
 
 
+def test_the_model_does_not_pretend_it_can_read_uploaded_documents() -> None:
+    prompt = prompt_for({"messages": MESSAGES})
+
+    assert "you cannot read uploaded proposal documents" in prompt.lower()
+
+
+def test_the_reply_is_plain_text_because_the_chat_window_does_not_render_markdown() -> None:
+    prompt = prompt_for({"messages": MESSAGES}).lower()
+
+    assert "plain text" in prompt
+    assert "no markdown" in prompt
+
+
 def test_the_model_never_calls_a_proposal_booked() -> None:
     prompt = prompt_for({"messages": MESSAGES}).lower()
 

@@ -16,6 +16,7 @@ from app.repositories.unit_of_work import SqlUnitOfWork
 from app.services.conflict_checks import ConflictCheckResult, ConflictCheckService
 from scripts.seed_demo import (
     CLUB_EVENTS,
+    CLUB_ROBOTICS,
     DEMO_USERS,
     RESOURCE_AUDITORIUM,
     RESOURCE_COURTYARD,
@@ -152,8 +153,29 @@ def test_demo_seed_is_repeatable_and_keeps_availability_unknown(engine: Engine) 
         users = list(session.scalars(select(User)))
         assert len(users) == 3
         assert all(user.is_synthetic for user in users)
-        assert len(list(session.scalars(select(Club)))) == 1
-        assert len(list(session.scalars(select(Membership)))) == 2
+        assert len(list(session.scalars(select(Club)))) == 2
+        assert len(list(session.scalars(select(Membership)))) == 3
         resources = list(session.scalars(select(Resource)))
         assert len(resources) == 2
         assert all(r.availability_state == "UNKNOWN" and r.is_synthetic for r in resources)
+
+
+def test_combined_seed_gives_web_identities_access_to_demo_clubs(engine: Engine) -> None:
+    upgrade(engine)
+    with Session(engine) as session:
+        seed_demo(session, "test")
+        session.commit()
+    seed_demo_data(engine)
+
+    with Session(engine) as session:
+        organizer = session.scalar(select(User).where(User.email == "organizer@example.invalid"))
+        assert organizer is not None
+        memberships = set(
+            session.execute(
+                select(Membership.club_id, Membership.role).where(
+                    Membership.user_id == organizer.id
+                )
+            )
+        )
+
+    assert memberships == {(CLUB_EVENTS, "ORGANIZER"), (CLUB_ROBOTICS, "ORGANIZER")}

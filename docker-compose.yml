@@ -97,6 +97,8 @@ services:
       GROQ_FALLBACK_MODEL: ${GROQ_FALLBACK_MODEL:-openai/gpt-oss-20b}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-local-only-internal-key-not-a-secret}
       CORE_API_URL: http://core-api:8000
+      # A policy lookup includes RAG's own model call; the 5 s default cut those off.
+      TOOL_TIMEOUT_S: ${TOOL_TIMEOUT_S:-12}
       RAG_API_URL: http://rag-api:8002
     ports:
       # Local development only. The demo environment keeps the Agent on the private network.
@@ -107,6 +109,17 @@ services:
     build: ./services/rag-api
     environment:
       DATABASE_URL: ${RAG_DATABASE_URL:-postgresql+psycopg2://${POSTGRES_USER:-campuscue}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-campuscue}}
+      # Without these RAG cannot generate an answer, and its own default model is no longer served.
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+    volumes:
+      # The image does not contain the handbook index; without it only two seed passages exist.
+      - ./services/rag-api/data/corpus_chunks.jsonl:/app/data/corpus_chunks.jsonl:ro
+      - ./services/rag-api/data/dense_embeddings.npy:/app/data/dense_embeddings.npy:ro
+      # Approved proposals are indexed here; keep them across restarts. The embedding model is
+      # downloaded on first use (about 440 MB) and cached.
+      - ragchroma:/app/data/chroma_db
+      - raghf:/root/.cache/huggingface
     depends_on:
       postgres:
         condition: service_healthy
@@ -160,3 +173,5 @@ services:
 volumes:
   pgdata:
   miniodata:
+  ragchroma:
+  raghf:

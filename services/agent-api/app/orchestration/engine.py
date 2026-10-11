@@ -21,6 +21,7 @@ from uuid import UUID
 import structlog
 
 from app.orchestration.context import CAMPUS_OFFSET, flat_line
+from app.orchestration.plain import plain_text
 from app.ports.clock import Clock
 from app.ports.core import CallContext, CoreToolsPort
 from app.ports.errors import (
@@ -112,7 +113,7 @@ class OrchestrationEngine:
 
             # No tool calls → done
             if not response.tool_calls:
-                text = response.text or ""
+                text = plain_text(response.text or "")
                 return ChatResponse(
                     message=text,
                     clarifying_question=self._extract_clarifying(text),

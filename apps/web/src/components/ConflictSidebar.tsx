@@ -7,6 +7,7 @@ export default function ConflictSidebar({ result, loading = false, error }: { re
     {loading ? <p role="status">Checking schedule…</p> : error ? <p role="alert">{error}</p> : !result ? <p>Enter a valid schedule to check potential conflicts.</p> : <>
       <p className="text-sm">Evaluated as {result.evaluated_as} at {campusFormat(result.checked_at)}.</p>
       {!result.conflicts.length && <p className="mt-3">No recorded conflicts found. Venue availability still requires authorized confirmation.</p>}
+      <div className="mt-3 space-y-3">{result.conflicts.map(conflict => <article key={`${conflict.type}-${conflict.start_at}-${conflict.end_at}`} className="rounded-xl border border-stone-200 p-3">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm">{conflict.type.replaceAll('_', ' ')}</h3>
           {conflict.constraint && <span className="rounded bg-amber-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900 tracking-wider">{conflict.constraint}</span>}
