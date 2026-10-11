@@ -44,12 +44,12 @@ def test_an_organizer_is_told_their_clubs_and_the_campus_venues(engine: Engine) 
         (CLUB_ROBOTICS, Role.ORGANIZER),
     }
     assert {club.name for club in context.clubs} == {
-        "Synthetic Events Club",
-        "Synthetic Robotics Club",
+        "Intel IoT Club",
+        "Raagasudha Music Club",
     }
     venues = {venue.id: venue for venue in context.venues}
     assert len(venues) == 3, "the equipment and the service are not venues"
-    assert venues[RESOURCE_AUDITORIUM].name == "Synthetic Main Auditorium"
+    assert venues[RESOURCE_AUDITORIUM].name == "Amriteswari Hall (Main Auditorium)"
     assert venues[RESOURCE_AUDITORIUM].capacity == 450
     assert venues[RESOURCE_AUDITORIUM].availability is AvailabilityState.CONFIRMED
 
