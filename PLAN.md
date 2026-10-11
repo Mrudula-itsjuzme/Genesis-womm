@@ -416,6 +416,11 @@ The [frontend/backend integration](docs/superpowers/plans/2026-10-11-full-fronte
 
 M5 now includes persisted schedule-change proposals, deterministic field dependency impact and atomic revalidation through Core and the Changes page (Plan 08). Organizers stage changes; club/campus administrators apply them after review. Commitment timeline/evidence verification and drafted follow-ups remain pending. Server-backed reporting, real RAG model/index integration and broader M8 hardening remain pending. The entire roadmap is not marked complete. See [HANDOFF.md](HANDOFF.md) for commits, commands, results and limits.
 
+### Pilot operations & review alignment — 2026-10-11
+- **Faculty Advisor Review Workflow:** Domain model, database schema constraint, authorization service, and frontend UI updated to enforce two-stage proposal review: Stage 1 Club Faculty Advisor (`FACULTY_ADVISOR`), followed by Stage 2 Campus Admin / OSA Final Review. Pending proposals surface in an active review queue pulse banner for advisors.
+- **Amrita Coimbatore Facility Booking Form:** The Plan Event interface was redesigned to implement the complete 15-section official Amrita Events Department facility booking form (Rev. 15-Nov-24), including participant gender/international breakdown, Dean Academic Approval PDF enclosure auto-uploaded to MinIO proposal storage, deterministic conflict checks, parallel hall requirements, meal tables, vehicle requisitions, guest accommodations, publicity/media flags, and funding allocations.
+- **RAG Handbook Corpus:** The Student Affairs Handbook is chunked, embedded, and tracked under ChromaDB persistent storage with grounded page citations.
+
 ## 15. Definition of done
 
 A feature is done only when:

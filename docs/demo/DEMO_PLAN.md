@@ -22,7 +22,8 @@ A 15-minute live demo (plus questions) for the localhost MVP. Everything below w
 | Email | Role | Used in |
 |---|---|---|
 | `organizer@example.invalid` | Organizer in *both* clubs | acts 1 to 3, 6 |
-| `campus-admin@example.invalid` | Campus admin | acts 4, 6 (approvals, applying changes) |
+| `faculty-advisor@example.invalid` | Faculty Advisor (Intel IoT Club) | act 4 (stage 1 proposal review & pending queue) |
+| `campus-admin@example.invalid` | Campus admin | acts 4, 6 (final approvals, applying changes) |
 | `outsider@example.invalid` | signed in, no club | optional: "what a stranger can do" |
 
 **The campus** (seeded demo data): *Intel IoT Club* and *Raagasudha Music Club*; venues *Amriteswari Hall (Main Auditorium)* (availability CONFIRMED), *Sudhamani Seminar Hall*, *Open Air Theatre (OAT)*. On **20 November 2026** two events are already CONFIRMED: the *Distinguished Campus Guest Lecture* in the auditorium (09:30 to 11:30) and the *Hardware Prototyping & Sensor Demo* in the seminar hall (13:00 to 14:30). That day is where conflicts come from. **24 and 25 November** are free.

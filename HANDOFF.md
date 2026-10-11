@@ -1,5 +1,11 @@
 # HANDOFF: CampusCue schedule changes and dependency impact
 
+> **Continuation: 2026-10-11 (Faculty Advisor Two-Stage Review & Official Amrita Booking Form).**
+> - **Faculty Advisor Role & Two-Stage Review:** Added `FACULTY_ADVISOR` to domain enums (`services/core-api/app/domain/enums.py`), membership models, and check constraints (`ck_memberships_club_role`). Authorized faculty advisors to conduct Stage 1 proposal reviews for their assigned club (`Intel IoT Club` demo advisor: *Dr. S. Mahadevan* / `faculty-advisor@example.invalid`), followed by Campus Admin / OSA Stage 2 final approval. Added prominent pending advisor queue notification pulse banner in the frontend (`ChangeImpactList.tsx`).
+> - **Official Amrita Facility Booking Form:** Rebuilt `apps/web/src/app/plan/page.tsx` strictly following the official *Amrita Vishwa Vidyapeetham Coimbatore Campus Events Department Facility Booking Form* (Pages 24–26, Rev. 15-Nov-24), including all 15 operational sections: Title, Club, Timings, Faculty in-charge, Participant Breakdown (National/International, Male/Female), Dean Academic Approval PDF enclosure with automatic MinIO proposal upload, Hall requirements with deterministic conflict engine checks + parallel campus halls, Other Infrastructure, AV requirements, Meal/Refreshments date table, Vehicle requirements table, Guest/Hostel rooms, Publicity & Media options, Funding source, and Agenda abstract.
+> - **RAG Handbook & Policy Corpus:** Pre-indexed Amrita Student Affairs Handbook into ChromaDB vector store (`services/rag-api/data/chroma_db/`), providing grounded dense/sparse retrieval with page-exact citations.
+> - **Verification:** Next.js production build passes with 0 errors (`npm run build`). Core API tests passing (1113+ passed). Local database migrations and constraints synced in `campuscue-postgres-1`.
+
 > **Demo continuation: 2026-10-11.** The local demo now has a presenter guide at
 > `docs/demo/DEMO_PLAN.md`, a fictional robotics proposal PDF, `scripts/demo_reset.sh`, and
 > `scripts/demo_rag_search.py`. Compose mounts the handbook corpus and persistent RAG Chroma and
