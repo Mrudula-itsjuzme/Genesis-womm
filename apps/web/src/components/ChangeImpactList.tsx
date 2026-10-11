@@ -22,18 +22,72 @@ function EventSelector({ initialEventId }: { initialEventId?: string }) {
   const selected = useRemote(token && id ? token + id : null, signal => eventsApi.get(token!, id, signal));
   return <div className="space-y-5">
     {session && (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-stone-200/80 bg-white/95 p-3.5 shadow-sm backdrop-blur-xl">
-        <div className="flex items-center gap-2 text-xs">
-          <span className={"inline-block h-2.5 w-2.5 rounded-full " + (session.user.campus_admin ? "bg-purple-600 shadow-[0_0_6px_rgba(147,51,234,0.5)]" : "bg-emerald-600 shadow-[0_0_6px_rgba(5,150,105,0.5)]")} />
-          <span className="font-semibold text-stone-700">Active Role:</span>
-          <span className="rounded-[6px] bg-stone-100 px-2 py-0.5 font-medium text-stone-800">
-            {session.user.campus_admin ? 'Campus Administrator · Institutional Approvals & Overrides' : `${activeClub?.club_name ?? 'Club Organizer'} · Event Proposals & Drafts`}
-          </span>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-stone-200/80 bg-white/95 p-3.5 shadow-sm backdrop-blur-xl">
+          <div className="flex items-center gap-2 text-xs">
+            <span className={"inline-block h-2.5 w-2.5 rounded-full " + (session.user.campus_admin ? "bg-purple-600 shadow-[0_0_6px_rgba(147,51,234,0.5)]" : activeClub?.role === 'FACULTY_ADVISOR' ? "bg-blue-600 shadow-[0_0_6px_rgba(37,99,235,0.5)]" : "bg-emerald-600 shadow-[0_0_6px_rgba(5,150,105,0.5)]")} />
+            <span className="font-semibold text-stone-700">Active Role:</span>
+            <span className="rounded-[6px] bg-stone-100 px-2 py-0.5 font-medium text-stone-800">
+              {session.user.campus_admin
+                ? 'Campus Administrator · Institutional Approvals & Overrides'
+                : activeClub?.role === 'FACULTY_ADVISOR'
+                  ? `Faculty Advisor · ${activeClub.club_name} (First-Stage Reviews)`
+                  : `${activeClub?.club_name ?? 'Club Organizer'} · Event Proposals & Drafts`}
+            </span>
+          </div>
+          {session.user.campus_admin && (
+            <span className="rounded-[6px] bg-purple-50 px-2.5 py-1 text-[11px] font-semibold text-purple-700 border border-purple-200 shadow-xs">
+              Authorized to confirm or reject proposals (Final Stage)
+            </span>
+          )}
+          {activeClub?.role === 'FACULTY_ADVISOR' && (
+            <span className="rounded-[6px] bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 border border-blue-200 shadow-xs">
+              Stage 1 Approval Required: Review club proposals before OSA submission
+            </span>
+          )}
         </div>
-        {session.user.campus_admin && (
-          <span className="rounded-[6px] bg-purple-50 px-2.5 py-1 text-[11px] font-semibold text-purple-700 border border-purple-200 shadow-xs">
-            Authorized to confirm or reject proposals
-          </span>
+
+        {/* Advisor notification queue banner if events in the club are proposed / submitted */}
+        {(activeClub?.role === 'FACULTY_ADVISOR' || session.user.campus_admin) && list.data && (
+          (() => {
+            const pendingEvents = list.data.items.filter(e =>
+              (e.status === 'PROPOSED' || e.status === 'SUBMITTED' || e.status === 'DRAFT') &&
+              (session.user.campus_admin || e.club_id === activeClub?.club_id)
+            );
+            if (!pendingEvents.length) return null;
+            return (
+              <div className="rounded-[10px] border border-blue-200 bg-blue-50/70 p-3.5 text-xs text-blue-900 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                    <span className="font-semibold">
+                      {activeClub?.role === 'FACULTY_ADVISOR'
+                        ? 'Pending Advisor Action Queue'
+                        : 'Institutional Review Queue'}
+                    </span>
+                    <span className="rounded-full bg-blue-200/80 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                      {pendingEvents.length} event{pendingEvents.length > 1 ? 's' : ''} awaiting review
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {pendingEvents.map(e => (
+                    <button
+                      key={e.id}
+                      onClick={() => setId(e.id)}
+                      className={`rounded-[8px] border px-2.5 py-1 text-xs font-medium transition-all active:scale-[0.98] ${
+                        id === e.id
+                          ? 'border-blue-600 bg-blue-600 text-white shadow-xs'
+                          : 'border-blue-300 bg-white text-blue-900 hover:bg-blue-100/50'
+                      }`}
+                    >
+                      {e.title} ({e.status})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()
         )}
       </div>
     )}

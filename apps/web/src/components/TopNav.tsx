@@ -14,6 +14,7 @@ export default function TopNav() {
 
   const DEMO_PERSONAS = [
     { label: 'Club Organizer', email: 'organizer@example.invalid', desc: 'Intel IoT & Raagasudha Clubs' },
+    { label: 'Faculty Advisor', email: 'faculty-advisor@example.invalid', desc: 'Faculty Advisor · Intel IoT Club' },
     { label: 'Campus Admin', email: 'campus-admin@example.invalid', desc: 'Office of Student Affairs (OSA)' },
     { label: 'Club Admin', email: 'club-admin@example.invalid', desc: 'Intel IoT Club Executive' },
     { label: 'Student / Guest', email: 'student@demo.invalid', desc: 'Campus Community Observer' },
@@ -60,14 +61,16 @@ export default function TopNav() {
                 (session
                   ? session.user.campus_admin
                     ? 'bg-purple-600 shadow-[0_0_6px_rgba(147,51,234,0.5)]'
-                    : 'bg-emerald-600 shadow-[0_0_6px_rgba(5,150,105,0.5)]'
+                    : activeClub?.role === 'FACULTY_ADVISOR'
+                      ? 'bg-blue-600 shadow-[0_0_6px_rgba(37,99,235,0.5)]'
+                      : 'bg-emerald-600 shadow-[0_0_6px_rgba(5,150,105,0.5)]'
                   : 'bg-stone-400')
               }
             />
             <span>{isLoading ? 'Loading session…' : session?.user.display_name ?? 'Sign in'}</span>
             {session && (
               <span className="rounded-[6px] bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
-                {session.user.campus_admin ? 'Admin' : activeClub?.role ?? 'Member'}
+                {session.user.campus_admin ? 'Admin' : activeClub?.role === 'FACULTY_ADVISOR' ? 'Advisor' : activeClub?.role ?? 'Member'}
               </span>
             )}
           </button>
