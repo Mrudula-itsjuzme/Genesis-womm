@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import CalendarGrid from '@/components/CalendarGrid';
 import Link from 'next/link';
 import UpcomingEvents from "@/components/UpcomingEvents";
+import { PolicyAssistant } from '@/components/PolicyAssistant';
 import { Calendar, MapPin, FileText, BarChart2, Plus, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function Dashboard() {
@@ -139,29 +140,28 @@ export default function Dashboard() {
             <UpcomingEvents />
           </section>
 
-          {/* Quick Help & Action Highlights */}
-          <section className="space-y-4">
-            <div className="bg-gradient-to-r from-[#FDE8E9] via-[#F6DCE0] to-[#EED3D9] rounded-[10px] p-6 shadow-xs border border-rose-100/60 flex flex-col justify-between h-[210px]">
+          {/* Ask CampusCue Live Assistant */}
+          <section className="space-y-4 min-w-0" aria-labelledby="policy-assistant-heading">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-[#7a1b32]" />
-                  <h3 className="text-xl font-serif font-bold text-[#7a1b32]">Ask CampusCue</h3>
-                </div>
-                <p className="text-xs text-[#7a1b32]/85 font-medium leading-relaxed">
-                  Get answers from Amrita&apos;s official student affairs guidelines, venue allocation rules, and scheduling policies.
+                <h3 id="policy-assistant-heading" className="text-xl font-bold tracking-tight text-gray-900">
+                  Ask CampusCue
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Policy-grounded assistant for event permissions, venues, and student affairs rules.
                 </p>
               </div>
-              <Link href="/policy" className="inline-block self-start rounded-[10px] bg-white px-5 py-2.5 text-xs font-bold text-[#7a1b32] shadow-xs transition-all hover:bg-stone-50 active:scale-[0.98]">
-                Open policy assistant →
+              <Link href="/policy" className="flex items-center text-xs font-bold uppercase tracking-wider text-[#7a1b32] transition-colors hover:text-rose-900">
+                Full Page <ArrowRight className="ml-1 h-3 w-3" />
               </Link>
             </div>
-
-            <div className="bg-white rounded-[10px] p-5 shadow-xs border border-stone-200/80 flex items-center justify-between">
+            <PolicyAssistant />
+            <div className="bg-white rounded-[10px] p-4 shadow-xs border border-stone-200/80 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">Institutional Operations</p>
-                <p className="text-sm font-semibold text-stone-800 mt-0.5">Need to review event changes or resolve conflict impact?</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Institutional Operations</p>
+                <p className="text-xs font-semibold text-stone-800 mt-0.5">Need to review event changes or resolve conflict impact?</p>
               </div>
-              <Link href="/changes" className="rounded-[10px] border border-stone-200 bg-stone-50 px-3.5 py-2 text-xs font-semibold text-[#7a1b32] transition hover:bg-rose-50 active:scale-[0.98]">
+              <Link href="/changes" className="rounded-[8px] border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs font-semibold text-[#7a1b32] transition hover:bg-rose-50 active:scale-[0.98]">
                 Review Changes →
               </Link>
             </div>
