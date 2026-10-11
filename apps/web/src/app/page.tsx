@@ -130,9 +130,16 @@ export default function Dashboard() {
         {/* Dashboard Grid Content */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 items-start mb-8">
           {/* My Events List */}
-          <section className="min-w-0" aria-labelledby="upcoming-events-heading">
+          <section className="space-y-4 min-w-0" aria-labelledby="upcoming-events-heading">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 id="upcoming-events-heading" className="text-xl font-bold tracking-tight text-gray-900">My Upcoming Events</h3>
+              <div>
+                <h3 id="upcoming-events-heading" className="text-xl font-bold tracking-tight text-gray-900">
+                  My Upcoming Events
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Track tentative proposals, confirmed bookings, and event changes.
+                </p>
+              </div>
               <Link href="/calendar" className="flex items-center text-xs font-bold uppercase tracking-wider text-[#7a1b32] transition-colors hover:text-rose-900">
                 View Calendar <ArrowRight className="ml-1 h-3 w-3" />
               </Link>
