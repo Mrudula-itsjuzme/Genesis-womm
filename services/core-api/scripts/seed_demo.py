@@ -52,6 +52,11 @@ DEMO_USERS = (
         "Lead Club Organizer",
     ),
     DemoUser(
+        UUID("10000000-0000-4000-8000-000000000006"),
+        "faculty-advisor@demo.invalid",
+        "Faculty Advisor",
+    ),
+    DemoUser(
         UUID("10000000-0000-4000-8000-000000000005"),
         "student@demo.invalid",
         "Student Member",
@@ -109,6 +114,7 @@ def seed_demo_data(engine: Engine) -> None:
             (DEMO_USERS[1].id, CLUB_EVENTS, "CLUB_ADMIN"),
             (DEMO_USERS[2].id, CLUB_EVENTS, "ORGANIZER"),
             (DEMO_USERS[2].id, CLUB_ROBOTICS, "ORGANIZER"),
+            (DEMO_USERS[3].id, CLUB_EVENTS, "FACULTY_ADVISOR"),
         )
         # The Web demo signs in with @example.invalid identities created by seed_demo().
         # When both seed routines run through Compose, give those identities the same access to
@@ -117,6 +123,7 @@ def seed_demo_data(engine: Engine) -> None:
             (demo_id("club-admin"), CLUB_EVENTS, "CLUB_ADMIN"),
             (demo_id("organizer"), CLUB_EVENTS, "ORGANIZER"),
             (demo_id("organizer"), CLUB_ROBOTICS, "ORGANIZER"),
+            (demo_id("faculty-advisor"), CLUB_EVENTS, "FACULTY_ADVISOR"),
         )
         memberships += tuple(
             membership
@@ -349,6 +356,7 @@ def seed_demo(session: Session, app_env: str) -> None:
     for name, memberships in (
         ("organizer", ((CLUB_EVENTS, "ORGANIZER"), (CLUB_ROBOTICS, "ORGANIZER"))),
         ("club-admin", ((CLUB_EVENTS, "CLUB_ADMIN"),)),
+        ("faculty-advisor", ((CLUB_EVENTS, "FACULTY_ADVISOR"),)),
         ("campus-admin", ()),
     ):
         user_id = demo_id(name)
@@ -359,6 +367,7 @@ def seed_demo(session: Session, app_env: str) -> None:
         display_map = {
             "organizer": "Lead Club Organizer",
             "club-admin": "Club Administrator",
+            "faculty-advisor": "Dr. S. Mahadevan (Faculty Advisor)",
             "campus-admin": "Campus Administrator",
         }
         session.execute(
