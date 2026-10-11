@@ -11,6 +11,7 @@ class FakeLlmProvider(LlmPort):
         self.responses = list(responses or [])
         self.demo_mode = demo_mode
         self.calls: list[list[ChatMessage]] = []
+        self.system_prompts: list[str] = []
 
     async def complete(
         self,
@@ -19,6 +20,7 @@ class FakeLlmProvider(LlmPort):
         system_prompt: str,
     ) -> LlmResponse:
         self.calls.append(list(messages))
+        self.system_prompts.append(system_prompt)
         if self.responses:
             return self.responses.pop(0)
         if self.demo_mode:
@@ -51,8 +53,7 @@ class FakeLlmProvider(LlmPort):
         if last.startswith("[Tool file_event_draft_proposal]"):
             return LlmResponse(
                 text=(
-                    "I proposed a synthetic demo workshop. "
-                    "Nothing is booked until you confirm it."
+                    "I proposed a synthetic demo workshop. Nothing is booked until you confirm it."
                 ),
                 tool_calls=[],
             )
