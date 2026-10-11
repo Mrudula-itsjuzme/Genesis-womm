@@ -15,6 +15,9 @@ from app.services.ports import ChatContext, ChatTurn
 CHAT_PATH = "/v1/agent/chat"
 _ACCESS_LEVEL = "CAMPUS_PUBLIC"
 _CAMPUS_TIMEZONE = "Asia/Kolkata"
+# The longest name the Agent accepts (contracts/agent-api.openapi.yaml). One long club name must
+# not make the Agent refuse the whole turn.
+_NAME_LIMIT = 200
 
 
 def _context_body(context: ChatContext) -> dict[str, Any]:
@@ -22,13 +25,13 @@ def _context_body(context: ChatContext) -> dict[str, Any]:
         "now": context.now.isoformat(),
         "timezone": _CAMPUS_TIMEZONE,
         "clubs": [
-            {"id": str(club.id), "name": club.name, "role": club.role.value}
+            {"id": str(club.id), "name": club.name[:_NAME_LIMIT], "role": club.role.value}
             for club in context.clubs
         ],
         "venues": [
             {
                 "id": str(venue.id),
-                "name": venue.name,
+                "name": venue.name[:_NAME_LIMIT],
                 "capacity": venue.capacity,
                 "availability": venue.availability.value,
             }

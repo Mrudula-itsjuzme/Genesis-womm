@@ -122,6 +122,23 @@ def test_the_context_goes_over_in_a_documented_shape(gateway: HttpAgentGateway) 
 
 
 @respx.mock
+def test_names_are_cut_to_the_length_the_agent_accepts(gateway: HttpAgentGateway) -> None:
+    limit = AGENT_OPENAPI["components"]["schemas"]["ClubContext"]["properties"]["name"]["maxLength"]
+    context = ChatContext(
+        now=datetime(2026, 11, 1, 3, 0, tzinfo=UTC),
+        clubs=(ChatClub(UUID(int=5), "C" * (limit + 50), Role.ORGANIZER),),
+        venues=(ChatVenue(UUID(int=6), "V" * (limit + 50), None, AvailabilityState.UNKNOWN),),
+    )
+    respx.post(URL).respond(json=REPLY)
+
+    chat(gateway, ChatTurn(messages=(("user", "Plan it"),), context=context))
+
+    sent = json.loads(respx.calls.last.request.content)["context"]
+    assert len(sent["clubs"][0]["name"]) == limit
+    assert len(sent["venues"][0]["name"]) == limit
+
+
+@respx.mock
 def test_an_event_the_conversation_is_about_is_named(gateway: HttpAgentGateway) -> None:
     event = uuid4()
     respx.post(URL).respond(json=REPLY)
