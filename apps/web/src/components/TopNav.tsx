@@ -13,10 +13,10 @@ export default function TopNav() {
   const [email, setEmail] = useState('organizer@example.invalid');
 
   const DEMO_PERSONAS = [
-    { label: 'Club Organizer', email: 'organizer@example.invalid', desc: 'Synthetic Events & Robotics Club' },
-    { label: 'Campus Admin', email: 'campus-admin@example.invalid', desc: 'Institutional Approvals & Overrides' },
-    { label: 'Club Admin', email: 'club-admin@example.invalid', desc: 'Events Club Executive' },
-    { label: 'Student / Guest', email: 'student@demo.invalid', desc: 'Public Directory Observer' },
+    { label: 'Club Organizer', email: 'organizer@example.invalid', desc: 'Intel IoT & Raagasudha Clubs' },
+    { label: 'Campus Admin', email: 'campus-admin@example.invalid', desc: 'Office of Student Affairs (OSA)' },
+    { label: 'Club Admin', email: 'club-admin@example.invalid', desc: 'Intel IoT Club Executive' },
+    { label: 'Student / Guest', email: 'student@demo.invalid', desc: 'Campus Community Observer' },
   ];
 
   const handlePersonaSelect = async (targetEmail: string) => {
@@ -130,7 +130,6 @@ export default function TopNav() {
             <div className="my-3 rounded-[10px] border border-stone-200/60 bg-stone-50/50 p-3 text-xs">
               <p className="font-medium text-stone-900">
                 {session.user.email} · {session.user.campus_admin ? 'Campus admin' : activeClub?.role ?? 'Member'}
-                {session.user.synthetic ? ' · Synthetic demo' : ''}
               </p>
               <label className="mt-2 block text-xs text-stone-700">
                 Active club

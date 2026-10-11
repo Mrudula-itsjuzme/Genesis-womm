@@ -44,10 +44,10 @@ function Conversation() {
     </article>)}</div>
     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
       <span className="font-medium text-stone-500">Demo prompts:</span>
-      <button type="button" onClick={() => setInput('Plan a workshop for Synthetic Robotics Club in Synthetic Main Auditorium on 24 November 2026 from 3pm to 5pm.')} className="rounded-[10px] border border-rose-200/80 bg-rose-50/70 px-3 py-1.5 text-[#7a1b32] shadow-xs transition-all duration-150 hover:bg-rose-100 active:scale-[0.98]">
-        📅 Plan Robotics Workshop
+      <button type="button" onClick={() => setInput('Plan an IoT workshop for Intel IoT Club in Amriteswari Hall on 24 November 2026 from 3pm to 5pm.')} className="rounded-[10px] border border-rose-200/80 bg-rose-50/70 px-3 py-1.5 text-[#7a1b32] shadow-xs transition-all duration-150 hover:bg-rose-100 active:scale-[0.98]">
+        📅 Plan IoT Workshop
       </button>
-      <button type="button" onClick={() => setInput('Plan an event in Synthetic Main Auditorium on 20 November 2026 from 10am to 11am.')} className="rounded-[10px] border border-amber-200/80 bg-amber-50/70 px-3 py-1.5 text-amber-900 shadow-xs transition-all duration-150 hover:bg-amber-100 active:scale-[0.98]">
+      <button type="button" onClick={() => setInput('Plan an event in Amriteswari Hall on 20 November 2026 from 10am to 11am.')} className="rounded-[10px] border border-amber-200/80 bg-amber-50/70 px-3 py-1.5 text-amber-900 shadow-xs transition-all duration-150 hover:bg-amber-100 active:scale-[0.98]">
         ⚠️ Test Conflicting Slot
       </button>
     </div>
